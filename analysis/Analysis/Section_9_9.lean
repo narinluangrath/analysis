@@ -54,7 +54,8 @@ example (x:ℝ) :
   let δ : ℝ := 0.05
   |x-x₀| ≤ δ → |g x - g x₀| ≤ ε := by
   extract_lets g ε x₀ δ
-  sorry
+  intro h; simp only [g]; rw [show 2*x - 2*x₀ = 2*(x - x₀) from by ring]
+  rw [abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]; sorry
 
 example (x₀ x : ℝ) :
   let g : ℝ → ℝ := fun x ↦ 2*x
@@ -62,7 +63,8 @@ example (x₀ x : ℝ) :
   let δ : ℝ := 0.05
   |x-x₀| ≤ δ → |g x - g x₀| ≤ ε := by
   extract_lets g ε δ
-  sorry
+  intro h; simp only [g]; rw [show 2*x - 2*x₀ = 2*(x - x₀) from by ring]
+  rw [abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]; sorry
 
 /-- Definition 9.9.2.  Here we use the Mathlib term `UniformContinuousOn` -/
 theorem UniformContinuousOn.iff (f: ℝ → ℝ) (X:Set ℝ) : UniformContinuousOn f X  ↔
@@ -71,8 +73,8 @@ theorem UniformContinuousOn.iff (f: ℝ → ℝ) (X:Set ℝ) : UniformContinuous
   grind
 
 theorem ContinuousOn.ofUniformContinuousOn {X:Set ℝ} (f: ℝ → ℝ) (hf: UniformContinuousOn f X) :
-  ContinuousOn f X := by
-  sorry
+  ContinuousOn f X :=
+  hf.continuousOn
 
 example : ¬ UniformContinuousOn (fun x:ℝ ↦ 1/x) (Set.Icc 0 2) := by
   sorry
@@ -121,9 +123,15 @@ noncomputable abbrev f_9_9_10 : ℝ → ℝ := fun x ↦ 1/x
 
 example : (fun n:ℕ ↦ 1/(n+1:ℝ):Sequence).equiv (fun n:ℕ ↦ 1/(2*(n+1):ℝ):Sequence) := by sorry
 
-example (n:ℕ) : 1/(n+1:ℝ) ∈ Set.Ioo 0 2 := by sorry
+example (n:ℕ) : 1/(n+1:ℝ) ∈ Set.Ioo 0 2 := by
+  refine ⟨by positivity, ?_⟩
+  have : (n:ℝ) + 1 > 0 := by positivity
+  rw [div_lt_iff₀ this]; linarith
 
-example (n:ℕ) : 1/(2*(n+1):ℝ) ∈ Set.Ioo 0 2 := by sorry
+example (n:ℕ) : 1/(2*(n+1):ℝ) ∈ Set.Ioo 0 2 := by
+  refine ⟨by positivity, ?_⟩
+  have : 2 * ((n:ℝ) + 1) > 0 := by positivity
+  rw [div_lt_iff₀ this]; nlinarith
 
 example : ¬ (fun n:ℕ ↦ f_9_9_10 (1/(n+1:ℝ)):Sequence).equiv (fun n:ℕ ↦ f_9_9_10 (1/(2*(n+1):ℝ)):Sequence) := by sorry
 
@@ -153,7 +161,9 @@ example : ((fun n:ℕ ↦ 1/(n+1:ℝ)):Sequence).IsCauchy := by
   sorry
 
 example (n:ℕ) : 1/(n+1:ℝ) ∈ Set.Ioo 0 2 := by
-  sorry
+  refine ⟨by positivity, ?_⟩
+  have : (n:ℝ) + 1 > 0 := by positivity
+  rw [div_lt_iff₀ this]; linarith
 
 example : ¬ ((fun n:ℕ ↦ f_9_9_10 (1/(n+1:ℝ))):Sequence).IsCauchy := by
   sorry
