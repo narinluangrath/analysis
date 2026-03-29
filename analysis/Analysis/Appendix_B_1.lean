@@ -318,7 +318,15 @@ abbrev PosintDecimal.sum_digit (p q:PosintDecimal) (i:ℕ) : ℕ :=
 
 /-- Exercise B.1.1 -/
 theorem PosintDecimal.sum_digit_lt (p q:PosintDecimal) (i:ℕ) :
-  p.sum_digit q i < 10 := by sorry
+  p.sum_digit q i < 10 := by
+  unfold sum_digit
+  have hd1 : (p.digit i : ℕ) < 10 := (p.digit i).isLt
+  have hd2 : (q.digit i : ℕ) < 10 := (q.digit i).isLt
+  have hc : p.carry q i ≤ 1 := by
+    induction i with
+    | zero => rw [carry_zero]; omega
+    | succ n ih => rw [carry_succ]; split <;> omega
+  split <;> omega
 
 /-- Define this number such that it satisfies the two following theorems. -/
 def PosintDecimal.sum_digit_top (p q:PosintDecimal) : ℕ := by sorry
