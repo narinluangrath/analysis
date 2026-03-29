@@ -60,17 +60,30 @@ theorem Nat.two_mul (m: Nat) : 2 * m = 0 + m + m := by
 /-- This lemma will be useful to prove Lemma 2.3.2.
 Compare with Mathlib's `Nat.mul_zero` -/
 lemma Nat.mul_zero (n: Nat) : n * 0 = 0 := by
-  sorry
+  apply induction (P := fun n => n * 0 = 0)
+  . rw [zero_mul]
+  intro n ih
+  rw [succ_mul, ih, zero_add]
 
 /-- This lemma will be useful to prove Lemma 2.3.2.
 Compare with Mathlib's `Nat.mul_succ` -/
 lemma Nat.mul_succ (n m:Nat) : n * m++ = n * m + n := by
-  sorry
+  apply induction (P := fun n => n * m++ = n * m + n)
+  . rw [zero_mul, zero_mul, zero_add]
+  intro n ih
+  rw [succ_mul (n := n) (m := m++), ih, succ_mul (n := n) (m := m)]
+  -- goal: n * m + n + m++ = n * m + m + n++
+  rw [add_succ, add_succ]
+  rw [add_assoc, add_assoc]
+  rw [add_comm (n := n) (m := m)]
 
 /-- Lemma 2.3.2 (Multiplication is commutative) / Exercise 2.3.1
 Compare with Mathlib's `Nat.mul_comm` -/
 lemma Nat.mul_comm (n m: Nat) : n * m = m * n := by
-  sorry
+  apply induction (P := fun n => n * m = m * n)
+  . rw [zero_mul, mul_zero]
+  intro n ih
+  rw [succ_mul, mul_succ, ih]
 
 /-- Compare with Mathlib's `Nat.mul_one` -/
 theorem Nat.mul_one (m: Nat) : m * 1 = m := by
@@ -79,12 +92,29 @@ theorem Nat.mul_one (m: Nat) : m * 1 = m := by
 /-- This lemma will be useful to prove Lemma 2.3.3.
 Compare with Mathlib's `Nat.mul_pos` -/
 lemma Nat.pos_mul_pos {n m: Nat} (h₁: n.IsPos) (h₂: m.IsPos) : (n * m).IsPos := by
-  sorry
+  rw [isPos_iff] at *
+  intro h
+  apply h₁
+  apply induction (P := fun n => n * m = 0 → n = 0) _ _ n h
+  . intro _; rfl
+  intro k _ hk
+  rw [succ_mul] at hk
+  exact absurd ((add_eq_zero _ _ hk).2) h₂
 
 /-- Lemma 2.3.3 (Positive natural numbers have no zero divisors) / Exercise 2.3.2.
     Compare with Mathlib's `Nat.mul_eq_zero`.  -/
 lemma Nat.mul_eq_zero (n m: Nat) : n * m = 0 ↔ n = 0 ∨ m = 0 := by
-  sorry
+  constructor
+  . intro h
+    by_contra hc
+    push_neg at hc
+    have h1 : n.IsPos := hc.1
+    have h2 : m.IsPos := hc.2
+    exact pos_mul_pos h1 h2 h
+  intro h
+  rcases h with rfl | rfl
+  . exact zero_mul m
+  exact mul_zero n
 
 /-- Proposition 2.3.4 (Distributive law)
 Compare with Mathlib's `Nat.mul_add` -/
@@ -105,7 +135,10 @@ theorem Nat.add_mul (a b c: Nat) : (a + b)*c = a*c + b*c := by
 /-- Proposition 2.3.5 (Multiplication is associative) / Exercise 2.3.3
 Compare with Mathlib's `Nat.mul_assoc` -/
 theorem Nat.mul_assoc (a b c: Nat) : (a * b) * c = a * (b * c) := by
-  sorry
+  apply induction (P := fun a => (a * b) * c = a * (b * c))
+  . rw [zero_mul, zero_mul, zero_mul]
+  intro a ih
+  rw [succ_mul, add_mul, ih, succ_mul]
 
 /-- (Not from textbook)  Nat is a commutative semiring.
     This allows tactics such as `ring` to apply to the Chapter 2 natural numbers. -/
@@ -182,7 +215,18 @@ example (a b c d:Nat) (hab: a ≤ b) : c*a*d ≤ c*b*d := by
 Compare with Mathlib's `Nat.mod_eq_iff` -/
 theorem Nat.exists_div_mod (n:Nat) {q: Nat} (hq: q.IsPos) :
     ∃ m r: Nat, 0 ≤ r ∧ r < q ∧ n = m * q + r := by
-  sorry
+  apply induction (P := fun n => ∃ m r: Nat, 0 ≤ r ∧ r < q ∧ n = m * q + r)
+  . refine ⟨0, 0, zero_le _, ?_, by rw [zero_mul, zero_add]⟩
+    rw [lt_iff_add_pos]
+    exact ⟨q, hq, by rw [zero_add]⟩
+  intro n ⟨m, r, _, hrq, hn⟩
+  rcases (le_iff_lt_or_eq _ _).mp ((lt_iff_succ_le _ _).mp hrq) with hr | hr
+  . exact ⟨m, r++, zero_le _, hr, by rw [hn]; exact (add_succ _ _).symm⟩
+  . refine ⟨m++, 0, zero_le _, ?_, ?_⟩
+    . rw [lt_iff_add_pos]; exact ⟨q, hq, by rw [zero_add]⟩
+    rw [add_zero]
+    conv_lhs => rw [hn]
+    rw [succ_eq_add_one, add_assoc, ←succ_eq_add_one, hr, succ_mul, add_comm (n := m * q)]
 
 /-- Definition 2.3.11 (Exponentiation for natural numbers) -/
 abbrev Nat.pow (m n: Nat) : Nat := Nat.recurse (fun _ prod ↦ prod * m) 1 n
