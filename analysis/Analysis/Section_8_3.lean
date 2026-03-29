@@ -158,7 +158,8 @@ theorem Uncountable.real : Uncountable ℝ := by
 
 /-- Exercise 8.3.1 -/
 example {X:Type} [Finite X] : Nat.card (Set X) = 2 ^ Nat.card X := by
-  sorry
+  cases nonempty_fintype X
+  simp [Nat.card_eq_fintype_card, Fintype.card_set]
 
 open Classical in
 /-- Exercise 8.3.2.  Some subtle type changes due to how sets are implemented in Mathlib. Also we shift the sequence `D` by one so that we can work in `Set A` rather than `Set B`. -/
@@ -179,7 +180,10 @@ theorem Schroder_Bernstein {X Y:Type} (hXY : LeCard X Y) (hYX : LeCard Y X) : Eq
 abbrev LtCard (X Y: Type) : Prop := LeCard X Y ∧ ¬ EqualCard X Y
 
 /-- Exercise 8.3.4 -/
-example {X:Type} : LtCard X (Set X) := by sorry
+example {X:Type} : LtCard X (Set X) := by
+  constructor
+  · exact ⟨fun x => {x}, fun a b h => by simpa using h⟩
+  · exact EqualCard.power_set_false X
 
 example {A B C: Type} (hAB: LtCard A B) (hBC: LtCard B C) :
   LtCard A C := by
@@ -189,9 +193,11 @@ abbrev CardOrder : Preorder Type := {
   le := LeCard
   lt := LtCard
   le_refl := by
-    sorry
+    intro X
+    exact ⟨id, Function.injective_id⟩
   le_trans := by
-    sorry
+    intro X Y Z ⟨f, hf⟩ ⟨g, hg⟩
+    exact ⟨g ∘ f, hg.comp hf⟩
   lt_iff_le_not_ge := by
     sorry
 }
