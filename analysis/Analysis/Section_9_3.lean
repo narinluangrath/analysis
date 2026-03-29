@@ -180,17 +180,27 @@ theorem Convergesto.restrict {X Y:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (
 theorem Real.sign_def (x:ℝ) : Real.sign x = if x < 0 then -1 else if x > 0 then 1 else 0 := rfl
 
 /-- Example 9.3.16 -/
-theorem Convergesto.sign_right : Convergesto (.Ioi 0) Real.sign 1 0 := by sorry
+theorem Convergesto.sign_right : Convergesto (.Ioi 0) Real.sign 1 0 := by
+  rw [Convergesto.iff]
+  exact tendsto_nhdsWithin_congr (fun x (hx : x ∈ Set.Ioi 0) => show (1:ℝ) = Real.sign x from by
+    rw [Real.sign_def]; split_ifs with h1 h2 <;> simp_all [Set.mem_Ioi] <;> linarith) tendsto_const_nhds
 
 /-- Example 9.3.16 -/
-theorem Convergesto.sign_left : Convergesto (.Iio 0) Real.sign (-1) 0 := by sorry
+theorem Convergesto.sign_left : Convergesto (.Iio 0) Real.sign (-1) 0 := by
+  rw [Convergesto.iff]
+  exact tendsto_nhdsWithin_congr (fun x (hx : x ∈ Set.Iio 0) => show (-1:ℝ) = Real.sign x from by
+    rw [Real.sign_def]; split_ifs with h1 <;> simp_all [Set.mem_Iio] <;> linarith) tendsto_const_nhds
 
 /-- Example 9.3.16 -/
 theorem Convergesto.sign_all : ¬ ∃ L, Convergesto (.univ) Real.sign L 0 := by sorry
 
 noncomputable abbrev f_9_3_17 : ℝ → ℝ := fun x ↦ if x = 0 then 1 else 0
 
-theorem Convergesto.f_9_3_17_remove : Convergesto (.univ \ {0}) f_9_3_17 0 0 := by sorry
+theorem Convergesto.f_9_3_17_remove : Convergesto (.univ \ {0}) f_9_3_17 0 0 := by
+  rw [Convergesto.iff]
+  exact tendsto_nhdsWithin_congr (fun x (hx : x ∈ Set.univ \ {0}) => show (0:ℝ) = f_9_3_17 x from by
+    simp only [f_9_3_17, Set.mem_diff, Set.mem_univ, Set.mem_singleton_iff, true_and] at hx ⊢
+    simp [hx]) tendsto_const_nhds
 
 theorem Convergesto.f_9_3_17_all : ¬ ∃ L, Convergesto .univ f_9_3_17 L 0 := by sorry
 
@@ -204,7 +214,18 @@ example : Convergesto .univ (fun x ↦ (x+2)/(x+1)) (4/3:ℝ) 2 := by
   sorry
 
 /-- Example 9.3.20 -/
-example : Convergesto (.univ \ {1}) (fun x ↦ (x^2-1)/(x-1)) 2 1 := by sorry
+example : Convergesto (.univ \ {1}) (fun x ↦ (x^2-1)/(x-1)) 2 1 := by
+  rw [Convergesto.iff]
+  have hcongr : ∀ x ∈ Set.univ \ {(1:ℝ)}, (x + 1 : ℝ) = (x^2-1)/(x-1) := by
+    intro x hx
+    have hne : x - 1 ≠ 0 := sub_ne_zero.mpr (fun h => hx.2 (Set.mem_singleton_iff.mpr h))
+    field_simp [hne]; ring
+  have htend : Filter.Tendsto (fun x:ℝ => x + 1) (nhdsWithin 1 (Set.univ \ {1})) (nhds 2) := by
+    apply Filter.Tendsto.mono_left _ inf_le_left
+    show Filter.Tendsto (fun x:ℝ => x + 1) (nhds 1) (nhds 2)
+    have h := (show ContinuousAt (fun x:ℝ => x + 1) 1 from by fun_prop)
+    simp only [ContinuousAt, show (1:ℝ) + 1 = 2 from by norm_num] at h; exact h
+  exact tendsto_nhdsWithin_congr hcongr htend
 
 open Classical in
 /-- Example 9.3.21 -/
