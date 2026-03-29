@@ -337,7 +337,10 @@ theorem sum_union_disjoint {n : ℕ} {S : Type*} [Fintype S]
     (cover : ∀ s : S, ∃ i, s ∈ E i)
     (f : S → ℝ) :
     ∑ s, f s = ∑ i, ∑ s ∈ E i, f s := by
-  sorry
+  rw [← Finset.sum_biUnion (fun i _ j _ hij => disj i j hij)]
+  congr 1
+  ext s; simp
+  exact cover s
 
 /-- Exercise 7.1.7. Uses `Fin m` (so `aᵢ < m`) instead of the book's `aᵢ ≤ m`;
   the bound is baked into the type, and `<` replaces `≤` to match the 0-indexed shift. -/
