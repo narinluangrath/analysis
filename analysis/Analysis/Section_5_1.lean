@@ -424,12 +424,37 @@ lemma Sequence.isBounded_of_isCauchy {a:Sequence} (h: a.IsCauchy) : a.IsBounded 
 
 /-- Exercise 5.1.2 -/
 theorem Sequence.isBounded_add {a b:ℕ → ℚ} (ha: (a:Sequence).IsBounded) (hb: (b:Sequence).IsBounded):
-    (a + b:Sequence).IsBounded := by sorry
+    (a + b:Sequence).IsBounded := by
+  obtain ⟨Ma, hMa, hBa⟩ := ha; obtain ⟨Mb, hMb, hBb⟩ := hb
+  refine ⟨Ma + Mb, by linarith, fun n => ?_⟩
+  by_cases hn : n ≥ 0
+  · simp [hn]
+    have h1 := hBa n; rw [eval_coe_at_int, if_pos hn] at h1
+    have h2 := hBb n; rw [eval_coe_at_int, if_pos hn] at h2
+    linarith [abs_add_le (a n.toNat) (b n.toNat)]
+  · simp [show ¬ n ≥ 0 from hn]; positivity
 
 theorem Sequence.isBounded_sub {a b:ℕ → ℚ} (ha: (a:Sequence).IsBounded) (hb: (b:Sequence).IsBounded):
-    (a - b:Sequence).IsBounded := by sorry
+    (a - b:Sequence).IsBounded := by
+  obtain ⟨Ma, hMa, hBa⟩ := ha; obtain ⟨Mb, hMb, hBb⟩ := hb
+  refine ⟨Ma + Mb, by linarith, fun n => ?_⟩
+  by_cases hn : n ≥ 0
+  · simp [hn]
+    have h1 := hBa n; rw [eval_coe_at_int, if_pos hn] at h1
+    have h2 := hBb n; rw [eval_coe_at_int, if_pos hn] at h2
+    have := abs_sub (a n.toNat) (b n.toNat)
+    linarith [abs_add_le (a n.toNat) (-(b n.toNat)), abs_neg (b n.toNat)]
+  · simp [show ¬ n ≥ 0 from hn]; positivity
 
 theorem Sequence.isBounded_mul {a b:ℕ → ℚ} (ha: (a:Sequence).IsBounded) (hb: (b:Sequence).IsBounded):
-    (a * b:Sequence).IsBounded := by sorry
+    (a * b:Sequence).IsBounded := by
+  obtain ⟨Ma, hMa, hBa⟩ := ha; obtain ⟨Mb, hMb, hBb⟩ := hb
+  refine ⟨Ma * Mb, by positivity, fun n => ?_⟩
+  by_cases hn : n ≥ 0
+  · simp [hn]
+    have h1 := hBa n; rw [eval_coe_at_int, if_pos hn] at h1
+    have h2 := hBb n; rw [eval_coe_at_int, if_pos hn] at h2
+    exact mul_le_mul h1 h2 (abs_nonneg _) (by linarith [abs_nonneg (a n.toNat)])
+  · simp [show ¬ n ≥ 0 from hn]; positivity
 
 end Chapter5
