@@ -171,11 +171,18 @@ example : (0.1:ℚ).Steady ((fun n:ℕ ↦ (10:ℚ) ^ (-(n:ℤ)-1) ):Sequence) :
 /--
 Example 5.1.5: The sequence 0.1, 0.01, 0.001, ... is not 0.01-steady. Left as an exercise.
 -/
-example : ¬(0.01:ℚ).Steady ((fun n:ℕ ↦ (10:ℚ) ^ (-(n:ℤ)-1) ):Sequence) := by sorry
+example : ¬(0.01:ℚ).Steady ((fun n:ℕ ↦ (10:ℚ) ^ (-(n:ℤ)-1) ):Sequence) := by
+  rw [Rat.Steady.coe]; push_neg; exact ⟨0, 1, by unfold Rat.Close; norm_num⟩
 
 /-- Example 5.1.5: The sequence 1, 2, 4, 8, ... is not ε-steady for any ε. Left as an exercise.
 -/
-example (ε:ℚ) : ¬ ε.Steady ((fun n:ℕ ↦ (2 ^ (n+1):ℚ) ):Sequence) := by sorry
+example (ε:ℚ) : ¬ ε.Steady ((fun n:ℕ ↦ (2 ^ (n+1):ℚ) ):Sequence) := by
+  rw [Rat.Steady.coe]; push_neg
+  obtain ⟨N, hN⟩ := exists_nat_gt ε
+  refine ⟨N+1, N, ?_⟩; unfold Rat.Close; push_cast
+  rw [show (2:ℚ)^(N+1+1) - 2^(N+1) = 2^(N+1) from by ring]
+  rw [abs_of_nonneg (by positivity)]
+  sorry
 
 /-- Example 5.1.5:The sequence 2, 2, 2, ... is ε-steady for any ε > 0.
 -/
@@ -253,7 +260,16 @@ Example 5.1.7
 The sequence 10, 0, 0, ... is eventually ε-steady for every ε > 0. Left as an exercise.
 -/
 lemma Sequence.ex_5_1_7_d {ε:ℚ} (hε:ε>0) :
-    ε.EventuallySteady ((fun n:ℕ ↦ if n=0 then (10:ℚ) else (0:ℚ) ):Sequence) := by sorry
+    ε.EventuallySteady ((fun n:ℕ ↦ if n=0 then (10:ℚ) else (0:ℚ) ):Sequence) := by
+  set a : Sequence := ((fun n:ℕ ↦ if n=0 then (10:ℚ) else (0:ℚ)) : Sequence)
+  refine ⟨1, by show a.n₀ ≤ 1; simp [a, Sequence.n0_coe], ?_⟩
+  intro n hn m hm
+  have hn1 : n ≥ (1:ℤ) := by simp [Sequence.n0_coe] at hn; omega
+  have hm1 : m ≥ (1:ℤ) := by simp [Sequence.n0_coe] at hm; omega
+  show |a.from 1 n - a.from 1 m| ≤ ε
+  rw [a.from_eval hn1, a.from_eval hm1]
+  simp [a, show n.toNat ≠ 0 by omega, show m.toNat ≠ 0 by omega]
+  linarith
 
 abbrev Sequence.IsCauchy (a:Sequence) : Prop := ∀ ε > (0:ℚ), ε.EventuallySteady a
 
@@ -363,7 +379,13 @@ lemma Sequence.isBounded_def (a:Sequence) : a.IsBounded ↔ ∃ M ≥ 0, a.Bound
 example : BoundedBy ![1,-2,3,-4] 4 := by intro i; fin_cases i <;> norm_num
 
 /-- Example 5.1.13 -/
-example : ¬((fun n:ℕ ↦ (-1)^n * (n+1:ℚ)):Sequence).IsBounded := by sorry
+example : ¬((fun n:ℕ ↦ (-1)^n * (n+1:ℚ)):Sequence).IsBounded := by
+  intro ⟨M, _, hM⟩
+  obtain ⟨N, hN⟩ := exists_nat_gt M
+  specialize hM (N:ℤ)
+  simp at hM
+  rw [abs_of_nonneg (by positivity : (0:ℚ) ≤ ↑N + 1)] at hM
+  linarith
 
 /-- Example 5.1.13 -/
 example : ((fun n:ℕ ↦ (-1:ℚ)^n):Sequence).IsBounded := by
