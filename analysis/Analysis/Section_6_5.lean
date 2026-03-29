@@ -18,7 +18,19 @@ Main constructions and results of this section:
 
 namespace Chapter6
 
-theorem Sequence.lim_of_const (c:ℝ) :  ((fun (_:ℕ) ↦ c):Sequence).TendsTo c := by sorry
+theorem Sequence.lim_of_const (c:ℝ) :  ((fun (_:ℕ) ↦ c):Sequence).TendsTo c := by
+  intro ε hε
+  set a : Sequence := ((fun (_:ℕ) ↦ c) : Sequence)
+  refine ⟨0, le_refl _, ?_⟩
+  intro n hn
+  have hn' : n ≥ (0:ℤ) := by
+    have : (a.from 0).m = max 0 0 := rfl
+    omega
+  show dist ((a.from 0) n) c ≤ ε
+  rw [a.from_eval hn']
+  simp only [a, Sequence.instCoeFun, Sequence.ofNatFun, hn']
+  simp [dist_self]
+  linarith
 
 instance Sequence.inst_pow: Pow Sequence ℕ where
   pow a k := {
@@ -76,7 +88,7 @@ theorem Sequence.lim_of_geometric {x:ℝ} (hx: |x| < 1) : ((fun (n:ℕ) ↦ x^n)
 
 /-- Lemma 6.5.2 / Exercise 6.5.2 -/
 theorem Sequence.lim_of_geometric' {x:ℝ} (hx: x = 1) : ((fun (n:ℕ) ↦ x^n):Sequence).TendsTo 1 := by
-  sorry
+  subst hx; simp; exact lim_of_const 1
 
 /-- Lemma 6.5.2 / Exercise 6.5.2 -/
 theorem Sequence.lim_of_geometric'' {x:ℝ} (hx: x = -1 ∨ |x| > 1) :
