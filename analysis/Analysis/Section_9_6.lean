@@ -157,7 +157,11 @@ theorem IsMaxOn.of_continuous_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf
 
 theorem IsMinOn.of_continuous_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) :
   ∃ xmin ∈ Set.Icc a b, IsMinOn f (.Icc a b) xmin := by
-  sorry
+  obtain ⟨xmax, hxmax, hmax⟩ := IsMaxOn.of_continuous_on_compact h hf.neg
+  refine ⟨xmax, hxmax, fun x hx => ?_⟩
+  have := hmax hx
+  simp only [Pi.neg_apply, neg_le_neg_iff] at this
+  exact this
 
 example : IsMaxOn (fun x ↦ x^2) (.Icc (-2) 2) 2 := by
   intro x hx; simp; nlinarith [hx.1, hx.2, sq_nonneg x, sq_nonneg (x - 2), sq_nonneg (x + 2)]
