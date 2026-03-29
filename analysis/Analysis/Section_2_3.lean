@@ -202,7 +202,7 @@ This allows tactics such as `gcongr` to apply to the Chapter 2 natural numbers. 
 instance Nat.isOrderedRing : IsOrderedRing Nat where
   zero_le_one := zero_le _
   mul_le_mul_of_nonneg_left := by
-    sorry
+    intro a _ b c hbc; obtain ⟨d, hd⟩ := hbc; exact ⟨a * d, by rw [hd, mul_add]⟩
   mul_le_mul_of_nonneg_right := by
     sorry
 
