@@ -54,42 +54,59 @@ theorem sum_of_nonempty {n m:ℤ} (h: n ≥ m-1) (a: ℤ → ℝ) :
   . infer_instance
   simp
 
-example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m-2), a i = 0 := by sorry
+example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m-2), a i = 0 := by
+  have h : Icc m (m-2) = (∅ : Finset ℤ) := by ext x; simp [Finset.mem_Icc]
+  rw [h, Finset.sum_empty]
 
-example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m-1), a i = 0 := by sorry
+example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m-1), a i = 0 := by
+  have h : Icc m (m-1) = (∅ : Finset ℤ) := by ext x; simp [Finset.mem_Icc]
+  rw [h, Finset.sum_empty]
 
-example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m m, a i = a m := by sorry
+example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m m, a i = a m := by simp
 
-example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m+1), a i = a m + a (m+1) := by sorry
+example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m+1), a i = a m + a (m+1) := by
+  rw [show Icc m (m+1) = {m, m+1} from by ext x; simp [Finset.mem_Icc]; omega]
+  simp
 
-example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m+2), a i = a m + a (m+1) + a (m+2) := by sorry
+example (a: ℤ → ℝ) (m:ℤ) : ∑ i ∈ Icc m (m+2), a i = a m + a (m+1) + a (m+2) := by
+  rw [show Icc m (m+2) = {m, m+1, m+2} from by ext x; simp [Finset.mem_Icc]; omega]
+  simp [add_assoc]
 
 /-- Remark 7.1.3 -/
 example (a: ℤ → ℝ) (m n:ℤ) : ∑ i ∈ Icc m n, a i = ∑ j ∈ Icc m n, a j := rfl
 
 /-- Lemma 7.1.4(a) / Exercise 7.1.1 -/
 theorem concat_finite_series {m n p:ℤ} (hmn: m ≤ n+1) (hpn : n ≤ p) (a: ℤ → ℝ) :
-  ∑ i ∈ Icc m n, a i + ∑ i ∈ Icc (n+1) p, a i = ∑ i ∈ Icc m p, a i := by sorry
+  ∑ i ∈ Icc m n, a i + ∑ i ∈ Icc (n+1) p, a i = ∑ i ∈ Icc m p, a i := by
+  rw [← Finset.sum_union]
+  · congr 1; ext x; simp [Finset.mem_Icc]; omega
+  · rw [Finset.disjoint_left]; intro x hx hx'; simp [Finset.mem_Icc] at hx hx'; omega
 
 /-- Lemma 7.1.4(b) / Exercise 7.1.1 -/
 theorem shift_finite_series {m n k:ℤ} (a: ℤ → ℝ) :
-  ∑ i ∈ Icc m n, a i = ∑ i ∈ Icc (m+k) (n+k), a (i-k) := by sorry
+  ∑ i ∈ Icc m n, a i = ∑ i ∈ Icc (m+k) (n+k), a (i-k) := by
+  apply Finset.sum_equiv (Equiv.addRight k) (by intro i; simp [Finset.mem_Icc])
+  intro i _; simp [Equiv.addRight]
 
 /-- Lemma 7.1.4(c) / Exercise 7.1.1 -/
 theorem finite_series_add {m n:ℤ} (a b: ℤ → ℝ) :
-  ∑ i ∈ Icc m n, (a i + b i) = ∑ i ∈ Icc m n, a i + ∑ i ∈ Icc m n, b i := by sorry
+  ∑ i ∈ Icc m n, (a i + b i) = ∑ i ∈ Icc m n, a i + ∑ i ∈ Icc m n, b i := by
+  exact Finset.sum_add_distrib
 
 /-- Lemma 7.1.4(d) / Exercise 7.1.1 -/
 theorem finite_series_const_mul {m n:ℤ} (a: ℤ → ℝ) (c:ℝ) :
-  ∑ i ∈ Icc m n, c * a i = c * ∑ i ∈ Icc m n, a i := by sorry
+  ∑ i ∈ Icc m n, c * a i = c * ∑ i ∈ Icc m n, a i := by
+  exact (Finset.mul_sum _ _ _).symm
 
 /-- Lemma 7.1.4(e) / Exercise 7.1.1 -/
 theorem abs_finite_series_le {m n:ℤ} (a: ℤ → ℝ) :
-  |∑ i ∈ Icc m n, a i| ≤ ∑ i ∈ Icc m n, |a i| := by sorry
+  |∑ i ∈ Icc m n, a i| ≤ ∑ i ∈ Icc m n, |a i| := by
+  exact Finset.abs_sum_le_sum_abs _ _
 
 /-- Lemma 7.1.4(f) / Exercise 7.1.1 -/
 theorem finite_series_of_le {m n:ℤ}  {a b: ℤ → ℝ} (h: ∀ i, m ≤ i → i ≤ n → a i ≤ b i) :
-  ∑ i ∈ Icc m n, a i ≤ ∑ i ∈ Icc m n, b i := by sorry
+  ∑ i ∈ Icc m n, a i ≤ ∑ i ∈ Icc m n, b i := by
+  apply Finset.sum_le_sum; intro i hi; simp [Finset.mem_Icc] at hi; exact h i hi.1 hi.2
 
 #check sum_congr
 
@@ -188,11 +205,11 @@ theorem finite_series_eq {n:ℕ} {Y:Type*} (X: Finset Y) (f: Y → ℝ) (g: Icc 
   intros; simp_all
 
 /-- Proposition 7.1.11(a) / Exercise 7.1.2 -/
-theorem finite_series_of_empty {X':Type*} (f: X' → ℝ) : ∑ i ∈ ∅, f i = 0 := by sorry
+theorem finite_series_of_empty {X':Type*} (f: X' → ℝ) : ∑ i ∈ ∅, f i = 0 := by simp
 
 /-- Proposition 7.1.11(b) / Exercise 7.1.2 -/
 theorem finite_series_of_singleton {X':Type*} (f: X' → ℝ) (x₀:X') : ∑ i ∈ {x₀}, f i = f x₀ := by
-  sorry
+  simp
 
 /--
   A technical lemma relating a sum over a finset with a sum over a fintype. Combines well with
@@ -204,29 +221,34 @@ theorem finite_series_of_fintype {X':Type*} (f: X' → ℝ) (X: Finset X') :
 /-- Proposition 7.1.11(c) / Exercise 7.1.2 -/
 theorem map_finite_series {X:Type*} [Fintype X] [Fintype Y] (f: X → ℝ) {g:Y → X}
   (hg: Function.Bijective g) :
-    ∑ x, f x = ∑ y, f (g y) := by sorry
+    ∑ x, f x = ∑ y, f (g y) := by
+  exact (Equiv.ofBijective g hg).sum_comp f |>.symm
 
 -- Proposition 7.1.11(d) is `rfl` in our formalism and is therefore omitted.
 
 /-- Proposition 7.1.11(e) / Exercise 7.1.2 -/
 theorem finite_series_of_disjoint_union {Z:Type*} {X Y: Finset Z} (hdisj: Disjoint X Y) (f: Z → ℝ) :
-    ∑ z ∈ X ∪ Y, f z = ∑ z ∈ X, f z + ∑ z ∈ Y, f z := by sorry
+    ∑ z ∈ X ∪ Y, f z = ∑ z ∈ X, f z + ∑ z ∈ Y, f z := by
+  exact Finset.sum_union hdisj
 
 /-- Proposition 7.1.11(f) / Exercise 7.1.2 -/
 theorem finite_series_of_add {X':Type*} (f g: X' → ℝ) (X: Finset X') :
-    ∑ x ∈ X, (f + g) x = ∑ x ∈ X, f x + ∑ x ∈ X, g x := by sorry
+    ∑ x ∈ X, (f + g) x = ∑ x ∈ X, f x + ∑ x ∈ X, g x := by
+  simp [Pi.add_apply, Finset.sum_add_distrib]
 
 /-- Proposition 7.1.11(g) / Exercise 7.1.2 -/
 theorem finite_series_of_const_mul {X':Type*} (f: X' → ℝ) (X: Finset X') (c:ℝ) :
-    ∑ x ∈ X, c * f x = c * ∑ x ∈ X, f x := by sorry
+    ∑ x ∈ X, c * f x = c * ∑ x ∈ X, f x := by
+  exact (Finset.mul_sum _ _ _).symm
 
 /-- Proposition 7.1.11(h) / Exercise 7.1.2 -/
 theorem finite_series_of_le' {X':Type*} (f g: X' → ℝ) (X: Finset X') (h: ∀ x ∈ X, f x ≤ g x) :
-    ∑ x ∈ X, f x ≤ ∑ x ∈ X, g x := by sorry
+    ∑ x ∈ X, f x ≤ ∑ x ∈ X, g x := by
+  exact Finset.sum_le_sum h
 
 /-- Proposition 7.1.11(i) / Exercise 7.1.2 -/
 theorem abs_finite_series_le' {X':Type*} (f: X' → ℝ) (X: Finset X') :
-    |∑ x ∈ X, f x| ≤ ∑ x ∈ X, |f x| := by sorry
+    |∑ x ∈ X, f x| ≤ ∑ x ∈ X, |f x| := Finset.abs_sum_le_sum_abs _ _
 
 /-- Lemma 7.1.13 --/
 theorem finite_series_of_finite_series {XX YY:Type*} (X: Finset XX) (Y: Finset YY)
@@ -234,7 +256,7 @@ theorem finite_series_of_finite_series {XX YY:Type*} (X: Finset XX) (Y: Finset Y
     ∑ x ∈ X, ∑ y ∈ Y, f (x, y) = ∑ z ∈ X.product Y, f z := by
   generalize h: X.card = n
   revert X; induction' n with n hn
-  . sorry
+  . intro X hX; simp [Finset.card_eq_zero.mp hX]
   intro X hX
   have hnon : X.Nonempty := by grind [card_ne_zero]
   choose x₀ hx₀ using hnon.exists_mem
@@ -306,7 +328,7 @@ theorem binomial_theorem (x y:ℝ) (n:ℕ) :
 theorem lim_of_finite_series {X:Type*} [Fintype X] (a: X → ℕ → ℝ) (L : X → ℝ)
   (h: ∀ x, Filter.atTop.Tendsto (a x) (nhds (L x))) :
     Filter.atTop.Tendsto (fun n ↦ ∑ x, a x n) (nhds (∑ x, L x)) := by
-  sorry
+  exact tendsto_finset_sum _ (fun x _ => h x)
 
 /-- Exercise 7.1.6 -/
 theorem sum_union_disjoint {n : ℕ} {S : Type*} [Fintype S]
