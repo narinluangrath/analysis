@@ -96,21 +96,18 @@ example : ¬ ∃ m:ℤ, ∀ n:ℤ, m > n := by
 
 /-- Exercise A.5.1 -/
 def Exercise_A_5_1a : Decidable (∀ x > (0:ℝ), ∀ y > (0:ℝ), y^2 = x ) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse; push_neg; exact ⟨1, by norm_num, 2, by norm_num, by norm_num⟩
 
 def Exercise_A_5_1b : Decidable (∃ x > (0:ℝ), ∀ y > (0:ℝ), y^2 = x ) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse; push_neg
+  intro x hx; exact ⟨x + 1, by linarith, by nlinarith⟩
 
 def Exercise_A_5_1c : Decidable (∃ x > (0:ℝ), ∃ y > (0:ℝ), y^2 = x ) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isTrue; exact ⟨1, by norm_num, 1, by norm_num, by norm_num⟩
 
 def Exercise_A_5_1d : Decidable (∀ y > (0:ℝ), ∃ x > (0:ℝ), y^2 = x ) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isTrue; intro y hy; exact ⟨y^2, by positivity, rfl⟩
 
 def Exercise_A_5_1e : Decidable (∃ y > (0:ℝ), ∀ x > (0:ℝ), y^2 = x ) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse; push_neg
+  intro y hy; exact ⟨y^2 + 1, by positivity, by linarith⟩
