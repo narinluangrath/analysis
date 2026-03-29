@@ -202,12 +202,18 @@ theorem Convergesto.f_9_3_17_remove : Convergesto (.univ \ {0}) f_9_3_17 0 0 := 
     simp only [f_9_3_17, Set.mem_diff, Set.mem_univ, Set.mem_singleton_iff, true_and] at hx ⊢
     simp [hx]) tendsto_const_nhds
 
-theorem Convergesto.f_9_3_17_all : ¬ ∃ L, Convergesto .univ f_9_3_17 L 0 := by sorry
+theorem Convergesto.f_9_3_17_all : ¬ ∃ L, Convergesto .univ f_9_3_17 L 0 := by
+  sorry
 
 /-- Proposition 9.3.18 / Exercise 9.3.3 -/
 theorem Convergesto.local {E:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) {δ:ℝ} (hδ: δ > 0) :
   Convergesto E f L x₀ ↔ Convergesto (E ∩ .Ioo (x₀-δ) (x₀+δ)) f L x₀ := by
-    sorry
+  rw [Convergesto.iff, Convergesto.iff]
+  constructor <;> intro hf
+  · exact hf.mono_left (nhdsWithin_mono _ Set.inter_subset_left)
+  · have : Set.Ioo (x₀ - δ) (x₀ + δ) ∈ nhds x₀ := Ioo_mem_nhds (by linarith) (by linarith)
+    rw [Set.inter_comm] at hf
+    rwa [nhdsWithin_inter_of_mem (mem_nhdsWithin_of_mem_nhds this)] at hf
 
 /-- Example 9.3.19.  The point of this example is somewhat blunted by the ability to remove the hypothesis that `g` is non-zero from the relevant part of Proposition 9.3.14 -/
 example : Convergesto .univ (fun x ↦ (x+2)/(x+1)) (4/3:ℝ) 2 := by
