@@ -134,35 +134,35 @@ theorem _root_.ContinuousOn.of_differentiableOn {X: Set ℝ} {f: ℝ → ℝ}
 
 /-- Theorem 10.1.13 (a) (Differential calculus) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_const (X: Set ℝ) (x₀ : ℝ) (c:ℝ) :
-  HasDerivWithinAt (fun x ↦ c) 0 X x₀ := by sorry
+  HasDerivWithinAt (fun x ↦ c) 0 X x₀ := hasDerivWithinAt_const _ _ _
 
 /-- Theorem 10.1.13 (b) (Differential calculus) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_id (X: Set ℝ) (x₀ : ℝ) :
-  HasDerivWithinAt (fun x ↦ x) 1 X x₀ := by sorry
+  HasDerivWithinAt (fun x ↦ x) 1 X x₀ := (hasDerivWithinAt_id _ _).congr_deriv (by norm_num)
 
 /-- Theorem 10.1.13 (c) (Sum rule) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_add {X: Set ℝ} {x₀ f'x₀ g'x₀: ℝ}
   {f g: ℝ → ℝ} (hf: HasDerivWithinAt f f'x₀ X x₀) (hg: HasDerivWithinAt g g'x₀ X x₀) :
-  HasDerivWithinAt (f + g) (f'x₀ + g'x₀) X x₀ := by
-  sorry
+  HasDerivWithinAt (f + g) (f'x₀ + g'x₀) X x₀ :=
+  hf.add hg
 
 /-- Theorem 10.1.13 (d) (Product rule) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_mul {X: Set ℝ} {x₀ f'x₀ g'x₀: ℝ}
   {f g: ℝ → ℝ} (hf: HasDerivWithinAt f f'x₀ X x₀) (hg: HasDerivWithinAt g g'x₀ X x₀) :
-  HasDerivWithinAt (f * g) (f'x₀ * (g x₀) + (f x₀) * g'x₀) X x₀ := by
-  sorry
+  HasDerivWithinAt (f * g) (f'x₀ * (g x₀) + (f x₀) * g'x₀) X x₀ :=
+  hf.mul hg
 
 /-- Theorem 10.1.13 (e) (Differential calculus) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_smul {X: Set ℝ} {x₀ f'x₀: ℝ} (c:ℝ)
   {f: ℝ → ℝ} (hf: HasDerivWithinAt f f'x₀ X x₀) :
-  HasDerivWithinAt (c • f) (c * f'x₀) X x₀ := by
-  sorry
+  HasDerivWithinAt (c • f) (c * f'x₀) X x₀ :=
+  hf.const_smul c
 
 /-- Theorem 10.1.13 (f) (Difference rule) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_sub {X: Set ℝ} {x₀ f'x₀ g'x₀: ℝ}
   {f g: ℝ → ℝ} (hf: HasDerivWithinAt f f'x₀ X x₀) (hg: HasDerivWithinAt g g'x₀ X x₀) :
-  HasDerivWithinAt (f - g) (f'x₀ - g'x₀) X x₀ := by
-  sorry
+  HasDerivWithinAt (f - g) (f'x₀ - g'x₀) X x₀ :=
+  hf.sub hg
 
 /-- Theorem 10.1.13 (g) (Differential calculus) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_inv {X: Set ℝ} {x₀ g'x₀: ℝ}
