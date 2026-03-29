@@ -118,45 +118,45 @@ theorem Convergesto.add {E:Set ℝ} {f g: ℝ → ℝ} {L M:ℝ} {x₀:ℝ} (h: 
 theorem Convergesto.sub {E:Set ℝ} {f g: ℝ → ℝ} {L M:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   (hf: Convergesto E f L x₀) (hg: Convergesto E g M x₀) :
   Convergesto E (f - g) (L - M) x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf hg ⊢; exact hf.sub hg
 
 /-- Proposition 9.3.14 (Limit laws for functions) / Exercise 9.3.2 -/
 theorem Convergesto.max {E:Set ℝ} {f g: ℝ → ℝ} {L M:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   (hf: Convergesto E f L x₀) (hg: Convergesto E g M x₀) :
   Convergesto E (max f g) (max L M) x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf hg ⊢; exact hf.max hg
 
 /-- Proposition 9.3.14 (Limit laws for functions) / Exercise 9.3.2 -/
 theorem Convergesto.min {E:Set ℝ} {f g: ℝ → ℝ} {L M:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   (hf: Convergesto E f L x₀) (hg: Convergesto E g M x₀) :
   Convergesto E (min f g) (min L M) x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf hg ⊢; exact hf.min hg
 
 /-- Proposition 9.3.14 (Limit laws for functions) / Exercise 9.3.2 -/
 theorem Convergesto.smul {E:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   (hf: Convergesto E f L x₀) (c:ℝ) :
   Convergesto E (c • f) (c * L) x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf ⊢; exact hf.const_smul c
 
 /-- Proposition 9.3.14 (Limit laws for functions) / Exercise 9.3.2 -/
 theorem Convergesto.mul {E:Set ℝ} {f g: ℝ → ℝ} {L M:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   (hf: Convergesto E f L x₀) (hg: Convergesto E g M x₀) :
   Convergesto E (f * g) (L * M) x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf hg ⊢; exact hf.mul hg
 
 /-- Proposition 9.3.14 (Limit laws for functions) / Exercise 9.3.2.  The hypothesis in the book that g is non-vanishing on E can be dropped. -/
 theorem Convergesto.div {E:Set ℝ} {f g: ℝ → ℝ} {L M:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) (hM: M ≠ 0)
   (hf: Convergesto E f L x₀) (hg: Convergesto E g M x₀) :
   Convergesto E (f / g) (L / M) x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf hg ⊢; exact hf.div hg hM
 
 theorem Convergesto.const {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) (c:ℝ)
   : Convergesto E (fun x ↦ c) c x₀ := by
-  sorry
+  rw [Convergesto.iff]; exact tendsto_const_nhds
 
 theorem Convergesto.id {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   : Convergesto E (fun x ↦ x) x₀ x₀ := by
-  sorry
+  rw [Convergesto.iff]; exact Filter.Tendsto.mono_left (continuous_id.tendsto _) inf_le_left
 
 theorem Convergesto.sq {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   : Convergesto E (fun x ↦ x^2) x₀ (x₀^2) := by
@@ -171,7 +171,8 @@ theorem Convergesto.quadratic {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) (c d
   sorry
 
 theorem Convergesto.restrict {X Y:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: AdherentPt x₀ X) (hf: Convergesto X f L x₀) (hY: Y ⊆ X) : Convergesto Y f L x₀ := by
-  sorry
+  rw [Convergesto.iff] at hf ⊢
+  exact hf.mono_left (nhdsWithin_mono _ hY)
 
 theorem Real.sign_def (x:ℝ) : Real.sign x = if x < 0 then -1 else if x > 0 then 1 else 0 := rfl
 
