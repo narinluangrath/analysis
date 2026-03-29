@@ -38,7 +38,12 @@ theorem BddOn.iff (f:ℝ → ℝ) (X:Set ℝ) : BddOn f X ↔ BddAboveOn f X ∧
        by have := hM₁ x hx; linarith [le_max_left M₁ M₂]⟩⟩
 
 theorem BddOn.iff' (f:ℝ → ℝ) (X:Set ℝ) :  BddOn f X ↔ Bornology.IsBounded (f '' X) := by
-  sorry
+  rw [isBounded_iff_forall_norm_le]
+  constructor
+  · intro ⟨M, hM⟩
+    exact ⟨M, fun y ⟨x, hx, hfx⟩ => by rw [← hfx, Real.norm_eq_abs]; exact hM x hx⟩
+  · intro ⟨M, hM⟩
+    exact ⟨M, fun x hx => by rw [← Real.norm_eq_abs]; exact hM _ ⟨x, hx, rfl⟩⟩
 
 theorem BddOn.of_bounded {f :ℝ → ℝ} {X: Set ℝ} {M:ℝ} (h: ∀ x ∈ X, |f x| ≤ M) : BddOn f X := by use M
 
