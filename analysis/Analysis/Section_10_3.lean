@@ -26,7 +26,9 @@ theorem derivative_of_monotone (X:Set ℝ) {x₀:ℝ} (hx₀: ClusterPt x₀ (.p
 theorem derivative_of_antitone (X:Set ℝ) {x₀:ℝ} (hx₀: ClusterPt x₀ (.principal (X \ {x₀})))
   {f:ℝ → ℝ} (hmono: Antitone f) (hderiv: DifferentiableWithinAt ℝ f X x₀) :
     derivWithin f X x₀ ≤ 0 := by
-  sorry
+  have h := derivative_of_monotone X hx₀ hmono.neg hderiv.neg
+  rw [show (fun x => -f x) = (-f) from rfl, derivWithin.neg] at h
+  linarith
 
 /-- Proposition 10.3.3 / Exercise 10.3.4 -/
 theorem strictMono_of_positive_derivative {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
@@ -37,7 +39,10 @@ theorem strictMono_of_positive_derivative {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
 theorem strictAnti_of_negative_derivative {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
   (hderiv: DifferentiableOn ℝ f (.Icc a b)) (hneg: ∀ x ∈ Set.Ioo a b, derivWithin f (.Icc a b) x < 0) :
     StrictAntiOn f (.Icc a b) := by
-  sorry
+  have h := strictMono_of_positive_derivative hab hderiv.neg (fun x hx => by
+    rw [derivWithin.neg]; linarith [hneg x hx])
+  intro x hx y hy hxy
+  have := h hx hy hxy; simp at this; exact this
 
 /-- Example 10.3.2 -/
 example : ∃ f : ℝ → ℝ, Continuous f ∧ StrictMono f ∧ ¬ DifferentiableAt ℝ f 0 := by
