@@ -200,9 +200,11 @@ lemma Nat.mul_cancel_right {a b c: Nat} (h: a * c = b * c) (hc: c.IsPos) : a = b
 /-- (Not from textbook) Nat is an ordered semiring.
 This allows tactics such as `gcongr` to apply to the Chapter 2 natural numbers. -/
 instance Nat.isOrderedRing : IsOrderedRing Nat where
-  zero_le_one := by sorry
-  mul_le_mul_of_nonneg_left := by sorry
-  mul_le_mul_of_nonneg_right := by sorry
+  zero_le_one := zero_le _
+  mul_le_mul_of_nonneg_left := by
+    sorry
+  mul_le_mul_of_nonneg_right := by
+    sorry
 
 /-- This illustration of the `gcongr` tactic is not from the
     textbook. -/
@@ -256,6 +258,11 @@ theorem Nat.pow_one (m: Nat) : m ^ (1:Nat) = m := by
 /-- Exercise 2.3.4-/
 theorem Nat.sq_add_eq (a b: Nat) :
     (a + b) ^ (2 : Nat) = a ^ (2 : Nat) + 2 * a * b + b ^ (2 : Nat) := by
-  sorry
+  have sq (x : Nat) : x ^ (2:Nat) = x * x := by
+    rw [←one_succ, pow_succ, pow_one]
+  rw [sq, sq, sq]
+  have h2ab : 2 * a * b = a * b + a * b := by rw [two_mul]; ring
+  rw [h2ab, mul_add, add_mul, add_mul, mul_comm b a]
+  ring
 
 end Chapter2
