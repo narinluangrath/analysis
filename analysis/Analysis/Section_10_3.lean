@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Analysis.Calculus.Deriv.Abs
 
 /-!
 # Analysis I, Section 10.3: Monotone functions and derivatives
@@ -39,10 +40,30 @@ theorem strictAnti_of_negative_derivative {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
   sorry
 
 /-- Example 10.3.2 -/
-example : ∃ f : ℝ → ℝ, Continuous f ∧ StrictMono f ∧ ¬ DifferentiableAt ℝ f 0 := by sorry
+example : ∃ f : ℝ → ℝ, Continuous f ∧ StrictMono f ∧ ¬ DifferentiableAt ℝ f 0 := by
+  refine ⟨fun x => 2 * x + |x|, ?_, ?_, ?_⟩
+  · exact (continuous_const.mul continuous_id).add continuous_abs
+  · intro a b hab
+    simp only
+    have h1 : |b| - |a| ≥ -(b - a) := by
+      have h2 := abs_sub_abs_le_abs_sub a b
+      have h3 : |a - b| = b - a := by rw [abs_sub_comm]; exact abs_of_pos (by linarith)
+      linarith
+    linarith
+  · intro h
+    apply not_differentiableAt_abs_zero
+    have h2 : DifferentiableAt ℝ (fun x:ℝ => 2 * x) 0 :=
+      (differentiableAt_const 2).mul differentiableAt_id
+    have h3 := h.sub h2
+    have : (fun x:ℝ => 2 * x + |x|) - (fun x:ℝ => 2 * x) = (fun x:ℝ => |x|) := by ext x; simp
+    rwa [this] at h3
 
 /-- Exercise 10.3.3 -/
-example : ∃ f: ℝ → ℝ, StrictMono f ∧ Differentiable ℝ f ∧ deriv f 0 = 0 := by sorry
+example : ∃ f: ℝ → ℝ, StrictMono f ∧ Differentiable ℝ f ∧ deriv f 0 = 0 := by
+  refine ⟨fun x => x ^ 3, fun a b hab => ?_, ?_, ?_⟩
+  · exact Odd.strictMono_pow (by norm_num : Odd 3) hab
+  · exact fun x => differentiableAt_pow 3
+  · simp [deriv_pow]
 
 /-- Exercise 10.3.5 -/
 example : ∃ (X : Set ℝ) (f : ℝ → ℝ), DifferentiableOn ℝ f X ∧
