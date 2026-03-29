@@ -98,19 +98,22 @@ open Classical in
 noncomputable abbrev f_9_7_1 : ℝ → ℝ := fun x ↦ if x ≤ 0 then -1 else 1
 
 example : 0 ∈ Set.Icc (f_9_7_1 (-1)) (f_9_7_1 1) ∧ ¬ ∃ x ∈ Set.Icc (-1) 1, f_9_7_1 x = 0 := by
-  sorry
+  constructor
+  · simp [f_9_7_1]; norm_num
+  · intro ⟨x, _, hx⟩; simp [f_9_7_1] at hx; split_ifs at hx <;> linarith
 
 /-- Remark 9.7.2 -/
 abbrev f_9_7_2 : ℝ → ℝ := fun x ↦ x^3 - x
 
-example : f_9_7_2 (-2) = -6 := by sorry
-example : f_9_7_2 2 = 6 := by sorry
-example : f_9_7_2 (-1) = 0 := by sorry
-example : f_9_7_2 0 = 0 := by sorry
-example : f_9_7_2 1 = 0 := by sorry
+example : f_9_7_2 (-2) = -6 := by norm_num [f_9_7_2]
+example : f_9_7_2 2 = 6 := by norm_num [f_9_7_2]
+example : f_9_7_2 (-1) = 0 := by norm_num [f_9_7_2]
+example : f_9_7_2 0 = 0 := by norm_num [f_9_7_2]
+example : f_9_7_2 1 = 0 := by norm_num [f_9_7_2]
 
 /-- Remark 9.7.3 -/
-example : ∃ x:ℝ, 0 ≤ x ∧ x ≤ 2 ∧ x^2 = 2 := by sorry
+example : ∃ x:ℝ, 0 ≤ x ∧ x ≤ 2 ∧ x^2 = 2 := by
+  exact ⟨Real.sqrt 2, Real.sqrt_nonneg _, by nlinarith [Real.sq_sqrt (by norm_num : (2:ℝ) ≥ 0)], Real.sq_sqrt (by norm_num : (2:ℝ) ≥ 0)⟩
 
 /-- Corollary 9.7.4 (Images of continuous functions) / Exercise 9.7.1 -/
 theorem continuous_image_Icc {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) {y:ℝ} (hy: sInf (f '' .Icc a b) ≤ y ∧ y ≤ sSup (f '' .Icc a b)) : ∃ c ∈ Set.Icc a b, f c = y := by
