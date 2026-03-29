@@ -182,28 +182,39 @@ theorem lower_integ_eq_sup_lower_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: Bd
 /-- Exercise 11.3.1 -/
 theorem MajorizesOn.trans {f g h: ℝ → ℝ} {I: BoundedInterval}
   (hfg: MajorizesOn f g I) (hgh: MajorizesOn g h I) : MajorizesOn f h I := by
-  sorry
+  intro x hx; exact le_trans (hgh x hx) (hfg x hx)
 
 /-- Exercise 11.3.1 -/
 theorem MajorizesOn.anti_symm {f g: ℝ → ℝ} {I: BoundedInterval}:
-  ∀ x ∈ (I:Set ℝ), f x = g x ↔ MajorizesOn f g I ∧ MajorizesOn g f I := by
-  sorry
+  (∀ x ∈ (I:Set ℝ), f x = g x) ↔ MajorizesOn f g I ∧ MajorizesOn g f I := by
+  constructor
+  · intro h; exact ⟨fun x hx => (h x hx).ge, fun x hx => (h x hx).le⟩
+  · intro ⟨hfg, hgf⟩ x hx; exact le_antisymm (hgf x hx) (hfg x hx)
 
 /-- Exercise 11.3.2 -/
 def MajorizesOn.of_add : Decidable ( ∀ (f g h:ℝ → ℝ) (I:BoundedInterval) (hfg: MajorizesOn f g I),
  MajorizesOn (f+h) (g+h) I) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isTrue
+  intro f g h I hfg x hx
+  simp [Pi.add_apply]; linarith [hfg x hx]
 
 def MajorizesOn.of_mul : Decidable ( ∀ (f g h:ℝ → ℝ) (I:BoundedInterval) (hfg: MajorizesOn f g I),
  MajorizesOn (f*h) (g*h) I) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  push_neg
+  refine ⟨fun _ => 1, fun _ => 0, fun _ => -1, .Icc 0 1, ?_, ?_⟩
+  · intro x hx; simp [BoundedInterval.toSet] at hx; simp
+  · simp [Pi.mul_apply, MajorizesOn, BoundedInterval.toSet]
+    exact ⟨0, by norm_num, by norm_num⟩
 
 def MajorizesOn.of_smul : Decidable ( ∀ (f g:ℝ → ℝ) (c:ℝ) (I:BoundedInterval) (hfg: MajorizesOn f g I),
  MajorizesOn (c • f) (c • g) I) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  push_neg
+  refine ⟨fun _ => 1, fun _ => 0, -1, .Icc 0 1, ?_, ?_⟩
+  · intro x hx; simp [BoundedInterval.toSet] at hx; simp
+  · simp [Pi.smul_apply, MajorizesOn, BoundedInterval.toSet]
+    exact ⟨0, by norm_num, by norm_num⟩
 
 
 end Chapter11
