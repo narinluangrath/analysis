@@ -43,19 +43,22 @@ example : (0.41:ℝ).CloseFn (.Icc 1.9 2.1) (fun x ↦ x^2) 4 := by sorry
 
 /-- Example 9.3.4 -/
 example: ¬(0.1:ℝ).CloseFn (.Icc 1 3) (fun x ↦ x^2) 4 := by
-  sorry
+  intro h; have := h 1 (by constructor <;> linarith); simp at this; norm_num at this
 
 /-- Example 9.3.4 -/
 example: (0.1:ℝ).CloseNear (.Icc 1 3) (fun x ↦ x^2) 4 2 := by
-  sorry
+  refine ⟨0.02, by norm_num, ?_⟩
+  intro x hx; simp at hx; rw [abs_lt]; constructor <;> nlinarith [hx.1, hx.2.1, hx.2.2]
 
 /-- Example 9.3.5 -/
 example: ¬(0.1:ℝ).CloseFn (.Icc 1 3) (fun x ↦ x^2) 9 := by
-  sorry
+  intro h; have := h 1 (by constructor <;> linarith); simp at this; norm_num at this
 
 /-- Example 9.3.5 -/
 example: (0.1:ℝ).CloseNear (.Icc 1 3) (fun x ↦ x^2) 9 3 := by
-  sorry
+  refine ⟨0.01, by norm_num, ?_⟩
+  intro x hx; simp at hx; rw [abs_lt]
+  constructor <;> nlinarith [hx.1, hx.2.1, hx.2.2, sq_nonneg (x-3)]
 
 /-- Definition 9.3.6 (Convergence of functions at a point)-/
 abbrev Convergesto (X:Set ℝ) (f: ℝ → ℝ) (L:ℝ) (x₀:ℝ) : Prop := ∀ ε > (0:ℝ), ε.CloseNear X f L x₀
@@ -197,7 +200,8 @@ theorem Convergesto.local {E:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: Ad
     sorry
 
 /-- Example 9.3.19.  The point of this example is somewhat blunted by the ability to remove the hypothesis that `g` is non-zero from the relevant part of Proposition 9.3.14 -/
-example : Convergesto .univ (fun x ↦ (x+2)/(x+1)) (4/3:ℝ) 2 := by sorry
+example : Convergesto .univ (fun x ↦ (x+2)/(x+1)) (4/3:ℝ) 2 := by
+  sorry
 
 /-- Example 9.3.20 -/
 example : Convergesto (.univ \ {1}) (fun x ↦ (x^2-1)/(x-1)) 2 1 := by sorry
