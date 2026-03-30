@@ -1,5 +1,7 @@
 import Mathlib.Tactic
 import Mathlib.Analysis.Calculus.Deriv.Basic
+import Mathlib.Analysis.Calculus.Deriv.Abs
+import Mathlib.Analysis.Calculus.Deriv.Pow
 
 /-!
 # Analysis I, Section 10.1: Basic definitions
@@ -62,14 +64,13 @@ theorem derivative_unique' (X: Set ℝ) {x₀ : ℝ}
 
 
 /-- Example 10.1.3 -/
-example (x₀:ℝ) : HasDerivWithinAt (fun x ↦ x^2) (2 * x₀) .univ x₀ := by
-  sorry
+example (x₀:ℝ) : HasDerivWithinAt (fun x ↦ x^2) (2 * x₀) .univ x₀ := by sorry
 
 example (x₀:ℝ) : DifferentiableWithinAt ℝ (fun x ↦ x^2) .univ x₀ := by
-  sorry
+  exact (differentiableAt_pow 2).differentiableWithinAt
 
 example (x₀:ℝ) : derivWithin (fun x ↦ x^2) .univ x₀ = 2 * x₀ := by
-  sorry
+  rw [derivWithin_univ]; simp [deriv_pow]
 
 /-- Remark 10.1.4 -/
 example (X: Set ℝ) (x₀ : ℝ) {f g: ℝ → ℝ} (hfg: f = g):
@@ -97,7 +98,7 @@ example : ¬ ∃ L, (nhdsWithin 0 (.univ \ {0})).Tendsto (fun x ↦ (f_10_1_6 x 
    (nhds L) := by sorry
 
 example : ¬ DifferentiableWithinAt ℝ f_10_1_6 (.univ) 0 := by
-  sorry
+  rw [differentiableWithinAt_univ]; exact not_differentiableAt_abs_zero
 
 example : DifferentiableWithinAt ℝ f_10_1_6 (.Ioi 0) 0 := by
   sorry
