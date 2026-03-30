@@ -103,14 +103,11 @@ example : ¬ DifferentiableWithinAt ℝ f_10_1_6 (.univ) 0 := by
 example : DifferentiableWithinAt ℝ f_10_1_6 (.Ioi 0) 0 := by
   sorry
 
-example : derivWithin f_10_1_6 (.Ioi 0) 0 = 1 := by
-  sorry
+example : derivWithin f_10_1_6 (.Ioi 0) 0 = 1 := by sorry
 
-example : DifferentiableWithinAt ℝ f_10_1_6 (.Iio 0) 0 := by
-  sorry
+example : DifferentiableWithinAt ℝ f_10_1_6 (.Iio 0) 0 := by sorry
 
-example : derivWithin f_10_1_6 (.Iio 0) 0 = -1 := by
-  sorry
+example : derivWithin f_10_1_6 (.Iio 0) 0 = -1 := by sorry
 
 /-- Proposition 10.1.7 (Newton's approximation) / Exercise 10.1.2 -/
 theorem _root_.HasDerivWithinAt.iff_approx_linear (X: Set ℝ) (x₀ :ℝ) (f: ℝ → ℝ) (L:ℝ) :
@@ -121,8 +118,8 @@ theorem _root_.HasDerivWithinAt.iff_approx_linear (X: Set ℝ) (x₀ :ℝ) (f: �
 /-- Proposition 10.1.10 / Exercise 10.1.3 -/
 theorem _root_.ContinuousWithinAt.of_differentiableWithinAt {X: Set ℝ} {x₀ : ℝ} {f: ℝ → ℝ}
   (h: DifferentiableWithinAt ℝ f X x₀) :
-  ContinuousWithinAt f X x₀ := by
-  sorry
+  ContinuousWithinAt f X x₀ :=
+  h.continuousWithinAt
 
 /-Definition 10.1.11 (Differentiability on a domain)-/
 #check DifferentiableOn.eq_1
