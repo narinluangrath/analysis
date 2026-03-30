@@ -169,14 +169,15 @@ theorem _root_.HasDerivWithinAt.of_sub {X: Set ℝ} {x₀ f'x₀ g'x₀: ℝ}
 theorem _root_.HasDerivWithinAt.of_inv {X: Set ℝ} {x₀ g'x₀: ℝ}
   {g: ℝ → ℝ} (hgx₀ : g x₀ ≠ 0) (hg: HasDerivWithinAt g g'x₀ X x₀) :
   HasDerivWithinAt (1/g) (-g'x₀ / (g x₀)^2) X x₀ := by
-  sorry
+  have h := hg.inv hgx₀
+  convert h using 1; ext x; simp [one_div]
 
 /-- Theorem 10.1.13 (h) (Quotient rule) / Exercise 10.1.4 -/
 theorem _root_.HasDerivWithinAt.of_div {X: Set ℝ} {x₀ f'x₀ g'x₀: ℝ}
   {f g: ℝ → ℝ} (hgx₀ : g x₀ ≠ 0) (hf: HasDerivWithinAt f f'x₀ X x₀)
   (hg: HasDerivWithinAt g g'x₀ X x₀) :
   HasDerivWithinAt (f / g) ((f'x₀ * (g x₀) - (f x₀) * g'x₀) / (g x₀)^2) X x₀ := by
-  sorry
+  exact (hf.div hg hgx₀).congr_deriv (by ring)
 
 example (x₀:ℝ) (hx₀: x₀ ≠ 1): HasDerivWithinAt (fun x ↦ (x-2)/(x-1)) (1 /(x₀-1)^2) (.univ \ {1}) x₀ := by
   sorry
@@ -186,7 +187,8 @@ theorem _root_.HasDerivWithinAt.of_comp {X Y: Set ℝ} {x₀ y₀ f'x₀ g'y₀:
   {f g: ℝ → ℝ} (hfx₀: f x₀ = y₀) (hfX : ∀ x ∈ X, f x ∈ Y)
   (hf: HasDerivWithinAt f f'x₀ X x₀) (hg: HasDerivWithinAt g g'y₀ Y y₀) :
   HasDerivWithinAt (g ∘ f) (g'y₀ * f'x₀) X x₀ := by
-  sorry
+  subst hfx₀
+  exact (hg.comp x₀ hf hfX).congr_deriv (by ring)
 
 /-- Exercise 10.1.5 -/
 theorem _root_.HasDerivWithinAt.of_pow (n:ℕ) (x₀:ℝ) : HasDerivWithinAt (fun x ↦ x^n)
