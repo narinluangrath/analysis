@@ -451,10 +451,15 @@ theorem empty_function_bijective_iff (X: Set) (f: Function ∅ X) : f.bijective 
   Exercise 3.3.4.
 -/
 theorem Function.comp_cancel_left {X Y Z:Set} {f f': Function X Y} {g : Function Y Z}
-  (heq : g ○ f = g ○ f') (hg: g.one_to_one) : f = f' := by sorry
+  (heq : g ○ f = g ○ f') (hg: g.one_to_one) : f = f' := by
+  rw [eq_iff]; intro x; by_contra h
+  have := congr(($heq) x); rw [comp_eval, comp_eval] at this
+  exact hg _ _ h this
 
 theorem Function.comp_cancel_right {X Y Z:Set} {f: Function X Y} {g g': Function Y Z}
-  (heq : g ○ f = g' ○ f) (hf: f.onto) : g = g' := by sorry
+  (heq : g ○ f = g' ○ f) (hf: f.onto) : g = g' := by
+  rw [eq_iff]; intro y; obtain ⟨x, rfl⟩ := hf y
+  have := congr(($heq) x); rw [comp_eval, comp_eval] at this; exact this
 
 def Function.comp_cancel_left_without_hg : Decidable (∀ (X Y Z:Set) (f f': Function X Y) (g : Function Y Z) (heq : g ○ f = g ○ f'), f = f') := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
@@ -468,10 +473,13 @@ def Function.comp_cancel_right_without_hg : Decidable (∀ (X Y Z:Set) (f: Funct
   Exercise 3.3.5.
 -/
 theorem Function.comp_injective {X Y Z:Set} {f: Function X Y} {g : Function Y Z} (hinj :
-    (g ○ f).one_to_one) : f.one_to_one := by sorry
+    (g ○ f).one_to_one) : f.one_to_one := by
+  intro x x' hne; have := hinj x x' hne; rw [comp_eval, comp_eval] at this
+  intro h; exact this (congr_arg g.to_fn h)
 
 theorem Function.comp_surjective {X Y Z:Set} {f: Function X Y} {g : Function Y Z} (hsurj :
-    (g ○ f).onto) : g.onto := by sorry
+    (g ○ f).onto) : g.onto := by
+  intro z; obtain ⟨x, hx⟩ := hsurj z; rw [comp_eval] at hx; exact ⟨f x, hx⟩
 
 def Function.comp_injective' : Decidable (∀ (X Y Z:Set) (f: Function X Y) (g : Function Y Z) (hinj :
     (g ○ f).one_to_one), g.one_to_one) := by
@@ -516,9 +524,11 @@ theorem Function.inclusion_id (X:Set) :
 theorem Function.inclusion_comp (X Y Z:Set) (hXY: X ⊆ Y) (hYZ: Y ⊆ Z) :
     Function.inclusion hYZ ○ Function.inclusion hXY = Function.inclusion (SetTheory.Set.subset_trans hXY hYZ) := by sorry
 
-theorem Function.comp_id {A B:Set} (f: Function A B) : f ○ Function.id A = f := by sorry
+theorem Function.comp_id {A B:Set} (f: Function A B) : f ○ Function.id A = f := by
+  rw [eq_iff]; intro x; rw [comp_eval]; simp [id, eval_of]
 
-theorem Function.id_comp {A B:Set} (f: Function A B) : Function.id B ○ f = f := by sorry
+theorem Function.id_comp {A B:Set} (f: Function A B) : Function.id B ○ f = f := by
+  rw [eq_iff]; intro x; rw [comp_eval]; simp [id, eval_of]
 
 theorem Function.comp_inv {A B:Set} (f: Function A B) (hf: f.bijective) :
     f ○ f.inverse hf = Function.id B := by sorry
