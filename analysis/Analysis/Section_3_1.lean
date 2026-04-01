@@ -255,10 +255,13 @@ abbrev SetTheory.Set.pair_empty : Set := {(empty: Object), (singleton_empty: Obj
 
 /-- Exercise 3.1.2 -/
 theorem SetTheory.Set.emptyset_neq_singleton : empty ≠ singleton_empty := by
-  sorry
+  intro h; have : (empty : Object) ∈ singleton_empty := (mem_singleton _ _).mpr rfl
+  rw [← h] at this; exact not_mem_empty _ this
 
 /-- Exercise 3.1.2 -/
-theorem SetTheory.Set.emptyset_neq_pair : empty ≠ pair_empty := by sorry
+theorem SetTheory.Set.emptyset_neq_pair : empty ≠ pair_empty := by
+  intro h; have : (empty : Object) ∈ pair_empty := (mem_pair _ _ _).mpr (Or.inl rfl)
+  rw [← h] at this; exact not_mem_empty _ this
 
 /-- Exercise 3.1.2 -/
 theorem SetTheory.Set.singleton_empty_neq_pair : singleton_empty ≠ pair_empty := by
@@ -509,7 +512,7 @@ theorem SetTheory.Set.union_subset {A X: Set} (hAX: A ⊆ X) : X ∪ A = X := by
 /-- Proposition 3.1.27(c) -/
 @[simp]
 theorem SetTheory.Set.inter_self (A:Set) : A ∩ A = A := by
-  sorry
+  apply ext; intro x; simp [mem_inter]
 
 /-- Proposition 3.1.27(e) -/
 theorem SetTheory.Set.inter_assoc (A B C:Set) : (A ∩ B) ∩ C = A ∩ (B ∩ C) := by
@@ -518,12 +521,12 @@ theorem SetTheory.Set.inter_assoc (A B C:Set) : (A ∩ B) ∩ C = A ∩ (B ∩ C
 /-- Proposition 3.1.27(f) -/
 theorem  SetTheory.Set.inter_union_distrib_left (A B C:Set) :
     A ∩ (B ∪ C) = (A ∩ B) ∪ (A ∩ C) := by
-  sorry
+  apply ext; intro x; simp [mem_inter, mem_union]; tauto
 
 /-- Proposition 3.1.27(f) -/
 theorem  SetTheory.Set.union_inter_distrib_left (A B C:Set) :
     A ∪ (B ∩ C) = (A ∪ B) ∩ (A ∪ C) := by
-  sorry
+  apply ext; intro x; simp [mem_union, mem_inter]; tauto
 
 /-- Proposition 3.1.27(f) -/
 theorem SetTheory.Set.union_compl {A X:Set} (hAX: A ⊆ X) : A ∪ (X \ A) = X := by
@@ -767,29 +770,33 @@ theorem SetTheory.Set.subset_tfae (A B:Set) : [A ⊆ B, A ∪ B = B, A ∩ B = A
 
 /-- Exercise 3.1.7 -/
 theorem SetTheory.Set.inter_subset_left (A B:Set) : A ∩ B ⊆ A := by
-  sorry
+  intro x hx; exact ((mem_inter x A B).mp hx).1
 
 /-- Exercise 3.1.7 -/
 theorem SetTheory.Set.inter_subset_right (A B:Set) : A ∩ B ⊆ B := by
-  sorry
+  intro x hx; exact ((mem_inter x A B).mp hx).2
 
 /-- Exercise 3.1.7 -/
 @[simp]
 theorem SetTheory.Set.subset_inter_iff (A B C:Set) : C ⊆ A ∩ B ↔ C ⊆ A ∧ C ⊆ B := by
-  sorry
+  constructor
+  · intro h; exact ⟨subset_trans h (inter_subset_left A B), subset_trans h (inter_subset_right A B)⟩
+  · intro ⟨hA, hB⟩ x hx; exact (mem_inter x A B).mpr ⟨hA x hx, hB x hx⟩
 
 /-- Exercise 3.1.7 -/
 theorem SetTheory.Set.subset_union_left (A B:Set) : A ⊆ A ∪ B := by
-  sorry
+  intro x hx; exact (mem_union x A B).mpr (Or.inl hx)
 
 /-- Exercise 3.1.7 -/
 theorem SetTheory.Set.subset_union_right (A B:Set) : B ⊆ A ∪ B := by
-  sorry
+  intro x hx; exact (mem_union x A B).mpr (Or.inr hx)
 
 /-- Exercise 3.1.7 -/
 @[simp]
 theorem SetTheory.Set.union_subset_iff (A B C:Set) : A ∪ B ⊆ C ↔ A ⊆ C ∧ B ⊆ C := by
-  sorry
+  constructor
+  · intro h; exact ⟨subset_trans (subset_union_left A B) h, subset_trans (subset_union_right A B) h⟩
+  · intro ⟨hA, hB⟩ x hx; rcases (mem_union x A B).mp hx with h | h; exact hA x h; exact hB x h
 
 /-- Exercise 3.1.8 -/
 @[simp]
