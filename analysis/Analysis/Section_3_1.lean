@@ -228,10 +228,12 @@ theorem SetTheory.Set.mem_triple (x a b c:Object) : x ∈ ({a,b,c}:Set) ↔ (x =
   simp [Insert.insert, mem_union, mem_singleton]
 
 /-- Remark 3.1.9 -/
-theorem SetTheory.Set.singleton_uniq (a:Object) : ∃! (X:Set), ∀ x, x ∈ X ↔ x = a := by sorry
+theorem SetTheory.Set.singleton_uniq (a:Object) : ∃! (X:Set), ∀ x, x ∈ X ↔ x = a := by
+  exact ⟨{a}, fun x => mem_singleton x a, fun Y hY => ext (fun x => (hY x).trans (mem_singleton x a).symm)⟩
 
 /-- Remark 3.1.9 -/
-theorem SetTheory.Set.pair_uniq (a b:Object) : ∃! (X:Set), ∀ x, x ∈ X ↔ x = a ∨ x = b := by sorry
+theorem SetTheory.Set.pair_uniq (a b:Object) : ∃! (X:Set), ∀ x, x ∈ X ↔ x = a ∨ x = b := by
+  exact ⟨{a,b}, fun x => mem_pair x a b, fun Y hY => ext (fun x => (hY x).trans (mem_pair x a b).symm)⟩
 
 /-- Remark 3.1.9 -/
 theorem SetTheory.Set.pair_comm (a b:Object) : ({a,b}:Set) = {b,a} := by
@@ -454,7 +456,8 @@ theorem SetTheory.Set.specification_axiom'' {A:Set} (P: A → Prop) (x:Object) :
   intro ⟨ h, hP ⟩
   simpa [←specification_axiom' P] using hP
 
-theorem SetTheory.Set.specify_subset {A:Set} (P: A → Prop) : A.specify P ⊆ A := by sorry
+theorem SetTheory.Set.specify_subset {A:Set} (P: A → Prop) : A.specify P ⊆ A := by
+  intro x hx; exact (specification_axiom hx)
 
 /-- This exercise may require some understanding of how subtypes are implemented in Lean. -/
 theorem SetTheory.Set.specify_congr {A A':Set} (hAA':A = A') {P: A → Prop} {P': A' → Prop}
@@ -548,12 +551,13 @@ instance SetTheory.Set.instDistribLattice : DistribLattice Set where
   le_antisymm := subset_antisymm
   inf := (· ∩ ·)
   sup := (· ∪ ·)
-  le_sup_left := by sorry
-  le_sup_right := by sorry
-  sup_le := by sorry
-  inf_le_left := by sorry
-  inf_le_right := by sorry
-  le_inf := by sorry
+  le_sup_left := fun A B x hx => (mem_union x A B).mpr (Or.inl hx)
+  le_sup_right := fun A B x hx => (mem_union x A B).mpr (Or.inr hx)
+  sup_le := fun A B C hAC hBC x hx => by
+    rw [mem_union] at hx; rcases hx with h | h; exact hAC x h; exact hBC x h
+  inf_le_left := fun A B x hx => ((mem_inter x A B).mp hx).1
+  inf_le_right := fun A B x hx => ((mem_inter x A B).mp hx).2
+  le_inf := fun A B C hAB hAC x hx => (mem_inter x B C).mpr ⟨hAB x hx, hAC x hx⟩
   le_sup_inf := by
     intro X Y Z; change (X ∪ Y) ∩ (X ∪ Z) ⊆ X ∪ (Y ∩ Z)
     rw [←union_inter_distrib_left]
