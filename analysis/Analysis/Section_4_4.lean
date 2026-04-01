@@ -26,10 +26,15 @@ Users of the companion who have completed the exercises in this section are welc
 
 /-- Proposition 4.4.1 (Interspersing of integers by rationals) / Exercise 4.4.1 -/
 theorem Rat.between_int (x:ℚ) : ∃! n:ℤ, n ≤ x ∧ x < n+1 := by
-  sorry
+  use ⌊x⌋
+  refine ⟨⟨Int.floor_le x, Int.lt_floor_add_one x⟩, ?_⟩
+  intro n ⟨hn1, hn2⟩
+  have h1 : n ≤ ⌊x⌋ := Int.le_floor.mpr hn1
+  have h2 : ⌊x⌋ < n + 1 := by exact_mod_cast lt_of_le_of_lt (Int.floor_le x) hn2
+  omega
 
 theorem Nat.exists_gt (x:ℚ) : ∃ n:ℕ, n > x := by
-  sorry
+  exact exists_nat_gt x
 
 /-- Proposition 4.4.3 (Interspersing of rationals) -/
 theorem Rat.exists_between_rat {x y:ℚ} (h: x < y) : ∃ z:ℚ, x < z ∧ z < y := by
@@ -46,26 +51,32 @@ theorem Rat.exists_between_rat {x y:ℚ} (h: x < y) : ∃ z:ℚ, x < z ∧ z < y
 
 /-- Exercise 4.4.2 (a) -/
 theorem Nat.no_infinite_descent : ¬ ∃ a:ℕ → ℕ, ∀ n, a (n+1) < a n := by
-  sorry
+  intro ⟨a, ha⟩
+  have hdesc : ∀ n, a n + n ≤ a 0 := by
+    intro n; induction n with
+    | zero => simp
+    | succ n ih => have := ha n; omega
+  have := hdesc (a 0 + 1); omega
 
 /-- Exercise 4.4.2 (b) -/
 def Int.infinite_descent : Decidable (∃ a:ℕ → ℤ, ∀ n, a (n+1) < a n) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isTrue
+  exact ⟨fun n => -(n:ℤ), fun n => by simp⟩
 
 /-- Exercise 4.4.2 (b) -/
 def Rat.pos_infinite_descent : Decidable (∃ a:ℕ → {x: ℚ // 0 < x}, ∀ n, a (n+1) < a n) := by
-  -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isTrue
+  exact ⟨fun n => ⟨1/((n:ℚ)+1), by positivity⟩, fun n => by
+    simp only [Subtype.mk_lt_mk]
+    apply div_lt_div_of_pos_left one_pos (by positivity : (0:ℚ) < ↑n + 1) (by push_cast; linarith)⟩
 
 #check even_iff_exists_two_mul
 #check odd_iff_exists_bit1
 
-theorem Nat.even_or_odd'' (n:ℕ) : Even n ∨ Odd n := by
-  sorry
+theorem Nat.even_or_odd'' (n:ℕ) : Even n ∨ Odd n := Nat.even_or_odd n
 
 theorem Nat.not_even_and_odd (n:ℕ) : ¬ (Even n ∧ Odd n) := by
-  sorry
+  intro ⟨⟨k, hk⟩, ⟨m, hm⟩⟩; omega
 
 #check Nat.rec
 
@@ -93,10 +104,9 @@ theorem Rat.not_exist_sqrt_two : ¬ ∃ x:ℚ, x^2 = 2 := by
       choose q hpos hq using hPp.2
       have : q^2 = 2 * k^2 := by linarith
       use q; constructor
-      . sorry
+      . nlinarith [sq_nonneg q, sq_nonneg k, hPp.1]
       exact ⟨ hpos, k, by linarith [hPp.1], this ⟩
-    have h1 : Odd (p^2) := by
-      sorry
+    have h1 : Odd (p^2) := hp.pow
     have h2 : Even (p^2) := by
       choose q hpos hq using hPp.2
       rw [even_iff_exists_two_mul]
