@@ -441,11 +441,21 @@ theorem Function.comp_of_surj {X Y Z:Set} {f: Function X Y} {g : Function Y Z} (
 /--
   Exercise 3.3.3 - fill in the sorrys in the statements in a reasonable fashion.
 -/
-theorem empty_function_one_to_one_iff (X: Set) (f: Function ∅ X) : f.one_to_one ↔ sorry := by sorry
+theorem empty_function_one_to_one_iff (X: Set) (f: Function ∅ X) : f.one_to_one ↔ True := by
+  constructor
+  · intro; trivial
+  · intro _ ⟨x, hx⟩; exact absurd hx (SetTheory.Set.not_mem_empty x)
 
-theorem empty_function_onto_iff (X: Set) (f: Function ∅ X) : f.onto ↔ sorry := by sorry
+theorem empty_function_onto_iff (X: Set) (f: Function ∅ X) : f.onto ↔ X = ∅ := by
+  constructor
+  · intro h; apply SetTheory.Set.ext; intro x; constructor
+    · intro hx; obtain ⟨⟨y, hy⟩, _⟩ := h ⟨x, hx⟩; exact absurd hy (SetTheory.Set.not_mem_empty y)
+    · intro hx; exact absurd hx (SetTheory.Set.not_mem_empty x)
+  · intro h ⟨y, hy⟩; rw [h] at hy; exact absurd hy (SetTheory.Set.not_mem_empty y)
 
-theorem empty_function_bijective_iff (X: Set) (f: Function ∅ X) : f.bijective ↔ sorry:= by sorry
+theorem empty_function_bijective_iff (X: Set) (f: Function ∅ X) : f.bijective ↔ X = ∅ := by
+  simp only [Function.bijective, empty_function_one_to_one_iff, true_and]
+  exact empty_function_onto_iff X f
 
 /--
   Exercise 3.3.4.
@@ -493,10 +503,12 @@ def Function.comp_surjective' : Decidable (∀ (X Y Z:Set) (f: Function X Y) (g 
 
 /-- Exercise 3.3.6 -/
 theorem Function.inverse_comp_self {X Y: Set} {f: Function X Y} (h: f.bijective) (x: X) :
-    (f.inverse h) (f x) = x := by sorry
+    (f.inverse h) (f x) = x := by
+  exact ((inverse_eval h (f x) x).mpr rfl).symm
 
 theorem Function.self_comp_inverse {X Y: Set} {f: Function X Y} (h: f.bijective) (y: Y) :
-    f ((f.inverse h) y) = y := by sorry
+    f ((f.inverse h) y) = y := by
+  exact (inverse_eval h y (f.inverse h y)).mp rfl
 
 theorem Function.inverse_bijective {X Y: Set} {f: Function X Y} (h: f.bijective) :
     (f.inverse h).bijective := by sorry
@@ -511,7 +523,8 @@ theorem Function.comp_bijective {X Y Z:Set} {f: Function X Y} {g : Function Y Z}
 
 theorem Function.inv_of_comp {X Y Z:Set} {f: Function X Y} {g : Function Y Z}
   (hf: f.bijective) (hg: g.bijective) :
-    (g ○ f).inverse (Function.comp_bijective hf hg) = (f.inverse hf) ○ (g.inverse hg) := by sorry
+    (g ○ f).inverse (Function.comp_bijective hf hg) = (f.inverse hf) ○ (g.inverse hg) := by
+  sorry
 
 /-- Exercise 3.3.8 -/
 abbrev Function.inclusion {X Y:Set} (h: X ⊆ Y) :
