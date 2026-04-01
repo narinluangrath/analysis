@@ -378,11 +378,11 @@ theorem SetTheory.Set.subset_trans {A B C:Set} (hAB:A ⊆ B) (hBC:B ⊆ C) : A �
 
 /-- Proposition 3.1.17 (Partial ordering by set inclusion) -/
 theorem SetTheory.Set.subset_antisymm (A B:Set) (hAB:A ⊆ B) (hBA:B ⊆ A) : A = B := by
-  sorry
+  apply ext; intro x; exact ⟨fun h => hAB x h, fun h => hBA x h⟩
 
 /-- Proposition 3.1.17 (Partial ordering by set inclusion) -/
 theorem SetTheory.Set.ssubset_trans (A B C:Set) (hAB:A ⊂ B) (hBC:B ⊂ C) : A ⊂ C := by
-  sorry
+  rw [ssubset_def] at *; exact ⟨subset_trans hAB.1 hBC.1, fun h => hAB.2 (subset_antisymm _ _ hAB.1 (h ▸ hBC.1))⟩
 
 
 /--
@@ -754,7 +754,16 @@ example : ({3,5,9}:Set).replace (P := fun _ y ↦ y=1) (by aesop) = {1} := by
   ext; simp only [replacement_axiom]; aesop
 
 /-- Exercise 3.1.5.  One can use the `tfae_have` and `tfae_finish` tactics here. -/
-theorem SetTheory.Set.subset_tfae (A B:Set) : [A ⊆ B, A ∪ B = B, A ∩ B = A].TFAE := by sorry
+theorem SetTheory.Set.subset_tfae (A B:Set) : [A ⊆ B, A ∪ B = B, A ∩ B = A].TFAE := by
+  tfae_have 1 → 2 := fun h => subset_union h
+  tfae_have 2 → 3 := fun h => by
+    apply ext; intro x; rw [mem_inter]; constructor
+    · exact fun ⟨hA, _⟩ => hA
+    · intro hA; exact ⟨hA, by rw [← h]; exact (mem_union x A B).mpr (Or.inl hA)⟩
+  tfae_have 3 → 1 := fun h => by
+    intro x hx; have hx' : x ∈ A ∩ B := by rwa [h]
+    exact ((mem_inter x A B).mp hx').2
+  tfae_finish
 
 /-- Exercise 3.1.7 -/
 theorem SetTheory.Set.inter_subset_left (A B:Set) : A ∩ B ⊆ A := by
@@ -784,11 +793,17 @@ theorem SetTheory.Set.union_subset_iff (A B C:Set) : A ∪ B ⊆ C ↔ A ⊆ C �
 
 /-- Exercise 3.1.8 -/
 @[simp]
-theorem SetTheory.Set.inter_union_cancel (A B:Set) : A ∩ (A ∪ B) = A := by sorry
+theorem SetTheory.Set.inter_union_cancel (A B:Set) : A ∩ (A ∪ B) = A := by
+  apply ext; intro x; rw [mem_inter, mem_union]; constructor
+  · exact fun ⟨h, _⟩ => h
+  · exact fun h => ⟨h, Or.inl h⟩
 
 /-- Exercise 3.1.8 -/
 @[simp]
-theorem SetTheory.Set.union_inter_cancel (A B:Set) : A ∪ (A ∩ B) = A := by sorry
+theorem SetTheory.Set.union_inter_cancel (A B:Set) : A ∪ (A ∩ B) = A := by
+  apply ext; intro x; rw [mem_union, mem_inter]; constructor
+  · rintro (h | ⟨h, _⟩) <;> exact h
+  · exact Or.inl
 
 /-- Exercise 3.1.9 -/
 theorem SetTheory.Set.partition_left {A B X:Set} (h_union: A ∪ B = X) (h_inter: A ∩ B = ∅) :
@@ -820,11 +835,15 @@ theorem SetTheory.Set.specification_from_replacement {A:Set} {P: A → Prop} :
 
 /-- Exercise 3.1.12.-/
 theorem SetTheory.Set.subset_union_subset {A B A' B':Set} (hA'A: A' ⊆ A) (hB'B: B' ⊆ B) :
-    A' ∪ B' ⊆ A ∪ B := by sorry
+    A' ∪ B' ⊆ A ∪ B := by
+  intro x hx; rw [mem_union] at hx ⊢; rcases hx with h | h
+  · exact Or.inl (hA'A x h)
+  · exact Or.inr (hB'B x h)
 
 /-- Exercise 3.1.12.-/
 theorem SetTheory.Set.subset_inter_subset {A B A' B':Set} (hA'A: A' ⊆ A) (hB'B: B' ⊆ B) :
-    A' ∩ B' ⊆ A ∩ B := by sorry
+    A' ∩ B' ⊆ A ∩ B := by
+  intro x hx; rw [mem_inter] at hx ⊢; exact ⟨hA'A x hx.1, hB'B x hx.2⟩
 
 /-- Exercise 3.1.12.-/
 theorem SetTheory.Set.subset_diff_subset_counter :
