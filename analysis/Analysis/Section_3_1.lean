@@ -362,7 +362,7 @@ theorem SetTheory.Set.subset_self (A:Set) : A ⊆ A := fun _ h => h
 
 /-- Examples 3.1.16 -/
 @[simp]
-theorem SetTheory.Set.empty_subset (A:Set) : ∅ ⊆ A := by sorry
+theorem SetTheory.Set.empty_subset (A:Set) : ∅ ⊆ A := fun x hx => absurd hx (not_mem_empty x)
 
 /-- Proposition 3.1.17 (Partial ordering by set inclusion) -/
 theorem SetTheory.Set.subset_trans {A B C:Set} (hAB:A ⊆ B) (hBC:B ⊆ C) : A ⊆ C := by
@@ -490,13 +490,18 @@ theorem SetTheory.Set.mem_sdiff (x:Object) (X Y:Set) : x ∈ (X \ Y) ↔ (x ∈ 
   intro ⟨ hX, hY ⟩; exact (specification_axiom' (fun x ↦ x.val ∉ Y) ⟨ x, hX⟩ ).mpr hY
 
 /-- Proposition 3.1.27(d) / Exercise 3.1.6 -/
-theorem SetTheory.Set.inter_comm (A B:Set) : A ∩ B = B ∩ A := by sorry
+theorem SetTheory.Set.inter_comm (A B:Set) : A ∩ B = B ∩ A := by
+  apply ext; intro x; simp [mem_inter]; tauto
 
 /-- Proposition 3.1.27(b) -/
-theorem SetTheory.Set.subset_union {A X: Set} (hAX: A ⊆ X) : A ∪ X = X := by sorry
+theorem SetTheory.Set.subset_union {A X: Set} (hAX: A ⊆ X) : A ∪ X = X := by
+  apply ext; intro x; rw [mem_union]; constructor
+  · rintro (h | h); exact hAX x h; exact h
+  · exact Or.inr
 
 /-- Proposition 3.1.27(b) -/
-theorem SetTheory.Set.union_subset {A X: Set} (hAX: A ⊆ X) : X ∪ A = X := by sorry
+theorem SetTheory.Set.union_subset {A X: Set} (hAX: A ⊆ X) : X ∪ A = X := by
+  rw [union_comm]; exact subset_union hAX
 
 /-- Proposition 3.1.27(c) -/
 @[simp]
@@ -504,7 +509,8 @@ theorem SetTheory.Set.inter_self (A:Set) : A ∩ A = A := by
   sorry
 
 /-- Proposition 3.1.27(e) -/
-theorem SetTheory.Set.inter_assoc (A B C:Set) : (A ∩ B) ∩ C = A ∩ (B ∩ C) := by sorry
+theorem SetTheory.Set.inter_assoc (A B C:Set) : (A ∩ B) ∩ C = A ∩ (B ∩ C) := by
+  apply ext; intro x; simp [mem_inter]; tauto
 
 /-- Proposition 3.1.27(f) -/
 theorem  SetTheory.Set.inter_union_distrib_left (A B C:Set) :
@@ -517,16 +523,22 @@ theorem  SetTheory.Set.union_inter_distrib_left (A B C:Set) :
   sorry
 
 /-- Proposition 3.1.27(f) -/
-theorem SetTheory.Set.union_compl {A X:Set} (hAX: A ⊆ X) : A ∪ (X \ A) = X := by sorry
+theorem SetTheory.Set.union_compl {A X:Set} (hAX: A ⊆ X) : A ∪ (X \ A) = X := by
+  apply ext; intro x; simp [mem_union, mem_sdiff]; constructor
+  · rintro (h | ⟨h, _⟩) <;> [exact hAX x h; exact h]
+  · intro hx; by_cases h : x ∈ A; left; exact h; right; exact ⟨hx, h⟩
 
 /-- Proposition 3.1.27(f) -/
-theorem SetTheory.Set.inter_compl {A X:Set} : A ∩ (X \ A) = ∅ := by sorry
+theorem SetTheory.Set.inter_compl {A X:Set} : A ∩ (X \ A) = ∅ := by
+  apply ext; intro x; simp [mem_inter, mem_sdiff, not_mem_empty]; tauto
 
 /-- Proposition 3.1.27(g) -/
-theorem SetTheory.Set.compl_union {A B X:Set} : X \ (A ∪ B) = (X \ A) ∩ (X \ B) := by sorry
+theorem SetTheory.Set.compl_union {A B X:Set} : X \ (A ∪ B) = (X \ A) ∩ (X \ B) := by
+  apply ext; intro x; simp [mem_sdiff, mem_union, mem_inter]; tauto
 
 /-- Proposition 3.1.27(g) -/
-theorem SetTheory.Set.compl_inter {A B X:Set} : X \ (A ∩ B) = (X \ A) ∪ (X \ B) := by sorry
+theorem SetTheory.Set.compl_inter {A B X:Set} : X \ (A ∩ B) = (X \ A) ∪ (X \ B) := by
+  apply ext; intro x; simp [mem_sdiff, mem_inter, mem_union]; tauto
 
 /-- Not from textbook: sets form a distributive lattice. -/
 instance SetTheory.Set.instDistribLattice : DistribLattice Set where
