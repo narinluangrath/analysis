@@ -21,9 +21,10 @@ namespace Chapter6
 abbrev Sequence.subseq (a b: ℕ → ℝ) : Prop := ∃ f : ℕ → ℕ, StrictMono f ∧ ∀ n, b n = a (f n)
 
 /- Example 6.6.2 -/
-example (a:ℕ → ℝ) : Sequence.subseq a (fun n ↦ a (2 * n)) := by sorry
+example (a:ℕ → ℝ) : Sequence.subseq a (fun n ↦ a (2 * n)) := by
+  exact ⟨fun n => 2 * n, fun a b (h : a < b) => by show 2 * a < 2 * b; omega, fun _ => rfl⟩
 
-example {f: ℕ → ℕ} (hf: StrictMono f) : Function.Injective f := by sorry
+example {f: ℕ → ℕ} (hf: StrictMono f) : Function.Injective f := hf.injective
 
 example :
     Sequence.subseq (fun n ↦ if Even n then 1 + (10:ℝ)^(-(n/2:ℤ)-1) else (10:ℝ)^(-(n/2:ℤ)-1))
@@ -36,11 +37,13 @@ example :
   sorry
 
 /-- Lemma 6.6.4 / Exercise 6.6.1 -/
-theorem Sequence.subseq_self (a:ℕ → ℝ) : Sequence.subseq a a := by sorry
+theorem Sequence.subseq_self (a:ℕ → ℝ) : Sequence.subseq a a := ⟨id, strictMono_id, fun _ => rfl⟩
 
 /-- Lemma 6.6.4 / Exercise 6.6.1 -/
 theorem Sequence.subseq_trans {a b c:ℕ → ℝ} (hab: Sequence.subseq a b) (hbc: Sequence.subseq b c) :
-    Sequence.subseq a c := by sorry
+    Sequence.subseq a c := by
+  obtain ⟨f, hf, haf⟩ := hab; obtain ⟨g, hg, hbg⟩ := hbc
+  exact ⟨f ∘ g, hf.comp hg, fun n => by simp [Function.comp, hbg n, haf]⟩
 
 /-- Proposition 6.6.5 / Exercise 6.6.4 -/
 theorem Sequence.convergent_iff_subseq (a:ℕ → ℝ) (L:ℝ) :
