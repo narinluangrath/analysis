@@ -708,7 +708,7 @@ theorem IsElementary.inter {d:ℕ} {E F: Set (EuclideanSpace' d)}
 
 /-- The empty set is elementary. -/
 theorem IsElementary.empty (d:ℕ) : IsElementary (∅: Set (EuclideanSpace' d)) := by
-  sorry
+  exact ⟨∅, by simp⟩
 
 /-- Exercise 1.1.1 (Boolean closure): The set difference of two elementary sets is elementary. -/
 theorem IsElementary.sdiff {d:ℕ} {E F: Set (EuclideanSpace' d)}
