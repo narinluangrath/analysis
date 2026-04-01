@@ -506,7 +506,8 @@ theorem Function.inverse_inverse {X Y: Set} {f: Function X Y} (h: f.bijective) :
 
 /-- Exercise 3.3.7 -/
 theorem Function.comp_bijective {X Y Z:Set} {f: Function X Y} {g : Function Y Z} (hf: f.bijective)
-  (hg: g.bijective) : (g ○ f).bijective := by sorry
+  (hg: g.bijective) : (g ○ f).bijective :=
+  ⟨comp_of_inj hf.1 hg.1, comp_of_surj hf.2 hg.2⟩
 
 theorem Function.inv_of_comp {X Y Z:Set} {f: Function X Y} {g : Function Y Z}
   (hf: f.bijective) (hg: g.bijective) :
@@ -519,10 +520,12 @@ abbrev Function.inclusion {X Y:Set} (h: X ⊆ Y) :
 abbrev Function.id (X:Set) : Function X X := Function.mk_fn (fun x ↦ x)
 
 theorem Function.inclusion_id (X:Set) :
-    Function.inclusion (SetTheory.Set.subset_self X) = Function.id X := by sorry
+    Function.inclusion (SetTheory.Set.subset_self X) = Function.id X := by
+  rw [eq_iff]; intro x; simp [inclusion, id, eval_of]
 
 theorem Function.inclusion_comp (X Y Z:Set) (hXY: X ⊆ Y) (hYZ: Y ⊆ Z) :
-    Function.inclusion hYZ ○ Function.inclusion hXY = Function.inclusion (SetTheory.Set.subset_trans hXY hYZ) := by sorry
+    Function.inclusion hYZ ○ Function.inclusion hXY = Function.inclusion (SetTheory.Set.subset_trans hXY hYZ) := by
+  rw [eq_iff]; intro x; rw [comp_eval]; simp [inclusion, eval_of]
 
 theorem Function.comp_id {A B:Set} (f: Function A B) : f ○ Function.id A = f := by
   rw [eq_iff]; intro x; rw [comp_eval]; simp [id, eval_of]
@@ -531,10 +534,14 @@ theorem Function.id_comp {A B:Set} (f: Function A B) : Function.id B ○ f = f :
   rw [eq_iff]; intro x; rw [comp_eval]; simp [id, eval_of]
 
 theorem Function.comp_inv {A B:Set} (f: Function A B) (hf: f.bijective) :
-    f ○ f.inverse hf = Function.id B := by sorry
+    f ○ f.inverse hf = Function.id B := by
+  rw [eq_iff]; intro y; rw [comp_eval]; simp [id, eval_of]
+  exact (inverse_eval hf y (f.inverse hf y)).mp rfl
 
 theorem Function.inv_comp {A B:Set} (f: Function A B) (hf: f.bijective) :
-    f.inverse hf ○ f = Function.id A := by sorry
+    f.inverse hf ○ f = Function.id A := by
+  rw [eq_iff]; intro x; rw [comp_eval]; simp [id, eval_of]
+  exact ((inverse_eval hf (f x) x).mpr rfl).symm
 
 open Classical in
 theorem Function.glue {X Y Z:Set} (hXY: Disjoint X Y) (f: Function X Z) (g: Function Y Z) :
