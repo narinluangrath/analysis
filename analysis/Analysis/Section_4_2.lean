@@ -358,8 +358,34 @@ def Rat.isPos (q:Rat) : Prop := ∃ a b:ℤ, a > 0 ∧ b > 0 ∧ q = a/b
 /-- Definition 4.2.6 (negativity) -/
 def Rat.isNeg (q:Rat) : Prop := ∃ r:Rat, r.isPos ∧ q = -r
 
+/-- (Helper) Formal division agrees with field division. -/
+theorem Rat.formalDiv_eq_div (a:ℤ) {b:ℤ} (hb:b≠0) : a // b = (a:Rat)/(b:Rat) := by
+  rw [coe_Int_eq, coe_Int_eq, div_eq, inv_eq b one_ne_zero, mul_eq _ _ one_ne_zero hb,
+      eq _ _ hb (Int.mul_ne_zero one_ne_zero hb)]
+  ring
+
 /-- Lemma 4.2.7 (trichotomy of rationals) / Exercise 4.2.4 -/
-theorem Rat.trichotomous (x:Rat) : x = 0 ∨ x.isPos ∨ x.isNeg := by sorry
+theorem Rat.trichotomous (x:Rat) : x = 0 ∨ x.isPos ∨ x.isNeg := by
+  obtain ⟨a, b, hb, rfl⟩ := eq_diff x
+  rcases lt_trichotomy a 0 with ha | ha | ha
+  · rcases lt_trichotomy b 0 with hbn | hb0 | hbp
+    · right; left
+      exact ⟨-a, -b, by omega, by omega, by
+        rw [← formalDiv_eq_div (-a) (by omega : (-b:ℤ) ≠ 0), eq _ _ hb (by omega)]; ring⟩
+    · omega
+    · right; right
+      refine ⟨(-a)//b, ⟨-a, b, by omega, hbp, ?_⟩, ?_⟩
+      · exact formalDiv_eq_div _ hb
+      · rw [neg_eq _ hb, eq _ _ hb hb]; ring
+  · left; rw [show a//b = 0//1 from by rw [eq _ _ hb one_ne_zero, ha]; ring]; rfl
+  · rcases lt_trichotomy b 0 with hbn | hb0 | hbp
+    · right; right
+      refine ⟨a//(-b), ⟨a, -b, ha, by omega, ?_⟩, ?_⟩
+      · exact formalDiv_eq_div _ (by omega : (-b:ℤ) ≠ 0)
+      · rw [neg_eq _ (by omega : (-b:ℤ) ≠ 0), eq _ _ hb (by omega)]; ring
+    · omega
+    · right; left
+      exact ⟨a, b, ha, hbp, formalDiv_eq_div a hb⟩
 
 /-- Lemma 4.2.7 (trichotomy of rationals) / Exercise 4.2.4 -/
 theorem Rat.not_zero_and_pos (x:Rat) : ¬(x = 0 ∧ x.isPos) := by
