@@ -29,16 +29,16 @@ theorem ContinuousWithinAt.iff (X:Set ℝ) (f: ℝ → ℝ)  (x₀:ℝ) :
 #check continuousWithinAt_univ
 
 /-- Example 9.4.2 --/
-example (c x₀:ℝ) : ContinuousWithinAt (fun x ↦ c) .univ x₀ := by sorry
+example (c x₀:ℝ) : ContinuousWithinAt (fun x ↦ c) .univ x₀ := continuousWithinAt_const
 
-example (c x₀:ℝ) : ContinuousAt (fun x ↦ c) x₀ := by sorry
+example (c x₀:ℝ) : ContinuousAt (fun x ↦ c) x₀ := continuousAt_const
 
-example (c:ℝ) : ContinuousOn (fun x:ℝ ↦ c) .univ := by sorry
+example (c:ℝ) : ContinuousOn (fun x:ℝ ↦ c) .univ := continuousOn_const
 
-example (c:ℝ) : Continuous (fun x:ℝ ↦ c) := by sorry
+example (c:ℝ) : Continuous (fun x:ℝ ↦ c) := continuous_const
 
 /-- Example 9.4.3 --/
-example : Continuous (fun x:ℝ ↦ x) := by sorry
+example : Continuous (fun x:ℝ ↦ x) := continuous_id
 
 /-- Example 9.4.4 --/
 example {x₀:ℝ} (h: x₀ ≠ 0) : ContinuousAt Real.sign x₀ := by sorry
@@ -117,15 +117,13 @@ theorem Continuous.exp' (p:ℝ) : ContinuousOn (fun x:ℝ ↦ x ^ p) (.Ioi 0) :=
   sorry
 
 /-- Proposition 9.4.12 -/
-theorem Continuous.abs : Continuous (fun x:ℝ ↦ |x|) := by
-  sorry -- TODO
+theorem Continuous.abs : Continuous (fun x:ℝ ↦ |x|) := continuous_abs
 
 /-- Proposition 9.4.13 / Exercise 9.4.5 -/
 theorem ContinuousWithinAt.comp {X Y: Set ℝ} {f g:ℝ → ℝ} (hf: ∀ x ∈ X, f x ∈ Y) {x₀:ℝ} (hx₀: x ∈ X) (hf_cont: ContinuousWithinAt f X x₀) (hg_cont: ContinuousWithinAt g Y (f x₀)): ContinuousWithinAt (g ∘ f) X x₀ := by sorry
 
 /-- Example 9.4.14 -/
-example : Continuous (fun x:ℝ ↦ 3*x + 1) := by
-  sorry
+example : Continuous (fun x:ℝ ↦ 3*x + 1) := by fun_prop
 
 example : Continuous (fun x:ℝ ↦ (5:ℝ)^x) := by
   sorry
@@ -137,9 +135,11 @@ example : Continuous (fun x:ℝ ↦ |x^2-8*x+8|^(Real.sqrt 2) / (x^2 + 1)) := by
   sorry
 
 /-- Exercise 9.4.6 -/
-theorem ContinuousOn.restrict {X Y:Set ℝ} {f: ℝ → ℝ} (hY: Y ⊆ X) (hf: ContinuousOn f X) : ContinuousOn f Y := by
-  sorry
+theorem ContinuousOn.restrict {X Y:Set ℝ} {f: ℝ → ℝ} (hY: Y ⊆ X) (hf: ContinuousOn f X) : ContinuousOn f Y :=
+  hf.mono hY
 
 /-- Exercise 9.4.7 -/
 theorem Continuous.polynomial {n:ℕ} (c: Fin n → ℝ) : Continuous (fun x:ℝ ↦ ∑ i, c i * x ^ (i:ℕ)) := by
-  sorry
+  apply continuous_finset_sum
+  intro i _
+  fun_prop
