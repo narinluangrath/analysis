@@ -36,7 +36,15 @@ example (x : ℝ) :
   let δ : ℝ := 1/11
   |x-x₀| ≤ δ → |f x - f x₀| ≤ ε := by
   extract_lets f ε x₀ δ
-  sorry
+  intro h
+  simp only [f, ε, x₀, δ, div_one] at *
+  rw [abs_le] at h
+  obtain ⟨h1, h2⟩ := h
+  have hxpos : (0:ℝ) < x := by linarith
+  rw [abs_le]
+  have ha : (0.9:ℝ) ≤ 1/x := by rw [le_div_iff₀ hxpos]; nlinarith
+  have hb : (1:ℝ)/x ≤ 1.1 := by rw [div_le_iff₀ hxpos]; nlinarith
+  constructor <;> linarith
 
 example (x:ℝ) :
   let f : ℝ → ℝ := fun x ↦ 1/x
@@ -45,7 +53,15 @@ example (x:ℝ) :
   let δ : ℝ := 1/1010
   |x-x₀| ≤ δ → |f x - f x₀| ≤ ε := by
   extract_lets -merge f ε x₀ δ -- need the `-merge` flag due to the collision of `ε` and `x₀`
-  sorry
+  intro h
+  simp only [f, ε, x₀, δ] at *
+  rw [abs_le] at h
+  obtain ⟨h1, h2⟩ := h
+  have hxpos : (0:ℝ) < x := by linarith
+  rw [show (1:ℝ)/(0.1:ℝ) = 10 by norm_num, abs_le]
+  have ha : (9.9:ℝ) ≤ 1/x := by rw [le_div_iff₀ hxpos]; nlinarith
+  have hb : (1:ℝ)/x ≤ 10.1 := by rw [div_le_iff₀ hxpos]; nlinarith
+  constructor <;> linarith
 
 example (x:ℝ) :
   let g : ℝ → ℝ := fun x ↦ 2*x
@@ -55,7 +71,7 @@ example (x:ℝ) :
   |x-x₀| ≤ δ → |g x - g x₀| ≤ ε := by
   extract_lets g ε x₀ δ
   intro h; simp only [g]; rw [show 2*x - 2*x₀ = 2*(x - x₀) from by ring]
-  rw [abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]; sorry
+  rw [abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]; simp only [ε, δ] at *; linarith
 
 example (x₀ x : ℝ) :
   let g : ℝ → ℝ := fun x ↦ 2*x
@@ -64,7 +80,7 @@ example (x₀ x : ℝ) :
   |x-x₀| ≤ δ → |g x - g x₀| ≤ ε := by
   extract_lets g ε δ
   intro h; simp only [g]; rw [show 2*x - 2*x₀ = 2*(x - x₀) from by ring]
-  rw [abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]; sorry
+  rw [abs_mul, abs_of_nonneg (by norm_num : (0:ℝ) ≤ 2)]; simp only [ε, δ] at *; linarith
 
 /-- Definition 9.9.2.  Here we use the Mathlib term `UniformContinuousOn` -/
 theorem UniformContinuousOn.iff (f: ℝ → ℝ) (X:Set ℝ) : UniformContinuousOn f X  ↔
