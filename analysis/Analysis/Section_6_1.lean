@@ -228,7 +228,21 @@ theorem Sequence.tendsTo_def (a:Sequence) (L:ℝ) :
 
 /-- Exercise 6.1.2 -/
 theorem Sequence.tendsTo_iff (a:Sequence) (L:ℝ) :
-  a.TendsTo L ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, |a n - L| ≤ ε := by sorry
+  a.TendsTo L ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, |a n - L| ≤ ε := by
+  constructor
+  · intro h ε hε
+    obtain ⟨N, hNm, hclose⟩ := h ε hε
+    refine ⟨max a.m N, fun n hn => ?_⟩
+    have hc := hclose n (by show n ≥ max a.m N; exact hn)
+    rwa [Sequence.from_eval a (le_trans (le_max_right _ _) hn), Real.Close, Real.dist_eq] at hc
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max a.m N, le_max_left _ _, fun n hn => ?_⟩
+    have hm : (a.from (max a.m N)).m = max a.m N := by show max a.m (max a.m N) = max a.m N; omega
+    rw [hm] at hn
+    have hnN : n ≥ N := le_trans (le_max_right _ _) hn
+    rw [Real.Close, Sequence.from_eval a hn, Real.dist_eq]
+    exact hN n hnN
 
 noncomputable def seq_6_1_6 : Sequence := (fun (n:ℕ) ↦ 1-(10:ℝ)^(-(n:ℤ)-1):Sequence)
 
