@@ -205,12 +205,72 @@ abbrev Series.absConverges (s:Series) : Prop := s.abs.converges
 
 abbrev Series.condConverges (s:Series) : Prop := s.converges ∧ ¬ s.absConverges
 
+/-- Splitting a partial sum across a cut point `a ≤ b` (both `≥ s.m`). -/
+theorem Series.partial_split {s:Series} {a:ℤ} (hma: s.m ≤ a) :
+    ∀ b:ℤ, a ≤ b → s.partial b = s.partial a + ∑ k ∈ Finset.Icc (a+1) b, s.seq k := by
+  intro b hab
+  induction b, hab using Int.le_induction with
+  | base => simp [Finset.Icc_eq_empty (by omega : ¬ a+1 ≤ a)]
+  | succ b hb ih =>
+    rw [Series.partial_succ s (by omega), ih,
+      ← Finset.insert_Icc_right_eq_Icc_add_one (by omega : a+1 ≤ b+1),
+      Finset.sum_insert (by simp only [Finset.mem_Icc]; omega)]
+    ring
+
 /-- Proposition 7.2.9 (Absolute convergence test) / Exercise 7.2.4 -/
 theorem Series.converges_of_absConverges {s:Series} (h : s.absConverges) : s.converges := by
-  sorry
+  have habsm : s.abs.m = s.m := rfl
+  have habsseq : ∀ n:ℤ, n ≥ s.m → s.abs.seq n = |s.seq n| := fun n hn =>
+    Series.eval_mk' (fun k ↦ |s.seq (k:ℤ)|) hn
+  have hord : ∀ a b:ℤ, s.m ≤ a → a ≤ b →
+      |s.partial b - s.partial a| ≤ s.abs.partial b - s.abs.partial a := by
+    intro a b hma hab
+    rw [Series.partial_split hma b hab, Series.partial_split (s := s.abs) (by rw [habsm]; exact hma) b hab]
+    simp only [add_sub_cancel_left]
+    refine le_trans (Finset.abs_sum_le_sum_abs _ _) (le_of_eq ?_)
+    apply Finset.sum_congr rfl
+    intro k hk; simp only [Finset.mem_Icc] at hk
+    exact (habsseq k (by omega)).symm
+  obtain ⟨A, hA⟩ := h
+  have hcs : CauchySeq s.partial := by
+    have hcabs : CauchySeq s.abs.partial := hA.cauchySeq
+    rw [Metric.cauchySeq_iff] at hcabs ⊢
+    intro ε hε
+    obtain ⟨N, hN⟩ := hcabs ε hε
+    refine ⟨max N s.m, fun a ha b hb => ?_⟩
+    have hma : s.m ≤ a := le_trans (le_max_right _ _) ha
+    have hmb : s.m ≤ b := le_trans (le_max_right _ _) hb
+    have hNa : N ≤ a := le_trans (le_max_left _ _) ha
+    have hNb : N ≤ b := le_trans (le_max_left _ _) hb
+    rw [Real.dist_eq]
+    rcases le_total a b with hab | hab
+    · calc |s.partial a - s.partial b| = |s.partial b - s.partial a| := abs_sub_comm _ _
+        _ ≤ s.abs.partial b - s.abs.partial a := hord a b hma hab
+        _ ≤ |s.abs.partial b - s.abs.partial a| := le_abs_self _
+        _ = |s.abs.partial a - s.abs.partial b| := abs_sub_comm _ _
+        _ = dist (s.abs.partial a) (s.abs.partial b) := (Real.dist_eq _ _).symm
+        _ < ε := hN a hNa b hNb
+    · calc |s.partial a - s.partial b| ≤ s.abs.partial a - s.abs.partial b := hord b a hmb hab
+        _ ≤ |s.abs.partial a - s.abs.partial b| := le_abs_self _
+        _ = dist (s.abs.partial a) (s.abs.partial b) := (Real.dist_eq _ _).symm
+        _ < ε := hN a hNa b hNb
+  obtain ⟨L, hL⟩ := cauchySeq_tendsto_of_complete hcs
+  exact ⟨L, hL⟩
 
 theorem Series.abs_le {s:Series} (h : s.absConverges) : |s.sum| ≤ s.abs.sum := by
-  sorry
+  have hs : s.convergesTo s.sum := convergesTo_sum (converges_of_absConverges h)
+  have habs : s.abs.convergesTo s.abs.sum := convergesTo_sum h
+  have hpt : ∀ N:ℤ, |s.partial N| ≤ s.abs.partial N := by
+    intro N
+    have heq : s.abs.partial N = ∑ k ∈ Finset.Icc s.m N, |s.seq k| := by
+      unfold Series.partial
+      rw [show s.abs.m = s.m from rfl]
+      apply Finset.sum_congr rfl
+      intro k hk; simp only [Finset.mem_Icc] at hk
+      exact Series.eval_mk' (fun j ↦ |s.seq (j:ℤ)|) hk.1
+    rw [heq]
+    exact Finset.abs_sum_le_sum_abs _ _
+  exact le_of_tendsto_of_tendsto' hs.abs habs hpt
 
 /-- Proposition 7.2.12 (Alternating series test) -/
 theorem Series.converges_of_alternating {m:ℤ} {a: { n // n ≥ m} → ℝ} (ha: ∀ n, a n ≥ 0)
