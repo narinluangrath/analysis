@@ -145,7 +145,51 @@ theorem Series.example_7_2_4'a {N:ℤ} (hN: N ≥ 1) : example_7_2_4'.partial N 
 /-- Proposition 7.2.5 / Exercise 7.2.2 -/
 theorem Series.converges_iff_tail_decay (s:Series) :
     s.converges ↔ ∀ ε > 0, ∃ N ≥ s.m, ∀ p ≥ N, ∀ q ≥ N, |∑ n ∈ Finset.Icc p q, s.seq n| ≤ ε := by
-  sorry
+  have hsum : ∀ p:ℤ, s.m ≤ p → ∀ q:ℤ, p-1 ≤ q →
+      ∑ n ∈ Finset.Icc p q, s.seq n = s.partial q - s.partial (p-1) := by
+    intro p hp q hq
+    induction q, hq using Int.le_induction with
+    | base => rw [Finset.Icc_eq_empty (by omega), Finset.sum_empty, sub_self]
+    | succ q hq ih =>
+      rw [← Finset.insert_Icc_right_eq_Icc_add_one (by omega : p ≤ q+1),
+        Finset.sum_insert (by simp only [Finset.mem_Icc]; omega), ih,
+        Series.partial_succ s (by omega)]
+      ring
+  constructor
+  · intro hconv ε hε
+    have hcs : CauchySeq s.partial := (convergesTo_sum hconv).cauchySeq
+    rw [Metric.cauchySeq_iff] at hcs
+    obtain ⟨N0, hN0⟩ := hcs ε hε
+    refine ⟨max (N0+1) s.m, le_max_right _ _, fun p hp q hq => ?_⟩
+    rcases le_or_gt p q with hpq | hpq
+    · rw [hsum p (le_trans (le_max_right _ _) hp) q (by omega), abs_sub_comm, ← Real.dist_eq]
+      exact le_of_lt (hN0 (p-1) (by omega) q (by omega))
+    · rw [Finset.Icc_eq_empty (by omega : ¬ p ≤ q), Finset.sum_empty, abs_zero]
+      exact le_of_lt hε
+  · intro htail
+    have hcs : CauchySeq s.partial := by
+      rw [Metric.cauchySeq_iff]
+      intro ε hε
+      obtain ⟨N, hN, hcond⟩ := htail (ε/2) (by linarith)
+      refine ⟨max N s.m, fun a ha b hb => ?_⟩
+      have hma : s.m ≤ a := le_trans (le_max_right _ _) ha
+      have hmb : s.m ≤ b := le_trans (le_max_right _ _) hb
+      have hNa : N ≤ a := le_trans (le_max_left _ _) ha
+      have hNb : N ≤ b := le_trans (le_max_left _ _) hb
+      rw [Real.dist_eq]
+      rcases le_total a b with hab | hab
+      · have he : s.partial a - s.partial b = -(∑ n ∈ Finset.Icc (a+1) b, s.seq n) := by
+          have h1 : ((a+1)-1:ℤ) = a := by omega
+          rw [hsum (a+1) (by omega) b (by omega), h1]; ring
+        rw [he, abs_neg]
+        exact lt_of_le_of_lt (hcond (a+1) (by omega) b (by omega)) (by linarith)
+      · have he : s.partial a - s.partial b = ∑ n ∈ Finset.Icc (b+1) a, s.seq n := by
+          have h1 : ((b+1)-1:ℤ) = b := by omega
+          rw [hsum (b+1) (by omega) a (by omega), h1]
+        rw [he]
+        exact lt_of_le_of_lt (hcond (b+1) (by omega) a (by omega)) (by linarith)
+    obtain ⟨L, hL⟩ := cauchySeq_tendsto_of_complete hcs
+    exact ⟨L, hL⟩
 
 /-- Corollary 7.2.6 (Zero test) / Exercise 7.2.3 -/
 theorem Series.decay_of_converges {s:Series} (h: s.converges) :
