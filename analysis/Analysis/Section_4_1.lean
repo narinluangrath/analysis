@@ -452,11 +452,18 @@ theorem Int.sq_nonneg' (n:Int) : ∃ (m:Nat), n*n = m := by
   This requires some familiarity with the API for Mathlib's version of the integers.
 -/
 abbrev Int.equivInt : Int ≃ ℤ where
-  toFun := Quotient.lift (fun ⟨ a, b ⟩ ↦ a - b) (by
-    sorry)
-  invFun := sorry
-  left_inv n := sorry
-  right_inv n := sorry
+  toFun := Quotient.lift (fun ⟨ a, b ⟩ ↦ (a:ℤ) - b) (by
+    intro ⟨a,b⟩ ⟨c,d⟩ h
+    rw [PreInt.eq] at h
+    push_cast; omega)
+  invFun z := (z.toNat) —— ((-z).toNat)
+  left_inv n := by
+    obtain ⟨a, b, rfl⟩ := eq_diff n
+    show ((((a:ℤ) - b).toNat) —— ((-((a:ℤ) - b)).toNat)) = a —— b
+    rw [Int.eq]; omega
+  right_inv z := by
+    show ((z.toNat:ℤ) - ((-z).toNat)) = z
+    omega
 
 /-- Not in textbook: equivalence preserves order and ring operations -/
 abbrev Int.equivInt_ordered_ring : Int ≃+*o ℤ where
