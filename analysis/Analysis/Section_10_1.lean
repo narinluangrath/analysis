@@ -84,7 +84,10 @@ example (X: Set ℝ) (x₀ : ℝ) {f g: ℝ → ℝ} (L:ℝ) (hfg: f = g):
 
 example : ∃ (X: Set ℝ) (x₀ :ℝ) (f g: ℝ → ℝ) (L:ℝ) (hfg: f x₀ = g x₀),
   HasDerivWithinAt f L X x₀ ∧ ¬ HasDerivWithinAt g L X x₀ := by
-  sorry
+  refine ⟨Set.univ, 0, id, abs, 1, by simp, hasDerivWithinAt_id 0 _, ?_⟩
+  rw [hasDerivWithinAt_univ]
+  intro h
+  exact not_differentiableAt_abs_zero h.differentiableAt
 
 /-- Example 10.1.6 -/
 
