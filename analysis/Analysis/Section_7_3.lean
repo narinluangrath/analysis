@@ -103,7 +103,19 @@ theorem Series.converges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series
   filter_upwards [Filter.eventually_ge_atTop (0:ℤ)] with N hN
   exact (Series.partial_coe_eq_range N hN).symm
 
-theorem Series.absConverges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series).absConverges := by sorry
+theorem Series.absConverges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series).absConverges := by
+  have hpe : (fun n ↦ x ^ n : Series).abs.partial = ((fun n:ℕ ↦ |x|^n):Series).partial := by
+    funext N
+    unfold Series.partial
+    apply Finset.sum_congr rfl
+    intro n _
+    by_cases hn : n ≥ 0
+    · simp [Series.abs, Series.mk', Series.instCoe, hn, abs_pow]
+    · simp [Series.abs, Series.mk', Series.instCoe, hn]
+  refine ⟨1/(1-|x|), ?_⟩
+  unfold Series.convergesTo
+  rw [hpe]
+  exact converges_geom (show |(|x|)| < 1 by rw [abs_abs]; exact hx)
 
 theorem Series.diverges_geom {x: ℝ} (hx: |x| ≥ 1) : (fun n ↦ x ^ n : Series).diverges := by
   apply Series.diverges_of_nodecay
