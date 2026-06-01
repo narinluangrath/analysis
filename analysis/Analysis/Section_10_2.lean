@@ -89,13 +89,15 @@ theorem IsLocalMinOn.of_restrict {X Y:Set ℝ} (hXY: Y ⊆ X) (f:ℝ → ℝ) (x
 theorem IsLocalMaxOn.deriv_eq_zero {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} {x₀:ℝ}
   (hx₀: x₀ ∈ Set.Ioo a b) (h: IsLocalMaxOn f (.Ioo a b) x₀) {L:ℝ}
   (hderiv: HasDerivWithinAt f L (.Ioo a b) x₀) : L = 0 := by
-  sorry
+  have hnhds : Set.Ioo a b ∈ nhds x₀ := Ioo_mem_nhds hx₀.1 hx₀.2
+  exact (h.isLocalMax hnhds).hasDerivAt_eq_zero (hderiv.hasDerivAt hnhds)
 
 /-- Proposition 10.2.6 (Local extrema are stationary) / Exercise 10.2.1 -/
 theorem IsLocalMinOn.deriv_eq_zero {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} {x₀:ℝ}
   (hx₀: x₀ ∈ Set.Ioo a b) (h: IsLocalMinOn f (.Ioo a b) x₀) {L:ℝ}
   (hderiv: HasDerivWithinAt f L (.Ioo a b) x₀) : L = 0 := by
-  sorry
+  have hnhds : Set.Ioo a b ∈ nhds x₀ := Ioo_mem_nhds hx₀.1 hx₀.2
+  exact (h.isLocalMin hnhds).hasDerivAt_eq_zero (hderiv.hasDerivAt hnhds)
 
 theorem IsMaxOn.deriv_eq_zero_counter : ∃ (a b:ℝ) (hab: a < b) (f:ℝ → ℝ)
   (x₀:ℝ) (hx₀: x₀ ∈ Set.Icc a b) (h: IsMaxOn f (.Icc a b) x₀) (L:ℝ)
