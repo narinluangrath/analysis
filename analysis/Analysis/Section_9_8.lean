@@ -38,27 +38,46 @@ theorem StrictAntitone.iff {X: Set ℝ} (f: ℝ → ℝ) : StrictAntiOn f X  ↔
   constructor <;> intros <;> solve_by_elim
 
 /-- Examples 9.8.2 -/
-example : StrictMonoOn (fun x:ℝ ↦ x^2) (.Ici 0) := by sorry
+example : StrictMonoOn (fun x:ℝ ↦ x^2) (.Ici 0) := by
+  intro a ha b hb hab; simp only [Set.mem_Ici] at ha hb; nlinarith
 
-example : StrictAntiOn (fun x:ℝ ↦ x^2) (.Iic 0) := by sorry
+example : StrictAntiOn (fun x:ℝ ↦ x^2) (.Iic 0) := by
+  intro a ha b hb hab; simp only [Set.mem_Iic] at ha hb; nlinarith
 
-example : ¬ MonotoneOn (fun x:ℝ ↦ x^2) .univ := by sorry
+example : ¬ MonotoneOn (fun x:ℝ ↦ x^2) .univ := by
+  intro h; have := h (Set.mem_univ (-1)) (Set.mem_univ 0) (by norm_num); norm_num at this
 
-example : ¬ AntitoneOn (fun x:ℝ ↦ x^2) .univ := by sorry
+example : ¬ AntitoneOn (fun x:ℝ ↦ x^2) .univ := by
+  intro h; have := h (Set.mem_univ 0) (Set.mem_univ 1) (by norm_num); norm_num at this
 
-example {X:Set ℝ} {f:ℝ → ℝ} (hf: StrictMonoOn f X) : MonotoneOn f X := by sorry
+example {X:Set ℝ} {f:ℝ → ℝ} (hf: StrictMonoOn f X) : MonotoneOn f X := hf.monotoneOn
 
-example (X:Set ℝ) : MonotoneOn (fun x:ℝ ↦ (6:ℝ)) X := by sorry
+example (X:Set ℝ) : MonotoneOn (fun x:ℝ ↦ (6:ℝ)) X := monotoneOn_const
 
-example (X:Set ℝ) : AntitoneOn (fun x:ℝ ↦ (6:ℝ)) X := by sorry
+example (X:Set ℝ) : AntitoneOn (fun x:ℝ ↦ (6:ℝ)) X := antitoneOn_const
 
 #check nontrivial_iff
 
-example {X:Set ℝ} (hX: Nontrivial X) : ¬ StrictMonoOn (fun x:ℝ ↦ (6:ℝ)) X := by sorry
+example {X:Set ℝ} (hX: Nontrivial X) : ¬ StrictMonoOn (fun x:ℝ ↦ (6:ℝ)) X := by
+  intro h
+  obtain ⟨x, y, hxy⟩ := exists_pair_ne X
+  rcases lt_trichotomy x.val y.val with hlt | heq | hgt
+  · exact absurd (h x.2 y.2 hlt) (by norm_num)
+  · exact hxy (Subtype.ext heq)
+  · exact absurd (h y.2 x.2 hgt) (by norm_num)
 
-example (X:Set ℝ) (hX: Nontrivial X) : ¬ StrictAntiOn (fun x:ℝ ↦ (6:ℝ)) X := by sorry
+example (X:Set ℝ) (hX: Nontrivial X) : ¬ StrictAntiOn (fun x:ℝ ↦ (6:ℝ)) X := by
+  intro h
+  obtain ⟨x, y, hxy⟩ := exists_pair_ne X
+  rcases lt_trichotomy x.val y.val with hlt | heq | hgt
+  · exact absurd (h x.2 y.2 hlt) (by norm_num)
+  · exact hxy (Subtype.ext heq)
+  · exact absurd (h y.2 x.2 hgt) (by norm_num)
 
-example : ∃ (X:Set ℝ) (f:ℝ → ℝ), ContinuousOn f X ∧ ¬ MonotoneOn f X ∧ ¬ AntitoneOn f X := by sorry
+example : ∃ (X:Set ℝ) (f:ℝ → ℝ), ContinuousOn f X ∧ ¬ MonotoneOn f X ∧ ¬ AntitoneOn f X := by
+  refine ⟨Set.univ, fun x => x^2, by fun_prop, ?_, ?_⟩
+  · intro h; have := h (Set.mem_univ (-1)) (Set.mem_univ 0) (by norm_num); norm_num at this
+  · intro h; have := h (Set.mem_univ 0) (Set.mem_univ 1) (by norm_num); norm_num at this
 
 example : ∃ (X:Set ℝ) (f:ℝ → ℝ), MonotoneOn f X ∧ ¬ ContinuousOn f X := by sorry
 
