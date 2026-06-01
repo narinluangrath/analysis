@@ -468,8 +468,27 @@ abbrev Int.equivInt : Int ≃ ℤ where
 /-- Not in textbook: equivalence preserves order and ring operations -/
 abbrev Int.equivInt_ordered_ring : Int ≃+*o ℤ where
   toEquiv := equivInt
-  map_add' := by sorry
-  map_mul' := by sorry
-  map_le_map_iff' := by sorry
+  map_add' := by
+    intro x y
+    obtain ⟨a,b,rfl⟩ := eq_diff x; obtain ⟨c,d,rfl⟩ := eq_diff y
+    show ((((a + c : ℕ)):ℤ) - ((b + d : ℕ))) = ((a:ℤ) - b) + ((c:ℤ) - d)
+    push_cast; ring
+  map_mul' := by
+    intro x y
+    obtain ⟨a,b,rfl⟩ := eq_diff x; obtain ⟨c,d,rfl⟩ := eq_diff y
+    show ((((a*c + b*d : ℕ)):ℤ) - ((a*d + b*c : ℕ))) = ((a:ℤ) - b) * ((c:ℤ) - d)
+    push_cast; ring
+  map_le_map_iff' := by
+    intro x y
+    obtain ⟨a,b,rfl⟩ := eq_diff x; obtain ⟨c,d,rfl⟩ := eq_diff y
+    show ((a:ℤ) - b ≤ (c:ℤ) - d) ↔ (a —— b ≤ c —— d)
+    rw [le_iff]
+    constructor
+    · intro h
+      refine ⟨c + b - (a + d), ?_⟩
+      rw [natCast_eq, add_eq, Int.eq]; omega
+    · rintro ⟨t, ht⟩
+      rw [natCast_eq, add_eq, Int.eq] at ht
+      omega
 
 end Section_4_1
