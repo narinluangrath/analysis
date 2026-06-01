@@ -141,14 +141,17 @@ theorem exist_tendsTo_sup_of_closed {E: Set ℝ} (hnon: E.Nonempty) (hbound: Bdd
 /-- Proposition 8.4.7 / Exercise 8.4.1 -/
 theorem exists_function {X Y : Type} {P : X → Y → Prop} (h: ∀ x, ∃ y, P x y) :
   ∃ f : X → Y, ∀ x, P x (f x) := by
-  sorry
+  choose f hf using h
+  exact ⟨f, hf⟩
 
 /-- Exercise 8.4.1.  The spirit of the question here is to establish this result directly
 from `exists_function`, avoiding previous results that relied more explicitly
 on the axiom of choice. -/
 theorem axiom_of_choice_from_exists_function {I: Type} {X: I → Type} (h : ∀ i, Nonempty (X i)) :
   Nonempty (∀ i, X i) := by
-  sorry
+  obtain ⟨f, hf⟩ := exists_function (P := fun (i:I) (y: Σ i, X i) => y.1 = i)
+    (fun i => (h i).elim (fun x => ⟨⟨i, x⟩, rfl⟩))
+  exact ⟨fun i => (hf i) ▸ (f i).2⟩
 
 /-- Exercise 8.4.2 -/
 theorem exists_set_singleton_intersect {I U:Type} {X: I → Set U} (h: Set.PairwiseDisjoint .univ X)
@@ -166,13 +169,17 @@ theorem axiom_of_choice_from_exists_set_singleton_intersect {I: Type} {X: I → 
 /-- Exercise 8.4.3 -/
 theorem Function.Injective.inv_surjective {A B:Type} {g: B → A} (hg: Function.Surjective g) :
   ∃ f : A → B, Function.Injective f ∧ Function.RightInverse f g := by
-  sorry
+  obtain ⟨f, hf⟩ := hg.hasRightInverse
+  exact ⟨f, hf.injective, hf⟩
 
 /-- Exercise 8.4.3.  The spirit of the question here is to establish this result directly
 from `Function.Injective.inv_surjective`, avoiding previous results that relied more explicitly
 on the axiom of choice. -/
 theorem axiom_of_choice_from_function_injective_inv_surjective {I: Type} {X: I → Type} (h : ∀ i, Nonempty (X i)) :
   Nonempty (∀ i, X i) := by
-  sorry
+  have hg : Function.Surjective (fun p : Σ i, X i => p.1) :=
+    fun i => (h i).elim (fun x => ⟨⟨i, x⟩, rfl⟩)
+  obtain ⟨f, _, hf⟩ := Function.Injective.inv_surjective hg
+  exact ⟨fun i => (hf i) ▸ (f i).2⟩
 
 end Chapter8
