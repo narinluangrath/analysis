@@ -231,7 +231,21 @@ theorem Series.add_coe (a b: ℕ → ℝ) : (a:Series) + (b:Series) = (fun n ↦
 /-- Proposition 7.2.14 (a) (Series laws) / Exercise 7.2.5.  The `convergesTo` form can be more convenient for applications. -/
 theorem Series.convergesTo.add {s t:Series} {L M: ℝ} (hs: s.convergesTo L) (ht: t.convergesTo M) :
     (s + t).convergesTo (L + M) := by
-  sorry
+  have key : ∀ N, (s+t).partial N = s.partial N + t.partial N := by
+    intro N
+    show ∑ n ∈ Finset.Icc (min s.m t.m) N, (s.seq n + t.seq n) = s.partial N + t.partial N
+    rw [Finset.sum_add_distrib]
+    congr 1
+    · symm
+      apply Finset.sum_subset (Finset.Icc_subset_Icc_left (min_le_left _ _))
+      intro n hn hn'; simp only [Finset.mem_Icc] at hn hn'; exact s.vanish n (by omega)
+    · symm
+      apply Finset.sum_subset (Finset.Icc_subset_Icc_left (min_le_right _ _))
+      intro n hn hn'; simp only [Finset.mem_Icc] at hn hn'; exact t.vanish n (by omega)
+  have hpe : (s+t).partial = fun N => s.partial N + t.partial N := funext key
+  show Filter.Tendsto (s+t).partial Filter.atTop (nhds (L+M))
+  rw [hpe]
+  exact Filter.Tendsto.add hs ht
 
 theorem Series.add {s t:Series} (hs: s.converges) (ht: t.converges) :
     (s + t).converges ∧ (s+t).sum = s.sum + t.sum := by sorry
