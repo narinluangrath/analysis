@@ -110,14 +110,27 @@ example : ¬ ∃ L, (nhdsWithin 0 (.univ \ {0})).Tendsto (fun x ↦ (f_10_1_6 x 
 example : ¬ DifferentiableWithinAt ℝ f_10_1_6 (.univ) 0 := by
   rw [differentiableWithinAt_univ]; exact not_differentiableAt_abs_zero
 
-example : DifferentiableWithinAt ℝ f_10_1_6 (.Ioi 0) 0 := by
-  sorry
+theorem hasDerivWithinAt_abs_Ioi : HasDerivWithinAt f_10_1_6 1 (Set.Ioi 0) 0 := by
+  apply (hasDerivWithinAt_id 0 (Set.Ioi 0)).congr
+  · intro y hy; exact abs_of_pos hy
+  · exact abs_zero
 
-example : derivWithin f_10_1_6 (.Ioi 0) 0 = 1 := by sorry
+theorem hasDerivWithinAt_abs_Iio : HasDerivWithinAt f_10_1_6 (-1) (Set.Iio 0) 0 := by
+  apply ((hasDerivWithinAt_id 0 (Set.Iio 0)).neg).congr
+  · intro y hy; exact abs_of_neg hy
+  · simp
 
-example : DifferentiableWithinAt ℝ f_10_1_6 (.Iio 0) 0 := by sorry
+example : DifferentiableWithinAt ℝ f_10_1_6 (.Ioi 0) 0 :=
+  hasDerivWithinAt_abs_Ioi.differentiableWithinAt
 
-example : derivWithin f_10_1_6 (.Iio 0) 0 = -1 := by sorry
+example : derivWithin f_10_1_6 (.Ioi 0) 0 = 1 :=
+  hasDerivWithinAt_abs_Ioi.derivWithin (uniqueDiffWithinAt_Ioi 0)
+
+example : DifferentiableWithinAt ℝ f_10_1_6 (.Iio 0) 0 :=
+  hasDerivWithinAt_abs_Iio.differentiableWithinAt
+
+example : derivWithin f_10_1_6 (.Iio 0) 0 = -1 :=
+  hasDerivWithinAt_abs_Iio.derivWithin (uniqueDiffWithinAt_Iio 0)
 
 /-- Proposition 10.1.7 (Newton's approximation) / Exercise 10.1.2 -/
 theorem _root_.HasDerivWithinAt.iff_approx_linear (X: Set ℝ) (x₀ :ℝ) (f: ℝ → ℝ) (L:ℝ) :
