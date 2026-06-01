@@ -29,12 +29,22 @@ example {f: ℕ → ℕ} (hf: StrictMono f) : Function.Injective f := hf.injecti
 example :
     Sequence.subseq (fun n ↦ if Even n then 1 + (10:ℝ)^(-(n/2:ℤ)-1) else (10:ℝ)^(-(n/2:ℤ)-1))
     (fun n ↦ 1 + (10:ℝ)^(-(n:ℤ)-1)) := by
-  sorry
+  refine ⟨fun n => 2*n, ?_, fun n => ?_⟩
+  · intro x y h; show 2*x < 2*y; omega
+  · dsimp only
+    rw [if_pos (even_two_mul n)]
+    congr 2
+    omega
 
 example :
     Sequence.subseq (fun n ↦ if Even n then 1 + (10:ℝ)^(-(n/2:ℤ)-1) else (10:ℝ)^(-(n/2:ℤ)-1))
     (fun n ↦ (10:ℝ)^(-(n:ℤ)-1)) := by
-  sorry
+  refine ⟨fun n => 2*n+1, ?_, fun n => ?_⟩
+  · intro x y h; show 2*x+1 < 2*y+1; omega
+  · dsimp only
+    rw [if_neg (by simp [Nat.even_add_one, Nat.even_mul, parity_simps])]
+    congr 2
+    omega
 
 /-- Lemma 6.6.4 / Exercise 6.6.1 -/
 theorem Sequence.subseq_self (a:ℕ → ℝ) : Sequence.subseq a a := ⟨id, strictMono_id, fun _ => rfl⟩
