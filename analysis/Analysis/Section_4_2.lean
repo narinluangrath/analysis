@@ -560,12 +560,26 @@ instance Rat.instLinearOrder : LinearOrder Rat where
 
 /-- (Not from textbook) Rat has the structure of a strict ordered ring. -/
 instance Rat.instIsStrictOrderedRing : IsStrictOrderedRing Rat where
-  add_le_add_left := by sorry
-  add_le_add_right := by sorry
-  mul_lt_mul_of_pos_left := by sorry
-  mul_lt_mul_of_pos_right := by sorry
-  le_of_add_le_add_left := by sorry
-  zero_le_one := by sorry
+  add_le_add_left a b hab c := by
+    rcases hab with h | rfl
+    · exact Or.inl (add_lt_add_right c h)
+    · exact Or.inr rfl
+  mul_lt_mul_of_pos_left a ha b c hbc := by
+    have hapos : a.isPos := by rw [← sub_zero a]; exact (gt_iff a 0).mp ha
+    rw [mul_comm a b, mul_comm a c]; exact mul_lt_mul_right hbc hapos
+  mul_lt_mul_of_pos_right a ha b c hbc := by
+    have hapos : a.isPos := by rw [← sub_zero a]; exact (gt_iff a 0).mp ha
+    exact mul_lt_mul_right hbc hapos
+  le_of_add_le_add_left a b c h := by
+    rcases h with h | h
+    · left; have := add_lt_add_right (-a) h; simpa using this
+    · right; exact add_left_cancel h
+  zero_le_one := by
+    left
+    show (1:Rat) > 0
+    rw [gt_iff, sub_zero]
+    refine ⟨1, 1, one_pos, one_pos, ?_⟩
+    rw [Int.cast_one, div_one]
 
 /-- Exercise 4.2.6 -/
 theorem Rat.mul_lt_mul_right_of_neg (x y z:Rat) (hxy: x < y) (hz: z.isNeg) : x * z > y * z := by
