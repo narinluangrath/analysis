@@ -403,7 +403,15 @@ theorem Rat.not_zero_and_neg (x:Rat) : ¬(x = 0 ∧ x.isNeg) := by
   exact not_zero_and_pos r ⟨neg_eq_zero.mp hrneg.symm, hr⟩
 
 /-- Lemma 4.2.7 (trichotomy of rationals) / Exercise 4.2.4 -/
-theorem Rat.not_pos_and_neg (x:Rat) : ¬(x.isPos ∧ x.isNeg) := by sorry
+theorem Rat.intCast_ne_zero {a:ℤ} (ha: a ≠ 0) : (a:Rat) ≠ 0 := fun h => ha (coe_Int_inj h)
+
+theorem Rat.not_pos_and_neg (x:Rat) : ¬(x.isPos ∧ x.isNeg) := by
+  rintro ⟨⟨a, b, ha, hb, hab⟩, r, ⟨c, d, hc, hd, hcd⟩, hxr⟩
+  have hbne : (b:Rat) ≠ 0 := intCast_ne_zero (by omega)
+  have hdne : (d:Rat) ≠ 0 := intCast_ne_zero (by omega)
+  rw [hab, hcd, show -((c:Rat)/(d:Rat)) = ((-c:ℤ):Rat)/((d:ℤ):Rat) by push_cast; ring,
+      div_eq_div_iff hbne hdne, intCast_mul, intCast_mul, coe_Int_inj.eq_iff] at hxr
+  nlinarith [mul_pos ha hd, mul_pos hc hb]
 
 /-- Definition 4.2.8 (Ordering of the rationals) -/
 instance Rat.instLT : LT Rat where
@@ -435,28 +443,59 @@ theorem Rat.ge_iff (x y:Rat) : x ≥ y ↔ (x > y) ∨ (x = y) := by
     · exact Or.inr h.symm
 
 /-- Proposition 4.2.9(a) (order trichotomy) / Exercise 4.2.5 -/
-theorem Rat.trichotomous' (x y:Rat) : x > y ∨ x < y ∨ x = y := by sorry
+theorem Rat.trichotomous' (x y:Rat) : x > y ∨ x < y ∨ x = y := by
+  rcases trichotomous (x - y) with h | h | h
+  · right; right; exact sub_eq_zero.mp h
+  · left; rw [gt_iff]; exact h
+  · right; left; rw [lt_iff]; exact h
 
 /-- Proposition 4.2.9(a) (order trichotomy) / Exercise 4.2.5 -/
-theorem Rat.not_gt_and_lt (x y:Rat) : ¬ (x > y ∧ x < y):= by sorry
+theorem Rat.not_gt_and_lt (x y:Rat) : ¬ (x > y ∧ x < y):= by
+  rintro ⟨hgt, hlt⟩
+  rw [gt_iff] at hgt; rw [lt_iff] at hlt
+  exact not_pos_and_neg _ ⟨hgt, hlt⟩
 
 /-- Proposition 4.2.9(a) (order trichotomy) / Exercise 4.2.5 -/
-theorem Rat.not_gt_and_eq (x y:Rat) : ¬ (x > y ∧ x = y):= by sorry
+theorem Rat.not_gt_and_eq (x y:Rat) : ¬ (x > y ∧ x = y):= by
+  rintro ⟨hgt, rfl⟩
+  rw [gt_iff] at hgt
+  exact not_zero_and_pos _ ⟨sub_self _, hgt⟩
 
 /-- Proposition 4.2.9(a) (order trichotomy) / Exercise 4.2.5 -/
-theorem Rat.not_lt_and_eq (x y:Rat) : ¬ (x < y ∧ x = y):= by sorry
+theorem Rat.not_lt_and_eq (x y:Rat) : ¬ (x < y ∧ x = y):= by
+  rintro ⟨hlt, rfl⟩
+  rw [lt_iff] at hlt
+  exact not_zero_and_neg _ ⟨sub_self _, hlt⟩
 
 /-- Proposition 4.2.9(b) (order is anti-symmetric) / Exercise 4.2.5 -/
-theorem Rat.antisymm (x y:Rat) : x < y ↔ y > x := by sorry
+theorem Rat.antisymm (x y:Rat) : x < y ↔ y > x := Iff.rfl
 
 /-- Proposition 4.2.9(c) (order is transitive) / Exercise 4.2.5 -/
-theorem Rat.lt_trans {x y z:Rat} (hxy: x < y) (hyz: y < z) : x < z := by sorry
+theorem Rat.lt_trans {x y z:Rat} (hxy: x < y) (hyz: y < z) : x < z := by
+  rw [lt_iff] at *
+  obtain ⟨r1, ⟨a,b,ha,hb,hr1⟩, hxy1⟩ := hxy
+  obtain ⟨r2, ⟨c,d,hc,hd,hr2⟩, hyz1⟩ := hyz
+  refine ⟨r1 + r2, ⟨a*d+b*c, b*d, ?_, ?_, ?_⟩, by linear_combination hxy1 + hyz1⟩
+  · have := mul_pos ha hd; have := mul_pos hb hc; omega
+  · exact mul_pos hb hd
+  · rw [hr1, hr2, div_add_div _ _ (intCast_ne_zero (by omega)) (intCast_ne_zero (by omega))]
+    push_cast; ring
 
 /-- Proposition 4.2.9(d) (addition preserves order) / Exercise 4.2.5 -/
-theorem Rat.add_lt_add_right {x y:Rat} (z:Rat) (hxy: x < y) : x + z < y + z := by sorry
+theorem Rat.add_lt_add_right {x y:Rat} (z:Rat) (hxy: x < y) : x + z < y + z := by
+  rw [lt_iff] at *
+  obtain ⟨r, hr, hxy1⟩ := hxy
+  exact ⟨r, hr, by linear_combination hxy1⟩
 
 /-- Proposition 4.2.9(e) (positive multiplication preserves order) / Exercise 4.2.5 -/
-theorem Rat.mul_lt_mul_right {x y z:Rat} (hxy: x < y) (hz: z.isPos) : x * z < y * z := by sorry
+theorem Rat.mul_lt_mul_right {x y z:Rat} (hxy: x < y) (hz: z.isPos) : x * z < y * z := by
+  rw [lt_iff] at *
+  obtain ⟨r, hr, hxy1⟩ := hxy
+  refine ⟨r * z, ?_, by linear_combination z * hxy1⟩
+  obtain ⟨a,b,ha,hb,hr1⟩ := hr
+  obtain ⟨c,d,hc,hd,hz1⟩ := hz
+  exact ⟨a*c, b*d, mul_pos ha hc, mul_pos hb hd, by
+    rw [hr1, hz1, div_mul_div_comm]; push_cast; ring⟩
 
 /-- (Not from textbook) Establish the decidability of this order. -/
 instance Rat.decidableRel : DecidableRel (· ≤ · : Rat → Rat → Prop) := by
