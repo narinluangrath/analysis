@@ -874,11 +874,23 @@ theorem Sequence.max_coe (a b: ℕ → ℝ) : (a:Sequence) ⊔ (b:Sequence) = (f
     in applications. -/
 theorem Sequence.tendsTo_max {a b:Sequence} {L M:ℝ} (ha: a.TendsTo L) (hb: b.TendsTo M) :
     (max a b).TendsTo (max L M) := by
-  sorry
+  rw [tendsTo_iff] at ha hb ⊢
+  intro ε hε
+  obtain ⟨Na, hNa⟩ := ha ε hε
+  obtain ⟨Nb, hNb⟩ := hb ε hε
+  refine ⟨max Na Nb, fun n hn => ?_⟩
+  have h1 := hNa n (le_trans (le_max_left _ _) hn)
+  have h2 := hNb n (le_trans (le_max_right _ _) hn)
+  rw [Sequence.max_eval]
+  exact le_trans (abs_max_sub_max_le_max _ _ _ _) (max_le h1 h2)
 
 theorem Sequence.lim_max {a b:Sequence} (ha: a.Convergent) (hb: b.Convergent) :
     (max a b).Convergent ∧ lim (max a b) = max (lim a) (lim b) := by
-  sorry
+  have hmax := tendsTo_max (lim_def ha) (lim_def hb)
+  have hconv : (max a b).Convergent := ⟨_, hmax⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (max a b) hne ⟨lim_def hconv, hmax⟩
 
 instance Sequence.inst_min : Min Sequence where
   min a b := {
@@ -897,15 +909,27 @@ theorem Sequence.min_coe (a b: ℕ → ℝ) : (a:Sequence) ⊓ (b:Sequence) = (f
 /-- Theorem 6.1.19(h) (limit laws) -/
 theorem Sequence.tendsTo_min {a b:Sequence} {L M:ℝ} (ha: a.TendsTo L) (hb: b.TendsTo M) :
     (min a b).TendsTo (min L M) := by
-  sorry
+  rw [tendsTo_iff] at ha hb ⊢
+  intro ε hε
+  obtain ⟨Na, hNa⟩ := ha ε hε
+  obtain ⟨Nb, hNb⟩ := hb ε hε
+  refine ⟨max Na Nb, fun n hn => ?_⟩
+  have h1 := hNa n (le_trans (le_max_left _ _) hn)
+  have h2 := hNb n (le_trans (le_max_right _ _) hn)
+  rw [Sequence.min_eval]
+  exact le_trans (abs_min_sub_min_le_max _ _ _ _) (max_le h1 h2)
 
 theorem Sequence.lim_min {a b:Sequence} (ha: a.Convergent) (hb: b.Convergent) :
     (min a b).Convergent ∧ lim (min a b) = min (lim a) (lim b) := by
-  sorry
+  have hmin := tendsTo_min (lim_def ha) (lim_def hb)
+  have hconv : (min a b).Convergent := ⟨_, hmin⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (min a b) hne ⟨lim_def hconv, hmin⟩
 
 /-- Exercise 6.1.1 -/
-theorem Sequence.mono_if {a: ℕ → ℝ} (ha: ∀ n, a (n+1) > a n) {n m:ℕ} (hnm: m > n) : a m > a n := by
-  sorry
+theorem Sequence.mono_if {a: ℕ → ℝ} (ha: ∀ n, a (n+1) > a n) {n m:ℕ} (hnm: m > n) : a m > a n :=
+  strictMono_nat_of_lt_succ (fun k => ha k) hnm
 
 /-- Exercise 6.1.3 -/
 theorem Sequence.tendsTo_of_from {a: Sequence} {c:ℝ} (m:ℤ) :
