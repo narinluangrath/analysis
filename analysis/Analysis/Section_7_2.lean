@@ -412,7 +412,31 @@ theorem Series.converges_of_alternating {m:ℤ} {a: { n // n ≥ m} → ℝ} (ha
 noncomputable abbrev Series.example_7_2_13 : Series := (mk' (m:=1) (fun n ↦ (-1:ℝ)^(n:ℤ) / (n:ℤ)))
 
 theorem Series.example_7_2_13a : example_7_2_13.converges := by
-  sorry
+  set a : {n:ℤ // n ≥ 1} → ℝ := fun n => 1 / ((n:ℤ):ℝ) with ha_def
+  have ha : ∀ n, a n ≥ 0 := by
+    intro n
+    have h1 : (0:ℝ) < ((n:ℤ):ℝ) := by have := n.2; exact_mod_cast (show (0:ℤ) < (n:ℤ) by omega)
+    simp only [ha_def, ge_iff_le]; exact div_nonneg zero_le_one h1.le
+  have ha' : Antitone a := by
+    intro x y hxy
+    have hx : (0:ℝ) < ((x:ℤ):ℝ) := by have := x.2; exact_mod_cast (show (0:ℤ) < (x:ℤ) by omega)
+    have hxy0 : (x:ℤ) ≤ (y:ℤ) := hxy
+    have hxy' : ((x:ℤ):ℝ) ≤ ((y:ℤ):ℝ) := by exact_mod_cast hxy0
+    simp only [ha_def]; exact one_div_le_one_div_of_le hx hxy'
+  have hval : Filter.Tendsto (fun n:{k:ℤ//k≥1} => (n:ℤ)) Filter.atTop Filter.atTop :=
+    (Filter.tendsto_comp_val_Ici_atTop (a:=(1:ℤ)) (f := id)).mpr Filter.tendsto_id
+  have h1z : Filter.Tendsto (fun z:ℤ => (1:ℝ)/(z:ℝ)) Filter.atTop (nhds 0) := by
+    simp only [one_div]
+    exact tendsto_inv_atTop_zero.comp tendsto_intCast_atTop_atTop
+  have hadecay : Filter.Tendsto a Filter.atTop (nhds 0) := h1z.comp hval
+  have heq : example_7_2_13 = mk' (fun n => (-1:ℝ)^(n:ℤ) * a n) := by
+    show mk' (m := 1) (fun n => (-1:ℝ)^(n:ℤ) / ((n:ℤ):ℝ)) = mk' (fun n => (-1:ℝ)^(n:ℤ) * a n)
+    congr 1
+    funext n
+    simp only [ha_def]
+    rw [div_eq_mul_one_div]
+  rw [heq]
+  exact (converges_of_alternating ha ha').mpr hadecay
 
 theorem Series.example_7_2_13b : ¬ example_7_2_13.absConverges := by
   sorry
