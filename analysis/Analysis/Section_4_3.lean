@@ -112,45 +112,70 @@ theorem dist_le (x y z:ℚ) : dist x z ≤ dist x y + dist y z := abs_sub_le x y
 theorem close_iff (ε x y:ℚ): ε.Close x y ↔ |x - y| ≤ ε := by rfl
 
 /-- Examples 4.3.6 -/
-example : (0.1:ℚ).Close (0.99:ℚ) (1.01:ℚ) := by sorry
+example : (0.1:ℚ).Close (0.99:ℚ) (1.01:ℚ) := by rw [close_iff]; norm_num [abs_le]
 
 /-- Examples 4.3.6 -/
-example : ¬ (0.01:ℚ).Close (0.99:ℚ) (1.01:ℚ) := by sorry
+example : ¬ (0.01:ℚ).Close (0.99:ℚ) (1.01:ℚ) := by rw [close_iff]; norm_num [abs_le]
 
 /-- Examples 4.3.6 -/
-example (ε : ℚ) (hε : ε > 0) : ε.Close 2 2 := by sorry
+example (ε : ℚ) (hε : ε > 0) : ε.Close 2 2 := by rw [close_iff]; simpa using le_of_lt hε
 
-theorem close_refl (x:ℚ) : (0:ℚ).Close x x := by sorry
+theorem close_refl (x:ℚ) : (0:ℚ).Close x x := by rw [close_iff]; simp
 
 /-- Proposition 4.3.7(a) / Exercise 4.3.2 -/
-theorem eq_if_close (x y:ℚ) : x = y ↔ ∀ ε:ℚ, ε > 0 → ε.Close x y := by sorry
+theorem eq_if_close (x y:ℚ) : x = y ↔ ∀ ε:ℚ, ε > 0 → ε.Close x y := by
+  constructor
+  · rintro rfl ε hε; rw [close_iff]; simpa using le_of_lt hε
+  · intro h
+    by_contra hne
+    have hpos : 0 < |x - y| := abs_pos.mpr (sub_ne_zero.mpr hne)
+    have := (close_iff _ _ _).mp (h (|x-y|/2) (by linarith))
+    linarith
 
 /-- Proposition 4.3.7(b) / Exercise 4.3.2 -/
-theorem close_symm (ε x y:ℚ) : ε.Close x y ↔ ε.Close y x := by sorry
+theorem close_symm (ε x y:ℚ) : ε.Close x y ↔ ε.Close y x := by
+  rw [close_iff, close_iff, abs_sub_comm]
 
 /-- Proposition 4.3.7(c) / Exercise 4.3.2 -/
 theorem close_trans {ε δ x y z:ℚ} (hxy: ε.Close x y) (hyz: δ.Close y z) :
-    (ε + δ).Close x z := by sorry
+    (ε + δ).Close x z := by
+  rw [close_iff] at *
+  calc |x-z| ≤ |x-y| + |y-z| := abs_sub_le x y z
+    _ ≤ ε + δ := by linarith
 
 /-- Proposition 4.3.7(d) / Exercise 4.3.2 -/
 theorem add_close {ε δ x y z w:ℚ} (hxy: ε.Close x y) (hzw: δ.Close z w) :
-    (ε + δ).Close (x+z) (y+w) := by sorry
+    (ε + δ).Close (x+z) (y+w) := by
+  rw [close_iff] at *
+  rw [show (x+z)-(y+w) = (x-y)+(z-w) by ring]
+  calc |(x-y)+(z-w)| ≤ |x-y| + |z-w| := abs_add_le _ _
+    _ ≤ ε + δ := by linarith
 
 /-- Proposition 4.3.7(d) / Exercise 4.3.2 -/
 theorem sub_close {ε δ x y z w:ℚ} (hxy: ε.Close x y) (hzw: δ.Close z w) :
-    (ε + δ).Close (x-z) (y-w) := by sorry
+    (ε + δ).Close (x-z) (y-w) := by
+  rw [close_iff] at *
+  rw [show (x-z)-(y-w) = (x-y)-(z-w) by ring]
+  calc |(x-y)-(z-w)| ≤ |x-y| + |z-w| := abs_sub _ _
+    _ ≤ ε + δ := by linarith
 
 /-- Proposition 4.3.7(e) / Exercise 4.3.2, slightly strengthened -/
 theorem close_mono {ε ε' x y:ℚ} (hxy: ε.Close x y) (hε: ε' ≥  ε) :
-    ε'.Close x y := by sorry
+    ε'.Close x y := by
+  rw [close_iff] at *; linarith
 
 /-- Proposition 4.3.7(f) / Exercise 4.3.2 -/
 theorem close_between {ε x y z w:ℚ} (hxy: ε.Close x y) (hxz: ε.Close x z)
-  (hbetween: (y ≤ w ∧ w ≤ z) ∨ (z ≤ w ∧ w ≤ y)) : ε.Close x w := by sorry
+  (hbetween: (y ≤ w ∧ w ≤ z) ∨ (z ≤ w ∧ w ≤ y)) : ε.Close x w := by
+  rw [close_iff, abs_le] at *
+  rcases hbetween with ⟨h1,h2⟩ | ⟨h1,h2⟩ <;> constructor <;> linarith
 
 /-- Proposition 4.3.7(g) / Exercise 4.3.2 -/
 theorem close_mul_right {ε x y z:ℚ} (hxy: ε.Close x y) :
-    (ε*|z|).Close (x * z) (y * z) := by sorry
+    (ε*|z|).Close (x * z) (y * z) := by
+  rw [close_iff] at *
+  rw [show x*z - y*z = (x-y)*z by ring, _root_.abs_mul]
+  exact mul_le_mul_of_nonneg_right hxy (_root_.abs_nonneg z)
 
 /-- Proposition 4.3.7(h) / Exercise 4.3.2 -/
 theorem close_mul_mul {ε δ x y z w:ℚ} (hxy: ε.Close x y) (hzw: δ.Close z w) :
