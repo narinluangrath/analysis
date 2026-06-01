@@ -69,9 +69,34 @@ theorem Series.sum_of_nonneg {s:Series} (hnon: s.nonneg) : 0 ≤ s.sum := by
   exact ge_of_tendsto' h.choose_spec (partial_nonneg hnon)
 
 /-- Corollary 7.3.2 (Comparison test) / Exercise 7.3.1 -/
-theorem Series.converges_of_le {s t: Series} (hm: s.m = t.m) (hcomp: ∀ n ≥ s.m, |s.seq n| ≤ t.seq n) (hconv : t.converges) : s.absConverges ∧ |s.sum| ≤ s.abs.sum ∧ s.abs.sum ≤ t.sum := by sorry
+theorem Series.converges_of_le {s t: Series} (hm: s.m = t.m) (hcomp: ∀ n ≥ s.m, |s.seq n| ≤ t.seq n) (hconv : t.converges) : s.absConverges ∧ |s.sum| ≤ s.abs.sum ∧ s.abs.sum ≤ t.sum := by
+  have habsm : s.abs.m = s.m := rfl
+  have htnn : t.nonneg := by
+    intro n
+    rcases le_or_gt s.m n with hn | hn
+    · exact le_trans (abs_nonneg _) (hcomp n hn)
+    · rw [t.vanish n (by rw [← hm]; exact hn)]
+  have habsnn : s.abs.nonneg := by
+    intro n
+    rcases le_or_gt s.m n with hn | hn
+    · rw [show s.abs.seq n = |s.seq n| from Series.eval_mk' _ hn]; positivity
+    · rw [s.abs.vanish n (by rw [habsm]; exact hn)]
+  have hpart : ∀ N:ℤ, s.abs.partial N ≤ t.partial N := by
+    intro N
+    unfold Series.partial
+    rw [habsm, hm]
+    apply Finset.sum_le_sum
+    intro n hn; simp only [Finset.mem_Icc] at hn
+    rw [show s.abs.seq n = |s.seq n| from Series.eval_mk' _ (by omega)]
+    exact hcomp n (by omega)
+  have hbound : ∀ N:ℤ, s.abs.partial N ≤ t.sum := fun N =>
+    le_trans (hpart N) (partial_le_sum_of_nonneg htnn hconv N)
+  have habsconv : s.absConverges := (converges_of_nonneg_iff habsnn).mpr ⟨t.sum, hbound⟩
+  exact ⟨habsconv, abs_le habsconv, sum_of_nonneg_lt habsnn hbound⟩
 
-theorem Series.diverges_of_ge {s t: Series} (hm: s.m = t.m) (hcomp: ∀ n ≥ s.m, |s.seq n| ≤ t.seq n) (hdiv: ¬ s.absConverges) : t.diverges := by sorry
+theorem Series.diverges_of_ge {s t: Series} (hm: s.m = t.m) (hcomp: ∀ n ≥ s.m, |s.seq n| ≤ t.seq n) (hdiv: ¬ s.absConverges) : t.diverges := by
+  intro hconv
+  exact hdiv (converges_of_le hm hcomp hconv).1
 
 theorem Series.partial_coe_eq_range {a:ℕ → ℝ} (N:ℤ) (hN: 0 ≤ N) :
     (a:Series).partial N = ∑ k ∈ Finset.range (N.toNat + 1), a k := by
