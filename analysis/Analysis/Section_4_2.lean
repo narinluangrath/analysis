@@ -511,32 +511,84 @@ theorem Rat.mul_lt_mul_right {x y z:Rat} (hxy: x < y) (hz: z.isPos) : x * z < y 
   exact ⟨a*c, b*d, mul_pos ha hc, mul_pos hb hd, by
     rw [hr1, hz1, div_mul_div_comm]; push_cast; ring⟩
 
+theorem Rat.formalDiv_isPos {x y:ℤ} (hy:y≠0) : (x // y).isPos ↔ 0 < x*y := by
+  constructor
+  · rintro ⟨p, q, hp, hq, hxy⟩
+    rw [← formalDiv_eq_div p (by omega : q ≠ 0), eq _ _ hy (by omega)] at hxy
+    have key : (x*y)*q = p*(y*y) := by rw [show (x*y)*q = (x*q)*y by ring, hxy]; ring
+    nlinarith [key, mul_pos hp (mul_self_pos.mpr hy), hq]
+  · intro h
+    rcases lt_trichotomy y 0 with hyn | hy0 | hyp
+    · exact ⟨-x, -y, by nlinarith [h, hyn], by omega, by
+        rw [← formalDiv_eq_div (-x) (by omega : (-y:ℤ) ≠ 0), eq _ _ hy (by omega)]; ring⟩
+    · omega
+    · exact ⟨x, y, by nlinarith [h, hyp], hyp, formalDiv_eq_div x hy⟩
+
+theorem Rat.formalDiv_isNeg {x y:ℤ} (hy:y≠0) : (x // y).isNeg ↔ x*y < 0 := by
+  have hneg : (x//y).isNeg ↔ ((-x)//y).isPos := by
+    constructor
+    · rintro ⟨r, hr, hxyr⟩
+      rw [show ((-x:ℤ)//y) = -(x//y) from (neg_eq x hy).symm, hxyr, neg_neg]; exact hr
+    · intro h
+      exact ⟨(-x)//y, h, by rw [neg_eq (-x) hy, neg_neg]⟩
+  rw [hneg, formalDiv_isPos hy]
+  constructor <;> intro h <;> nlinarith
+
+theorem Rat.formalDiv_eq_zero {x y:ℤ} (hy:y≠0) : x // y = 0 ↔ x = 0 := by
+  rw [show (0:Rat) = (0:ℤ)//1 from rfl, eq _ _ hy one_ne_zero]
+  constructor <;> intro h <;> omega
+
+theorem Rat.formalDiv_le_iff (a c:ℤ) {b d:ℤ} (hb:b≠0) (hd:d≠0) :
+    a // b ≤ c // d ↔ (a*d - c*b)*(b*d) ≤ 0 := by
+  have hbd : b*d ≠ 0 := Int.mul_ne_zero hb hd
+  have hsub : a//b - c//d = (a*d - c*b)//(b*d) := by
+    rw [sub_eq, neg_eq c hd, add_eq _ _ hb hd, eq _ _ (Int.mul_ne_zero hb hd) hbd]; ring
+  rw [le_iff, lt_iff, hsub, formalDiv_isNeg hbd, eq _ _ hb hd]
+  constructor
+  · rintro (h | h)
+    · exact le_of_lt h
+    · have : a*d - c*b = 0 := by omega
+      rw [this]; simp
+  · intro h
+    rcases lt_or_eq_of_le h with h | h
+    · exact Or.inl h
+    · refine Or.inr ?_
+      rcases mul_eq_zero.mp h with h1 | h1
+      · omega
+      · exact absurd h1 hbd
+
 /-- (Not from textbook) Establish the decidability of this order. -/
 instance Rat.decidableRel : DecidableRel (· ≤ · : Rat → Rat → Prop) := by
   intro n m
   have : ∀ (n:PreRat) (m: PreRat),
       Decidable (Quotient.mk PreRat.instSetoid n ≤ Quotient.mk PreRat.instSetoid m) := by
     intro ⟨ a,b,hb ⟩ ⟨ c,d,hd ⟩
-    -- at this point, the goal is morally `Decidable(a//b ≤ c//d)`, but there are technical
-    -- issues due to the junk value of formal division when the denominator vanishes.
-    -- It may be more convenient to avoid formal division and work directly with `Quotient.mk`.
+    rw [← formalDiv_mk a hb, ← formalDiv_mk c hd, formalDiv_le_iff a c hb hd]
     cases (0:ℤ).decLe (b*d) with
       | isTrue hbd =>
+        have hbd' : 0 < b*d := lt_of_le_of_ne hbd (Ne.symm (Int.mul_ne_zero hb hd))
         cases (a * d).decLe (b * c) with
           | isTrue h =>
             apply isTrue
-            sorry
+            nlinarith [hbd', h]
           | isFalse h =>
             apply isFalse
-            sorry
+            simp only [not_le] at h ⊢
+            nlinarith [hbd', h]
       | isFalse hbd =>
+        have hbd' : b*d < 0 := by
+          rcases lt_trichotomy (b*d) 0 with h | h | h
+          · exact h
+          · exact absurd h (Int.mul_ne_zero hb hd)
+          · exact absurd (le_of_lt h) hbd
         cases (b * c).decLe (a * d) with
           | isTrue h =>
             apply isTrue
-            sorry
+            nlinarith [hbd', h]
           | isFalse h =>
             apply isFalse
-            sorry
+            simp only [not_le] at h ⊢
+            nlinarith [hbd', h]
   exact Quotient.recOnSubsingleton₂ n m this
 
 /-- (Not from textbook) Rat has the structure of a linear ordering. -/
