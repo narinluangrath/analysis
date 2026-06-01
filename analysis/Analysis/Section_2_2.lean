@@ -229,13 +229,18 @@ example : (8:Nat) > 5 := by
 
 /-- Compare with Mathlib's `Nat.lt_succ_self`. -/
 theorem Nat.succ_gt_self (n:Nat) : n++ > n := by
-  sorry
+  have hne : ∀ m:Nat, m ≠ m++ := by
+    apply induction
+    · exact fun h => succ_ne 0 h.symm
+    · intro m ih h; exact ih (succ_cancel h)
+  rw [gt_iff_lt, lt_iff]
+  exact ⟨⟨1, by rw [succ_eq_add_one]⟩, hne n⟩
 
 /-- Proposition 2.2.12 (Basic properties of order for natural numbers) / Exercise 2.2.3
 
 (a) (Order is reflexive). Compare with Mathlib's `Nat.le_refl`.-/
 theorem Nat.ge_refl (a:Nat) : a ≥ a := by
-  sorry
+  rw [ge_iff_le, le_iff]; exact ⟨0, (add_zero a).symm⟩
 
 @[refl]
 theorem Nat.le_refl (a:Nat) : a ≤ a := a.ge_refl
@@ -246,17 +251,31 @@ example (a b:Nat): a+b ≥ a+b := by rfl
 /-- (b) (Order is transitive).  The `obtain` tactic will be useful here.
     Compare with Mathlib's `Nat.le_trans`. -/
 theorem Nat.ge_trans {a b c:Nat} (hab: a ≥ b) (hbc: b ≥ c) : a ≥ c := by
-  sorry
+  rw [ge_iff_le, le_iff] at hab hbc ⊢
+  obtain ⟨d, hd⟩ := hab
+  obtain ⟨e, he⟩ := hbc
+  exact ⟨e + d, by rw [hd, he, add_assoc]⟩
 
 theorem Nat.le_trans {a b c:Nat} (hab: a ≤ b) (hbc: b ≤ c) : a ≤ c := Nat.ge_trans hbc hab
 
 /-- (c) (Order is anti-symmetric). Compare with Mathlib's `Nat.le_antisymm`. -/
 theorem Nat.ge_antisymm {a b:Nat} (hab: a ≥ b) (hba: b ≥ a) : a = b := by
-  sorry
+  rw [ge_iff_le, le_iff] at hab hba
+  obtain ⟨d, hd⟩ := hab
+  obtain ⟨e, he⟩ := hba
+  have h0 : a + (e + d) = a + 0 := by rw [add_zero, ← add_assoc, ← he, ← hd]
+  obtain ⟨_, hd0⟩ := add_eq_zero e d (add_left_cancel a (e + d) 0 h0)
+  rw [hd, hd0, add_zero]
 
 /-- (d) (Addition preserves order).  Compare with Mathlib's `Nat.add_le_add_right`. -/
 theorem Nat.add_ge_add_right (a b c:Nat) : a ≥ b ↔ a + c ≥ b + c := by
-  sorry
+  rw [ge_iff_le, ge_iff_le, le_iff, le_iff]
+  constructor
+  · rintro ⟨d, hd⟩
+    exact ⟨d, by rw [hd]; abel⟩
+  · rintro ⟨d, hd⟩
+    refine ⟨d, add_left_cancel c a (b + d) ?_⟩
+    rw [add_comm c a, add_comm c (b + d), hd]; abel
 
 /-- (d) (Addition preserves order).  Compare with Mathlib's `Nat.add_le_add_left`.  -/
 theorem Nat.add_ge_add_left (a b c:Nat) : a ≥ b ↔ c + a ≥ c + b := by
