@@ -170,15 +170,19 @@ class Equiv (P Q : PeanoAxioms) where
     Some of this API can be invoked automatically via the `simp` tactic. -/
 abbrev Equiv.symm {P Q: PeanoAxioms} (equiv : Equiv P Q) : Equiv Q P where
   equiv := equiv.equiv.symm
-  equiv_zero := by sorry
-  equiv_succ n := by sorry
+  equiv_zero := by rw [← equiv.equiv_zero]; exact equiv.equiv.symm_apply_apply P.zero
+  equiv_succ n := by
+    apply equiv.equiv.injective
+    simp only [equiv.equiv_succ, _root_.Equiv.apply_symm_apply]
 
 /-- This exercise will require application of Mathlib's API for the `Equiv` class.
     Some of this API can be invoked automatically via the `simp` tactic. -/
 abbrev Equiv.trans {P Q R: PeanoAxioms} (equiv1 : Equiv P Q) (equiv2 : Equiv Q R) : Equiv P R where
   equiv := equiv1.equiv.trans equiv2.equiv
-  equiv_zero := by sorry
-  equiv_succ n := by sorry
+  equiv_zero := by
+    simp only [_root_.Equiv.trans_apply, equiv1.equiv_zero, equiv2.equiv_zero]
+  equiv_succ n := by
+    simp only [_root_.Equiv.trans_apply, equiv1.equiv_succ, equiv2.equiv_succ]
 
 /-- Useful Mathlib tools for inverting bijections include `Function.surjInv` and `Function.invFun`. -/
 noncomputable abbrev Equiv.fromNat (P : PeanoAxioms) : Equiv Mathlib_Nat P where
