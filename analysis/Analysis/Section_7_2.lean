@@ -343,14 +343,65 @@ theorem Series.converges_of_alternating {m:ℤ} {a: { n // n ≥ m} → ℝ} (ha
     simp [claim1 hN, h'.add_one.neg_one_zpow]; apply ha'; simp
   have claim3 {N:ℤ} (hN: N ≥ m) (h': Even N) : S (N+2) ≤ S N := by
     simp [claim1 hN, h'.add_one.neg_one_zpow]; apply ha'; simp
-  have why1 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S (N+2*k) ≤ S N := by sorry
-  have why2 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S (N+2*k+1) ≥ S N - a ⟨ N+1, by grind ⟩ := by sorry
-  have why3 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S (N+2*k+1) ≤ S (N+2*k) := by sorry
+  have why1 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S (N+2*k) ≤ S N := by
+    induction k with
+    | zero => simp
+    | succ k ih =>
+      have heven : Even (N + 2*(k:ℤ)) := h'.add (even_two_mul _)
+      calc S (N+2*(↑(k+1):ℤ)) = S ((N+2*(k:ℤ))+2) := by congr 1; push_cast; ring
+        _ ≤ S (N+2*(k:ℤ)) := claim3 (by omega) heven
+        _ ≤ S N := ih
+  have why3 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S (N+2*k+1) ≤ S (N+2*k) := by
+    have heven : Even (N + 2*(k:ℤ)) := h'.add (even_two_mul _)
+    have hodd : Odd (N + 2*(k:ℤ) + 1) := heven.add_one
+    have hc0 := claim0 (N := N + 2*(k:ℤ)) (by omega)
+    rw [show N+2*(k:ℤ)+1 = (N+2*(k:ℤ))+1 by ring, hc0, hodd.neg_one_zpow]
+    have hpos := ha ⟨ N + 2*(k:ℤ) + 1, by grind ⟩
+    nlinarith [hpos]
+  have why2 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S (N+2*k+1) ≥ S N - a ⟨ N+1, by grind ⟩ := by
+    induction k with
+    | zero =>
+      simp only [Nat.cast_zero, mul_zero, add_zero]
+      have hodd : Odd (N+1) := h'.add_one
+      rw [claim0 hN, hodd.neg_one_zpow]; linarith
+    | succ k ih =>
+      have hodd : Odd (N + 2*(k:ℤ) + 1) := (h'.add (even_two_mul _)).add_one
+      calc S (N+2*(↑(k+1):ℤ)+1) = S ((N+2*(k:ℤ)+1)+2) := by congr 1; push_cast; ring
+        _ ≥ S (N+2*(k:ℤ)+1) := claim2 (by omega) hodd
+        _ ≥ S N - a ⟨ N+1, by grind ⟩ := ih
   have claim4 {N:ℤ} (hN: N ≥ m) (h': Even N) (k:ℕ) : S N -
  a ⟨ N+1, by grind ⟩ ≤ S (N + 2*k + 1) ∧ S (N + 2*k + 1) ≤ S (N + 2*k) ∧ S (N + 2*k) ≤ S N := ⟨ ge_iff_le.mp (why2 hN h' k), why3 hN h' k, why1 hN h' k ⟩
   have why4 {N n:ℤ} (hN: N ≥ m) (h': Even N) (hn: n ≥ N) : S N - a ⟨ N+1, by grind ⟩ ≤ S n ∧ S n ≤ S N := by
-    sorry
-  have why5 {ε:ℝ} (hε: ε > 0) : ∃ N, ∀ n ≥ N, ∀ m ≥ N, |S n - S m| ≤ ε := by sorry
+    obtain ⟨j, hj⟩ : ∃ j:ℕ, n = N + j := ⟨(n-N).toNat, by omega⟩
+    rcases Nat.even_or_odd j with ⟨k, hk⟩ | ⟨k, hk⟩
+    · have hn2 : n = N + 2*(k:ℤ) := by rw [hj, hk]; push_cast; ring
+      rw [hn2]
+      obtain ⟨c1, c2, c3⟩ := claim4 hN h' k
+      exact ⟨le_trans c1 c2, c3⟩
+    · have hn2 : n = N + 2*(k:ℤ) + 1 := by rw [hj, hk]; push_cast; ring
+      rw [hn2]
+      obtain ⟨c1, c2, c3⟩ := claim4 hN h' k
+      exact ⟨c1, le_trans c2 c3⟩
+  have why5 {ε:ℝ} (hε: ε > 0) : ∃ N, ∀ n ≥ N, ∀ m ≥ N, |S n - S m| ≤ ε := by
+    haveI : Nonempty {n:ℤ // n ≥ m} := ⟨⟨m, le_refl m⟩⟩
+    rw [Metric.tendsto_atTop] at h
+    obtain ⟨N0, hN0⟩ := h ε hε
+    set B : ℤ := max (max N0.val m) 0 with hB
+    have hEeven : Even (2*B) := even_two_mul B
+    have hEm : 2*B ≥ m := by omega
+    have haE : a ⟨2*B+1, by omega⟩ ≤ ε := by
+      have hidx : N0 ≤ (⟨2*B+1, by omega⟩ : {n//n≥m}) := by show N0.val ≤ 2*B+1; omega
+      have hd := hN0 _ hidx
+      rw [Real.dist_eq, sub_zero, abs_of_nonneg (ha _)] at hd
+      linarith
+    refine ⟨2*B, ?_⟩
+    intro n hn m2 hm2
+    obtain ⟨l1, r1⟩ := why4 hEm hEeven hn
+    obtain ⟨l2, r2⟩ := why4 hEm hEeven hm2
+    rw [_root_.abs_le]
+    constructor
+    · linarith
+    · linarith
   have : CauchySeq S := by
     rw [Metric.cauchySeq_iff']
     intro ε hε; choose N hN using why5 (half_pos hε); use N
