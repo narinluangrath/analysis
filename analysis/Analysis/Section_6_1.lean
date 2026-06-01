@@ -459,7 +459,26 @@ theorem Sequence.bounded_of_cauchy {a:Sequence} (h: a.IsCauchy) : a.IsBounded :=
 
 /-- Corollary 6.1.17 -/
 theorem Sequence.bounded_of_convergent {a:Sequence} (h: a.Convergent) : a.IsBounded := by
-  sorry
+  obtain ⟨L, hL⟩ := h
+  rw [tendsTo_iff] at hL
+  obtain ⟨N0, hN0⟩ := hL 1 one_pos
+  set N := max N0 a.m with hNdef
+  have htail : ∀ n, n ≥ N → |a n| ≤ |L| + 1 := by
+    intro n hn
+    have hc := hN0 n (le_trans (le_max_left _ _) hn)
+    calc |a n| = |(a n - L) + L| := by congr 1; ring
+      _ ≤ |a n - L| + |L| := abs_add_le _ _
+      _ ≤ |L| + 1 := by linarith
+  have hne : (Finset.Icc a.m N).Nonempty := Finset.nonempty_Icc.mpr (le_max_right _ _)
+  set B := (Finset.Icc a.m N).sup' hne (fun n => |a n|) with hB
+  refine ⟨max B (|L|+1), le_trans (by positivity) (le_max_right _ _), fun n => ?_⟩
+  rcases le_or_gt N n with hge | hlt
+  · exact le_trans (htail n hge) (le_max_right _ _)
+  · rcases le_or_gt a.m n with hge2 | hlt2
+    · have hmem : n ∈ Finset.Icc a.m N := by rw [Finset.mem_Icc]; omega
+      exact le_trans (Finset.le_sup' (fun n => |a n|) hmem) (le_max_left _ _)
+    · rw [a.vanish n hlt2, abs_zero]
+      exact le_trans (by positivity) (le_max_right _ _)
 
 /-- Example 6.1.18 -/
 example : ¬ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).IsBounded := by
