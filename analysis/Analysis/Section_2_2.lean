@@ -290,11 +290,32 @@ theorem Nat.add_le_add_left (a b c:Nat) : a ≤ b ↔ c + a ≤ c + b := add_ge_
 
 /-- (e) a < b iff a++ ≤ b.  Compare with Mathlib's `Nat.succ_le_iff`. -/
 theorem Nat.lt_iff_succ_le (a b:Nat) : a < b ↔ a++ ≤ b := by
-  sorry
+  rw [lt_iff, le_iff]
+  constructor
+  · rintro ⟨⟨d, hd⟩, hne⟩
+    rcases d with _ | d'
+    · exact absurd (hd.trans (add_zero a)).symm hne
+    · exact ⟨d', by rw [hd, succ_add, add_succ]⟩
+  · rintro ⟨e, he⟩
+    refine ⟨⟨e++, by rw [he, succ_add, add_succ]⟩, ?_⟩
+    intro h
+    rw [← h, succ_add, ← add_succ] at he
+    have : a + 0 = a + e++ := by rw [add_zero]; exact he
+    exact succ_ne e (add_left_cancel a 0 (e++) this).symm
 
 /-- (f) a < b if and only if b = a + d for positive d. -/
 theorem Nat.lt_iff_add_pos (a b:Nat) : a < b ↔ ∃ d:Nat, d.IsPos ∧ b = a + d := by
-  sorry
+  rw [lt_iff]
+  constructor
+  · rintro ⟨⟨d, hd⟩, hne⟩
+    refine ⟨d, ?_, hd⟩
+    rw [isPos_iff]; intro h; rw [h, add_zero] at hd; exact hne hd.symm
+  · rintro ⟨d, hpos, hd⟩
+    refine ⟨⟨d, hd⟩, ?_⟩
+    intro h
+    rw [h] at hd
+    have : b + 0 = b + d := by rw [add_zero]; exact hd
+    exact hpos (add_left_cancel b 0 d this).symm
 
 /-- If a < b then a ̸= b,-/
 theorem Nat.ne_of_lt (a b:Nat) : a < b → a ≠ b := by
@@ -326,7 +347,7 @@ theorem Nat.lt_of_le_of_lt {a b c : Nat} (hab: a ≤ b) (hbc: b < c) : a < c := 
 /-- This lemma was a `why?` statement from Proposition 2.2.13,
 but is more broadly useful, so is extracted here. -/
 theorem Nat.zero_le (a:Nat) : 0 ≤ a := by
-  sorry
+  rw [le_iff]; exact ⟨a, (zero_add a).symm⟩
 
 /-- Proposition 2.2.13 (Trichotomy of order for natural numbers) / Exercise 2.2.4
     Compare with Mathlib's `trichotomous`.  Parts of this theorem have been placed
@@ -342,9 +363,11 @@ theorem Nat.trichotomous (a b:Nat) : a < b ∨ a = b ∨ a > b := by
   . rw [lt_iff_succ_le] at case1
     rw [le_iff_lt_or_eq] at case1
     tauto
-  . have why : a++ > b := by sorry
+  . have why : a++ > b := by rw [← case2]; exact succ_gt_self a
     tauto
-  have why : a++ > b := by sorry
+  have why : a++ > b := by
+    rw [gt_iff_lt]
+    exact lt_of_le_of_lt (le_of_lt case3) (succ_gt_self a)
   tauto
 
 /--
