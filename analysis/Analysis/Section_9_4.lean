@@ -158,7 +158,8 @@ theorem Continuous.exp' (p:ℝ) : ContinuousOn (fun x:ℝ ↦ x ^ p) (.Ioi 0) :=
 theorem Continuous.abs : Continuous (fun x:ℝ ↦ |x|) := continuous_abs
 
 /-- Proposition 9.4.13 / Exercise 9.4.5 -/
-theorem ContinuousWithinAt.comp {X Y: Set ℝ} {f g:ℝ → ℝ} (hf: ∀ x ∈ X, f x ∈ Y) {x₀:ℝ} (hx₀: x ∈ X) (hf_cont: ContinuousWithinAt f X x₀) (hg_cont: ContinuousWithinAt g Y (f x₀)): ContinuousWithinAt (g ∘ f) X x₀ := by sorry
+theorem ContinuousWithinAt.comp {X Y: Set ℝ} {f g:ℝ → ℝ} (hf: ∀ x ∈ X, f x ∈ Y) {x₀:ℝ} (hx₀: x ∈ X) (hf_cont: ContinuousWithinAt f X x₀) (hg_cont: ContinuousWithinAt g Y (f x₀)): ContinuousWithinAt (g ∘ f) X x₀ :=
+  _root_.ContinuousWithinAt.comp hg_cont hf_cont hf
 
 /-- Example 9.4.14 -/
 example : Continuous (fun x:ℝ ↦ 3*x + 1) := by fun_prop
