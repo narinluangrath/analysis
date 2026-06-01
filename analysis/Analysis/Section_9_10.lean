@@ -52,6 +52,13 @@ example : Filter.Tendsto (fun x:ℝ ↦ 1/x) (.atTop ⊓ .principal (.Ioi 0)) (n
 open Classical in
 /-- Exercise 9.10.1 -/
 example (a:ℕ → ℝ) (L:ℝ) : Filter.Tendsto (fun x:ℝ ↦ (if h:(∃ n:ℕ, x = n) then a h.choose else 0)) (.atTop ⊓ .principal ((fun n:ℕ ↦ (n:ℝ)) '' .univ)) (nhds L) ↔ Filter.atTop.Tendsto a (nhds L) := by
-  sorry
+  have hcomp : (fun x:ℝ ↦ (if h:(∃ n:ℕ, x = n) then a h.choose else 0)) ∘ (fun n:ℕ ↦ (n:ℝ)) = a := by
+    funext n
+    simp only [Function.comp_apply]
+    have hex : ∃ m:ℕ, (n:ℝ) = (m:ℝ) := ⟨n, rfl⟩
+    rw [dif_pos hex]
+    congr 1
+    exact (Nat.cast_injective hex.choose_spec).symm
+  rw [Set.image_univ, ← Filter.map_comap, Nat.comap_cast_atTop, Filter.tendsto_map'_iff, hcomp]
 
 end Chapter9
