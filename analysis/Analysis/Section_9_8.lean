@@ -103,17 +103,26 @@ example {R :ℝ} (hR: R > 0) {n:ℕ} (hn: n > 0) : ∃ g : ℝ → ℝ, ∀ x �
 
 /-- Exercise 9.8.1 -/
 theorem IsMaxOn.of_monotone_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: MonotoneOn f (.Icc a b)) :
-  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax := by sorry
+  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax := by
+  refine ⟨b, Set.mem_Icc.mpr ⟨h.le, le_refl b⟩, ?_⟩
+  rw [isMaxOn_iff]
+  intro x hx
+  exact hf hx (Set.mem_Icc.mpr ⟨h.le, le_refl b⟩) (Set.mem_Icc.mp hx).2
 
 theorem IsMaxOn.of_strictmono_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: StrictMonoOn f (.Icc a b)) :
-  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax := by sorry
+  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax :=
+  IsMaxOn.of_monotone_on_compact h hf.monotoneOn
 
 theorem IsMaxOn.of_antitone_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: AntitoneOn f (.Icc a b)) :
-  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax := by sorry
+  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax := by
+  refine ⟨a, Set.mem_Icc.mpr ⟨le_refl a, h.le⟩, ?_⟩
+  rw [isMaxOn_iff]
+  intro x hx
+  exact hf (Set.mem_Icc.mpr ⟨le_refl a, h.le⟩) hx (Set.mem_Icc.mp hx).1
 
 theorem IsMaxOn.of_strictantitone_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: StrictAntiOn f (.Icc a b)) :
-  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax := by
-  sorry
+  ∃ xmax ∈ Set.Icc a b, IsMaxOn f (.Icc a b) xmax :=
+  IsMaxOn.of_antitone_on_compact h hf.antitoneOn
 
 theorem BddOn.of_monotone {a b:ℝ} {f:ℝ → ℝ} (hf: MonotoneOn f (.Icc a b)) :
   BddOn f (.Icc a b) := by
