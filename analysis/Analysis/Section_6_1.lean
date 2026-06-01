@@ -672,11 +672,32 @@ theorem Sequence.inv_coe (a: ℕ → ℝ) : (a:Sequence)⁻¹ = (fun n ↦ (a n)
     in applications. -/
 theorem Sequence.tendsTo_inv {a:Sequence} {L:ℝ} (ha: a.TendsTo L) (hnon: L ≠ 0) :
     (a⁻¹).TendsTo (L⁻¹) := by
-  sorry
+  rw [tendsTo_iff] at ha ⊢
+  intro ε hε
+  have hL : |L| > 0 := abs_pos.mpr hnon
+  obtain ⟨N0, hN0⟩ := ha (|L|/2) (by positivity)
+  obtain ⟨N1, hN1⟩ := ha (ε * |L|^2 / 2) (by positivity)
+  refine ⟨max N0 N1, fun n hn => ?_⟩
+  have e0 := hN0 n (le_trans (le_max_left _ _) hn)
+  have e1 := hN1 n (le_trans (le_max_right _ _) hn)
+  rw [Sequence.inv_eval]
+  have hab : |a n| ≥ |L|/2 := by
+    have h := abs_sub_abs_le_abs_sub L (a n)
+    rw [abs_sub_comm L (a n)] at h
+    linarith
+  have han : a n ≠ 0 := abs_pos.mp (by linarith)
+  rw [show (a n)⁻¹ - L⁻¹ = (L - a n)/(a n * L) by field_simp, abs_div, abs_mul,
+    div_le_iff₀ (by positivity), abs_sub_comm L (a n)]
+  calc |a n - L| ≤ ε * |L|^2 / 2 := e1
+    _ ≤ ε * (|a n| * |L|) := by nlinarith [hab, hL, hε.le, mul_le_mul_of_nonneg_left hab hε.le]
 
 theorem Sequence.lim_inv {a:Sequence} (ha: a.Convergent) (hnon: lim a ≠ 0) :
   (a⁻¹).Convergent ∧ lim (a⁻¹) = (lim a)⁻¹ := by
-  sorry
+  have hinv := tendsTo_inv (lim_def ha) hnon
+  have hconv : (a⁻¹).Convergent := ⟨_, hinv⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (a⁻¹) hne ⟨lim_def hconv, hinv⟩
 
 noncomputable instance Sequence.inst_div : Div Sequence where
   div a b := {
@@ -696,11 +717,18 @@ theorem Sequence.div_coe (a b: ℕ → ℝ) : (a:Sequence) / (b:Sequence) = (fun
     in applications. -/
 theorem Sequence.tendsTo_div {a b:Sequence} {L M:ℝ} (ha: a.TendsTo L) (hb: b.TendsTo M) (hnon: M ≠ 0) :
     (a / b).TendsTo (L / M) := by
-  sorry
+  have key : a / b = a * b⁻¹ := by
+    ext n <;> first | rfl | (show a n / b n = a n * (b n)⁻¹; rw [div_eq_mul_inv])
+  rw [key, show L / M = L * M⁻¹ from div_eq_mul_inv L M]
+  exact tendsTo_mul ha (tendsTo_inv hb hnon)
 
 theorem Sequence.lim_div {a b:Sequence} (ha: a.Convergent) (hb: b.Convergent) (hnon: lim b ≠ 0) :
   (a / b).Convergent ∧ lim (a / b) = lim a / lim b := by
-  sorry
+  have hdiv := tendsTo_div (lim_def ha) (lim_def hb) hnon
+  have hconv : (a/b).Convergent := ⟨_, hdiv⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (a/b) hne ⟨lim_def hconv, hdiv⟩
 
 instance Sequence.inst_max : Max Sequence where
   max a b := {
