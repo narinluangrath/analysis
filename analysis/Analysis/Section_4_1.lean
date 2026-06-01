@@ -361,10 +361,16 @@ instance Int.decidableRel : DecidableRel (· ≤ · : Int → Int → Prop) := b
     cases (a + d).decLe (b + c) with
       | isTrue h =>
         apply isTrue
-        sorry
+        rw [le_iff]
+        obtain ⟨t, ht⟩ := Nat.le.dest h
+        refine ⟨t, ?_⟩
+        rw [natCast_eq, add_eq, Int.eq]; omega
       | isFalse h =>
         apply isFalse
-        sorry
+        rw [le_iff]
+        rintro ⟨t, ht⟩
+        rw [natCast_eq, add_eq, Int.eq] at ht
+        exact h (by omega)
   exact Quotient.recOnSubsingleton₂ n m this
 
 /-- (Not from textbook) 0 is the only additive identity -/
@@ -375,11 +381,36 @@ lemma Int.is_additive_identity_iff_eq_0 (b : Int) : (∀ a, a = a + b) ↔ b = 0
 
 /-- (Not from textbook) Int has the structure of a linear ordering. -/
 instance Int.instLinearOrder : LinearOrder Int where
-  le_refl := sorry
-  le_trans := sorry
-  lt_iff_le_not_ge := sorry
-  le_antisymm := sorry
-  le_total := sorry
+  le_refl a := ⟨0, by simp⟩
+  le_trans a b c hab hbc := by
+    obtain ⟨t, ht⟩ := hab; obtain ⟨s, hs⟩ := hbc
+    exact ⟨t + s, by rw [hs, ht]; push_cast; ring⟩
+  le_antisymm a b hab hba := by
+    obtain ⟨t, ht⟩ := hab; obtain ⟨s, hs⟩ := hba
+    have h2 : a + 0 = a + ↑(t + s) := by push_cast; linear_combination hs + ht
+    have hz : (↑(t + s):Int) = 0 := (add_left_cancel h2).symm
+    rw [cast_eq_0_iff_eq_0] at hz
+    have ht0 : t = 0 := by omega
+    rw [ht, ht0]; push_cast; ring
+  lt_iff_le_not_ge a b := by
+    constructor
+    · intro h
+      refine ⟨h.1, ?_⟩
+      intro hba
+      obtain ⟨t, ht⟩ := h.1; obtain ⟨s, hs⟩ := hba
+      have h2 : a + 0 = a + ↑(t + s) := by push_cast; linear_combination hs + ht
+      have hz : (↑(t + s):Int) = 0 := (add_left_cancel h2).symm
+      rw [cast_eq_0_iff_eq_0] at hz
+      exact h.2 (by rw [ht, show t = 0 by omega]; push_cast; ring)
+    · rintro ⟨hab, hnba⟩
+      refine ⟨hab, ?_⟩
+      rintro rfl
+      exact hnba ⟨0, by simp⟩
+  le_total a b := by
+    obtain h | h | rfl := trichotomous' a b
+    · right; exact h.1
+    · left; exact h.1
+    · left; exact ⟨0, by simp⟩
   toDecidableLE := decidableRel
 
 /-- Exercise 4.1.3 -/
