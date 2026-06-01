@@ -179,7 +179,28 @@ theorem Sequence.is_steady_of_rat (ε:ℚ) (a: Chapter5.Sequence) :
     exact_mod_cast hh
 
 theorem Sequence.is_eventuallySteady_of_rat (ε:ℚ) (a: Chapter5.Sequence) :
-    ε.EventuallySteady a ↔ (ε:ℝ).EventuallySteady (a:Sequence) := by sorry
+    ε.EventuallySteady a ↔ (ε:ℝ).EventuallySteady (a:Sequence) := by
+  have hcomm : ∀ N:ℤ, ((a:Sequence)).from N = ((a.from N : Chapter5.Sequence):Sequence) := by
+    intro N
+    ext n
+    · rfl
+    · by_cases hc : n ≥ N
+      · rw [Sequence.from_eval (a:Sequence) hc, Chapter5.coe_sequence_eval,
+          Chapter5.coe_sequence_eval, Chapter5.Sequence.from_eval a hc]
+      · have hlt : n < max a.n₀ N := lt_of_lt_of_le (lt_of_not_ge hc) (le_max_right _ _)
+        rw [((a:Sequence).from N).vanish n hlt, Chapter5.coe_sequence_eval,
+          (a.from N).vanish n hlt]
+        norm_num
+  rw [Rat.eventuallySteady_def, Real.eventuallySteady_def]
+  constructor
+  · rintro ⟨N, hN, hs⟩
+    refine ⟨N, hN, ?_⟩
+    rw [hcomm]
+    exact (is_steady_of_rat ε (a.from N)).mp hs
+  · rintro ⟨N, hN, hs⟩
+    refine ⟨N, hN, (is_steady_of_rat ε (a.from N)).mpr ?_⟩
+    rw [← hcomm]
+    exact hs
 
 /-- Proposition 6.1.4 -/
 theorem Sequence.isCauchy_of_rat (a: Chapter5.Sequence) : a.IsCauchy ↔ (a:Sequence).IsCauchy := by
