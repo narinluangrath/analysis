@@ -527,11 +527,35 @@ instance Rat.decidableRel : DecidableRel (· ≤ · : Rat → Rat → Prop) := b
 
 /-- (Not from textbook) Rat has the structure of a linear ordering. -/
 instance Rat.instLinearOrder : LinearOrder Rat where
-  le_refl := sorry
-  le_trans := sorry
-  lt_iff_le_not_ge := sorry
-  le_antisymm := sorry
-  le_total := sorry
+  le_refl x := Or.inr rfl
+  le_trans x y z hxy hyz := by
+    rcases hxy with h1 | rfl <;> rcases hyz with h2 | rfl
+    · exact Or.inl (lt_trans h1 h2)
+    · exact Or.inl h1
+    · exact Or.inl h2
+    · exact Or.inr rfl
+  lt_iff_le_not_ge x y := by
+    constructor
+    · intro h
+      refine ⟨Or.inl h, ?_⟩
+      rintro (h2 | h2)
+      · exact not_gt_and_lt x y ⟨h2, h⟩
+      · exact not_lt_and_eq x y ⟨h, h2.symm⟩
+    · rintro ⟨hle, hnge⟩
+      rcases hle with h | rfl
+      · exact h
+      · exact absurd (Or.inr rfl) hnge
+  le_antisymm x y hxy hyx := by
+    rcases hxy with h1 | h1
+    · rcases hyx with h2 | h2
+      · exact absurd ⟨h2, h1⟩ (not_gt_and_lt x y)
+      · exact h2.symm
+    · exact h1
+  le_total x y := by
+    rcases trichotomous' x y with h | h | h
+    · right; exact Or.inl h
+    · left; exact Or.inl h
+    · left; exact Or.inr h
   toDecidableLE := decidableRel
 
 /-- (Not from textbook) Rat has the structure of a strict ordered ring. -/
