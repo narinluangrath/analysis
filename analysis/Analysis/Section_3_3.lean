@@ -655,6 +655,56 @@ open Classical in
 theorem Function.glue' {X Y Z:Set} (f: Function X Z) (g: Function Y Z)
     (hfg : ∀ x : ((X ∩ Y): Set), f ⟨x.val, by aesop⟩ = g ⟨x.val, by aesop⟩)  :
     ∃! h: Function (X ∪ Y) Z, (h ○ Function.inclusion (SetTheory.Set.subset_union_left X Y) = f)
-    ∧ (h ○ Function.inclusion (SetTheory.Set.subset_union_right X Y) = g) := by sorry
+    ∧ (h ○ Function.inclusion (SetTheory.Set.subset_union_right X Y) = g) := by
+  classical
+  set hX := SetTheory.Set.subset_union_left X Y with hX_def
+  set hY := SetTheory.Set.subset_union_right X Y with hY_def
+  have hmemXY : ∀ w : (X ∪ Y : Set), w.val ∈ X ∨ w.val ∈ Y := by
+    intro w; have := w.property; rwa [SetTheory.Set.mem_union] at this
+  set hfun : (X ∪ Y : Set) → Z := fun w =>
+    if hw : w.val ∈ X then f ⟨w.val, hw⟩
+    else g ⟨w.val, (hmemXY w).resolve_left hw⟩ with hfun_def
+  have hincl_val : ∀ {A:Set} (h: A ⊆ X ∪ Y) (a:A), (Function.inclusion h a).val = a.val := by
+    intro A h a; simp [Function.inclusion, eval_of]
+  refine ⟨mk_fn hfun, ⟨?_, ?_⟩, ?_⟩
+  · rw [eq_iff]; intro x
+    rw [comp_eval, eval_of]
+    have hv : (Function.inclusion hX x).val = x.val := hincl_val hX x
+    simp only [hfun_def]
+    rw [dif_pos (by rw [hv]; exact x.property)]
+    congr 1; apply Subtype.ext; exact hv
+  · rw [eq_iff]; intro y
+    rw [comp_eval, eval_of]
+    have hv : (Function.inclusion hY y).val = y.val := hincl_val hY y
+    simp only [hfun_def]
+    by_cases hyX : (Function.inclusion hY y).val ∈ X
+    · rw [dif_pos hyX]
+      have hyX' : y.val ∈ X := by rw [← hv]; exact hyX
+      rw [show (⟨(Function.inclusion hY y).val, hyX⟩ : (X:Set)) = ⟨y.val, hyX'⟩ from Subtype.ext hv]
+      exact hfg ⟨y.val, (SetTheory.Set.mem_inter y.val X Y).mpr ⟨hyX', y.property⟩⟩
+    · rw [dif_neg hyX]
+      congr 1; apply Subtype.ext; exact hv
+  · intro h' ⟨h'f, h'g⟩
+    rw [eq_iff]; intro w
+    by_cases hwX : w.val ∈ X
+    · have hwe : Function.inclusion hX ⟨w.val, hwX⟩ = w :=
+        Subtype.ext (by rw [hincl_val hX ⟨w.val, hwX⟩])
+      have lhs : h' w = f ⟨w.val, hwX⟩ := by
+        calc h' w = h' (Function.inclusion hX ⟨w.val, hwX⟩) := by rw [hwe]
+          _ = (h' ○ Function.inclusion hX) ⟨w.val, hwX⟩ := (comp_eval _ _ _).symm
+          _ = f ⟨w.val, hwX⟩ := by rw [h'f]
+      have rhs : (mk_fn hfun) w = f ⟨w.val, hwX⟩ := by
+        rw [eval_of]; simp only [hfun_def]; rw [dif_pos hwX]
+      rw [lhs, rhs]
+    · have hwY : w.val ∈ Y := (hmemXY w).resolve_left hwX
+      have hwe : Function.inclusion hY ⟨w.val, hwY⟩ = w :=
+        Subtype.ext (by rw [hincl_val hY ⟨w.val, hwY⟩])
+      have lhs : h' w = g ⟨w.val, hwY⟩ := by
+        calc h' w = h' (Function.inclusion hY ⟨w.val, hwY⟩) := by rw [hwe]
+          _ = (h' ○ Function.inclusion hY) ⟨w.val, hwY⟩ := (comp_eval _ _ _).symm
+          _ = g ⟨w.val, hwY⟩ := by rw [h'g]
+      have rhs : (mk_fn hfun) w = g ⟨w.val, hwY⟩ := by
+        rw [eval_of]; simp only [hfun_def]; rw [dif_neg hwX]
+      rw [lhs, rhs]
 
 end Chapter3
