@@ -58,7 +58,23 @@ theorem Sequence.subseq_trans {a b c:ℕ → ℝ} (hab: Sequence.subseq a b) (hb
 /-- Proposition 6.6.5 / Exercise 6.6.4 -/
 theorem Sequence.convergent_iff_subseq (a:ℕ → ℝ) (L:ℝ) :
     (a:Sequence).TendsTo L ↔ ∀ b:ℕ → ℝ, Sequence.subseq a b → (b:Sequence).TendsTo L := by
-  sorry
+  constructor
+  · rintro ha b ⟨f, hf, hbf⟩
+    rw [tendsTo_iff] at ha ⊢
+    intro ε hε
+    obtain ⟨N, hN⟩ := ha ε hε
+    refine ⟨max N 0, fun n hn => ?_⟩
+    have hn0 : n ≥ 0 := le_trans (le_max_right _ _) hn
+    have hNle : (n.toNat:ℤ) ≥ N := by
+      rw [Int.toNat_of_nonneg hn0]; exact le_trans (le_max_left _ _) hn
+    have hid := hf.id_le n.toNat
+    have hge : ((f n.toNat:ℕ):ℤ) ≥ N := le_trans hNle (by exact_mod_cast hid)
+    have hkey := hN ((f n.toNat:ℕ):ℤ) hge
+    rw [Sequence.eval_coe] at hkey
+    rw [show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe, hbf]
+    exact hkey
+  · intro h
+    exact h a (subseq_self a)
 
 /-- Proposition 6.6.6 / Exercise 6.6.5 -/
 theorem Sequence.limit_point_iff_subseq (a:ℕ → ℝ) (L:ℝ) :
