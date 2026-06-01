@@ -617,8 +617,15 @@ abbrev Rat.equivRat : Rat ≃ ℚ where
     rw [div_eq_div_iff (by exact_mod_cast hb) (by exact_mod_cast hb')]
     exact_mod_cast h)
   invFun := fun n: ℚ ↦ (n:Rat)
-  left_inv n := sorry
-  right_inv n := sorry
+  left_inv n := by
+    obtain ⟨a, b, hb, rfl⟩ := eq_diff n
+    rw [formalDiv_mk a hb]
+    exact (coe_Rat_eq a hb).trans (formalDiv_mk a hb)
+  right_inv q := by
+    have hd : (q.den:ℤ) ≠ 0 := by exact_mod_cast q.den_nz
+    show Quotient.lift _ _ ((q.num:ℤ) // (q.den:ℤ)) = q
+    rw [formalDiv_mk q.num hd]
+    exact_mod_cast Rat.num_div_den q
 
 theorem Rat.equivRat_apply (a:ℤ) {b:ℤ} (hb:b≠0) : equivRat (a // b) = (a:ℚ)/b := by
   rw [formalDiv_mk a hb]; rfl
