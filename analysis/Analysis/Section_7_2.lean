@@ -379,13 +379,48 @@ theorem Series.sub {s t:Series} (hs: s.converges) (ht: t.converges) :
 
 abbrev Series.from (s:Series) (m₁:ℤ) : Series := mk' (m := max s.m m₁) (fun n ↦ s.seq (n:ℤ))
 
+theorem Series.partial_from (s:Series) (k:ℕ) {N:ℤ} (hN: N ≥ s.m + k - 1) :
+    (s.from (s.m+k)).partial N = s.partial N - ∑ n ∈ Finset.Ico s.m (s.m+k), s.seq n := by
+  have htm : (s.from (s.m+↑k)).m = s.m + ↑k := by show max s.m (s.m+↑k) = s.m+↑k; omega
+  induction N, hN using Int.le_induction with
+  | base =>
+    have e1 : (s.from (s.m+↑k)).partial (s.m+↑k-1) = 0 := by
+      unfold Series.partial; rw [htm, Finset.Icc_eq_empty (by omega), Finset.sum_empty]
+    rw [e1]; symm; rw [sub_eq_zero]
+    show ∑ n ∈ Finset.Icc s.m (s.m+↑k-1), s.seq n = ∑ n ∈ Finset.Ico s.m (s.m+↑k), s.seq n
+    rw [Finset.Icc_sub_one_right_eq_Ico]
+  | succ N hN ih =>
+    rw [Series.partial_succ (s.from (s.m+↑k)) (by rw [htm]; omega), ih]
+    have hsq : (s.from (s.m+↑k)).seq (N+1) = s.seq (N+1) :=
+      Series.eval_mk' (fun n ↦ s.seq (n:ℤ)) (by omega : N+1 ≥ max s.m (s.m+↑k))
+    rw [hsq, Series.partial_succ s (by omega)]
+    ring
+
 /-- Proposition 7.2.14 (c) (Series laws) / Exercise 7.2.5 -/
 theorem Series.converges_from (s:Series) (k:ℕ) : s.converges ↔ (s.from (s.m+k)).converges := by
-  sorry
+  constructor
+  · rintro ⟨L, hL⟩
+    refine ⟨L - ∑ n ∈ Finset.Ico s.m (s.m+↑k), s.seq n, ?_⟩
+    apply (hL.sub_const _).congr'
+    filter_upwards [Filter.eventually_ge_atTop (s.m+↑k-1)] with N hN
+    exact (Series.partial_from s k hN).symm
+  · rintro ⟨L, hL⟩
+    refine ⟨L + ∑ n ∈ Finset.Ico s.m (s.m+↑k), s.seq n, ?_⟩
+    apply (hL.add_const _).congr'
+    filter_upwards [Filter.eventually_ge_atTop (s.m+↑k-1)] with N hN
+    have h := Series.partial_from s k hN
+    show (s.from (s.m+↑k)).partial N + (∑ n ∈ Finset.Ico s.m (s.m+↑k), s.seq n) = s.partial N
+    rw [h]; ring
 
 theorem Series.sum_from {s:Series} (k:ℕ) (h: s.converges) :
     s.sum = ∑ n ∈ Finset.Ico s.m (s.m+k), s.seq n + (s.from (s.m+k)).sum := by
-  sorry
+  obtain ⟨L, hL⟩ := h
+  have hfrom : (s.from (s.m+↑k)).convergesTo
+      (L - ∑ n ∈ Finset.Ico s.m (s.m+↑k), s.seq n) := by
+    apply (hL.sub_const _).congr'
+    filter_upwards [Filter.eventually_ge_atTop (s.m+↑k-1)] with N hN
+    exact (Series.partial_from s k hN).symm
+  rw [hL.sum_eq, hfrom.sum_eq]; ring
 
 /-- Proposition 7.2.14 (d) (Series laws) / Exercise 7.2.5 -/
 theorem Series.shift {s:Series} {x:ℝ} (h: s.convergesTo x) (L:ℤ) :
