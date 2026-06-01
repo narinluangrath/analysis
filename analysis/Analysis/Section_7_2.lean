@@ -390,12 +390,58 @@ theorem Series.sum_from {s:Series} (k:ℕ) (h: s.converges) :
 /-- Proposition 7.2.14 (d) (Series laws) / Exercise 7.2.5 -/
 theorem Series.shift {s:Series} {x:ℝ} (h: s.convergesTo x) (L:ℤ) :
     (mk' (m := s.m + L) (fun n ↦ s.seq (n - L))).convergesTo x := by
-  sorry
+  set t := mk' (m := s.m + L) (fun n ↦ s.seq (n - L)) with ht_def
+  have htm : t.m = s.m + L := rfl
+  have hpe : ∀ M:ℤ, M ≥ s.m + L - 1 → t.partial M = s.partial (M - L) := by
+    intro M hM
+    induction M, hM using Int.le_induction with
+    | base =>
+      unfold Series.partial
+      rw [htm, Finset.Icc_eq_empty (by omega), Finset.sum_empty,
+        Finset.Icc_eq_empty (by omega), Finset.sum_empty]
+    | succ M hM ih =>
+      rw [Series.partial_succ t (by rw [htm]; omega), ih, show M+1-L = (M-L)+1 by ring,
+        Series.partial_succ s (by omega)]
+      congr 1
+      rw [ht_def, Series.eval_mk' _ (show M+1 ≥ s.m+L by omega)]
+      congr 1; push_cast; ring
+  show Filter.Tendsto t.partial Filter.atTop (nhds x)
+  have hg : Filter.Tendsto (fun M:ℤ => M - L) Filter.atTop Filter.atTop := by
+    simpa using Filter.tendsto_atTop_add_const_right Filter.atTop (-L) Filter.tendsto_id
+  have hcomp := h.comp hg
+  apply hcomp.congr'
+  filter_upwards [Filter.eventually_ge_atTop (s.m+L-1)] with M hM
+  exact (hpe M hM).symm
 
 /-- Lemma 7.2.15 (telescoping series) / Exercise 7.2.6 -/
 theorem Series.telescope {a:ℕ → ℝ} (ha: Filter.atTop.Tendsto a (nhds 0)) :
     ((fun n:ℕ ↦ a n - a (n+1)):Series).convergesTo (a 0) := by
-  sorry
+  set g : ℕ → ℝ := fun n ↦ a n - a (n+1) with hg_def
+  have hm : (g:Series).m = 0 := rfl
+  have hpe : ∀ N:ℤ, N ≥ 0 → (g:Series).partial N = a 0 - a (N.toNat + 1) := by
+    intro N hN
+    induction N, hN using Int.le_induction with
+    | base =>
+      have h0 : (g:Series).seq 0 = g 0 := Series.eval_coe g 0
+      unfold Series.partial
+      rw [hm, Finset.Icc_self, Finset.sum_singleton, h0]
+      simp [hg_def]
+    | succ N hN ih =>
+      rw [Series.partial_succ (g:Series) (by rw [hm]; omega), ih]
+      have hk : (N + 1 : ℤ) = ((N.toNat + 1 : ℕ):ℤ) := by omega
+      have hseq : (g:Series).seq (N+1) = g (N.toNat + 1) := by
+        rw [hk, Series.eval_coe]
+      rw [hseq, show (N+1).toNat = N.toNat + 1 by omega]
+      simp only [hg_def]; ring
+  show Filter.Tendsto (g:Series).partial Filter.atTop (nhds (a 0))
+  have hidx : Filter.Tendsto (fun N:ℤ => N.toNat + 1) Filter.atTop Filter.atTop :=
+    Filter.tendsto_atTop_atTop.mpr (fun b => ⟨(b:ℤ), fun n hn => by omega⟩)
+  have hlim : Filter.Tendsto (fun N:ℤ => a 0 - a (N.toNat + 1)) Filter.atTop (nhds (a 0)) := by
+    have := (tendsto_const_nhds (x := a 0) (f := Filter.atTop)).sub (ha.comp hidx)
+    simpa using this
+  apply hlim.congr'
+  filter_upwards [Filter.eventually_ge_atTop (0:ℤ)] with N hN
+  exact (hpe N hN).symm
 
 /- Exercise 7.2.1  -/
 
