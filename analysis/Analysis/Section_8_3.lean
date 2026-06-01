@@ -175,7 +175,9 @@ abbrev LeCard (X Y: Type) : Prop := ∃ f: X → Y, Function.Injective f
 
 /-- Exercise 8.3.3 -/
 theorem Schroder_Bernstein {X Y:Type} (hXY : LeCard X Y) (hYX : LeCard Y X) : EqualCard X Y := by
-  sorry
+  obtain ⟨f, hf⟩ := hXY
+  obtain ⟨g, hg⟩ := hYX
+  exact Function.Embedding.schroeder_bernstein hf hg
 
 abbrev LtCard (X Y: Type) : Prop := LeCard X Y ∧ ¬ EqualCard X Y
 
@@ -187,7 +189,14 @@ example {X:Type} : LtCard X (Set X) := by
 
 example {A B C: Type} (hAB: LtCard A B) (hBC: LtCard B C) :
   LtCard A C := by
-  sorry
+  obtain ⟨⟨f, hf⟩, hAB'⟩ := hAB
+  obtain ⟨⟨g, hg⟩, hBC'⟩ := hBC
+  refine ⟨⟨g ∘ f, hg.comp hf⟩, ?_⟩
+  intro hAC
+  apply hBC'
+  obtain ⟨e, he⟩ := hAC
+  have einv := (Equiv.ofBijective e he).symm
+  exact Schroder_Bernstein ⟨g, hg⟩ ⟨f ∘ einv, hf.comp einv.injective⟩
 
 abbrev CardOrder : Preorder Type := {
   le := LeCard
@@ -199,7 +208,17 @@ abbrev CardOrder : Preorder Type := {
     intro X Y Z ⟨f, hf⟩ ⟨g, hg⟩
     exact ⟨g ∘ f, hg.comp hf⟩
   lt_iff_le_not_ge := by
-    sorry
+    intro X Y
+    constructor
+    · rintro ⟨hle, hne⟩
+      refine ⟨hle, ?_⟩
+      intro hge
+      exact hne (Schroder_Bernstein hle hge)
+    · rintro ⟨hle, hnge⟩
+      refine ⟨hle, ?_⟩
+      intro heq
+      obtain ⟨e, he⟩ := heq
+      exact hnge ⟨(Equiv.ofBijective e he).symm, (Equiv.ofBijective e he).symm.injective⟩
 }
 
 /-- Exercise 8.3.5 -/
