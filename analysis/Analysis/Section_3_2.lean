@@ -117,10 +117,32 @@ theorem SetTheory.Set.replace_exists (h: axiom_of_universal_specification) (A:Se
   exact ⟨Z, hZ⟩
 
 /-- Exercise 3.2.2 -/
-theorem SetTheory.Set.not_mem_self (A:Set) : (A:Object) ∉ A := by sorry
+theorem SetTheory.Set.not_mem_self (A:Set) : (A:Object) ∉ A := by
+  intro hA
+  set B : Set := {(A:Object)}
+  have hmem : (A:Object) ∈ B := (mem_singleton _ _).mpr rfl
+  obtain ⟨x, hx⟩ := axiom_of_regularity (nonempty_of_inhabited hmem)
+  have hxA : x.val = (A:Object) := (mem_singleton _ _).mp x.property
+  have hdisj := hx A hxA
+  rw [disjoint_iff, eq_empty_iff_forall_notMem] at hdisj
+  exact hdisj _ ((mem_inter _ _ _).mpr ⟨hA, hmem⟩)
 
 /-- Exercise 3.2.2 -/
-theorem SetTheory.Set.not_mem_mem (A B:Set) : (A:Object) ∉ B ∨ (B:Object) ∉ A := by sorry
+theorem SetTheory.Set.not_mem_mem (A B:Set) : (A:Object) ∉ B ∨ (B:Object) ∉ A := by
+  by_contra h
+  push_neg at h
+  obtain ⟨hAB, hBA⟩ := h
+  set P : Set := {(A:Object), (B:Object)}
+  have hmemA : (A:Object) ∈ P := (mem_pair _ _ _).mpr (Or.inl rfl)
+  have hmemB : (B:Object) ∈ P := (mem_pair _ _ _).mpr (Or.inr rfl)
+  obtain ⟨x, hx⟩ := axiom_of_regularity (nonempty_of_inhabited hmemA)
+  rcases (mem_pair _ _ _).mp x.property with hxA | hxB
+  · have hdisj := hx A hxA
+    rw [disjoint_iff, eq_empty_iff_forall_notMem] at hdisj
+    exact hdisj _ ((mem_inter _ _ _).mpr ⟨hBA, hmemB⟩)
+  · have hdisj := hx B hxB
+    rw [disjoint_iff, eq_empty_iff_forall_notMem] at hdisj
+    exact hdisj _ ((mem_inter _ _ _).mpr ⟨hAB, hmemA⟩)
 
 /-- Exercise 3.2.3 -/
 theorem SetTheory.Set.univ_iff : axiom_of_universal_specification ↔
