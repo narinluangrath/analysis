@@ -69,7 +69,20 @@ abbrev Chapter2.Nat.map_mul : ∀ (n m : Nat), (n * m).toNat = n.toNat * m.toNat
 /-- The conversion preserves order. -/
 abbrev Chapter2.Nat.map_le_map_iff : ∀ {n m : Nat}, n.toNat ≤ m.toNat ↔ n ≤ m := by
   intro n m
-  sorry
+  have hkk : ∀ k:ℕ, ((k:Chapter2.Nat)).toNat = k := equivNat.right_inv
+  constructor
+  · intro h
+    rw [_root_.le_iff_exists_add] at h
+    obtain ⟨k, hk⟩ := h
+    rw [Nat.le_iff]
+    refine ⟨(k:Chapter2.Nat), equivNat.injective ?_⟩
+    show m.toNat = (n + (k:Chapter2.Nat)).toNat
+    rw [map_add, hkk]; exact hk
+  · intro h
+    rw [Nat.le_iff] at h
+    obtain ⟨d, hd⟩ := h
+    rw [hd, map_add]
+    exact _root_.Nat.le_add_right _ _
 
 abbrev Chapter2.Nat.equivNat_ordered_ring : Chapter2.Nat ≃+*o ℕ where
   toEquiv := equivNat
