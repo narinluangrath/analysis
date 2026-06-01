@@ -868,7 +868,15 @@ theorem SetTheory.Set.partition_right {A B X:Set} (h_union: A ∪ B = X) (h_inte
   You may find `Function.onFun_apply` and the `fin_cases` tactic useful.
 -/
 theorem SetTheory.Set.pairwise_disjoint (A B:Set) :
-    Pairwise (Function.onFun Disjoint ![A \ B, A ∩ B, B \ A]) := by sorry
+    Pairwise (Function.onFun Disjoint ![A \ B, A ∩ B, B \ A]) := by
+  intro i j hij
+  rw [Function.onFun, disjoint_iff, eq_empty_iff_forall_notMem]
+  intro x hx
+  rw [mem_inter] at hx
+  fin_cases i <;> fin_cases j <;>
+    simp_all only [ne_eq, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+      Matrix.cons_val_two, Matrix.tail_cons, mem_sdiff, mem_inter, not_true_eq_false] <;>
+    obtain ⟨h1, h2⟩ := hx <;> simp_all [mem_sdiff, mem_inter]
 
 /-- Exercise 3.1.10 -/
 theorem SetTheory.Set.union_eq_partition (A B:Set) : A ∪ B = (A \ B) ∪ (A ∩ B) ∪ (B \ A) := by
