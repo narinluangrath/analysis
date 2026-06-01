@@ -247,8 +247,18 @@ theorem Series.convergesTo.add {s t:Series} {L M: ℝ} (hs: s.convergesTo L) (ht
   rw [hpe]
   exact Filter.Tendsto.add hs ht
 
+theorem Series.convergesTo.sum_eq {s:Series} {L:ℝ} (h: s.convergesTo L) : s.sum = L := by
+  have hc : s.converges := ⟨L, h⟩
+  unfold Series.sum
+  rw [dif_pos hc]
+  exact tendsto_nhds_unique hc.choose_spec h
+
 theorem Series.add {s t:Series} (hs: s.converges) (ht: t.converges) :
-    (s + t).converges ∧ (s+t).sum = s.sum + t.sum := by sorry
+    (s + t).converges ∧ (s+t).sum = s.sum + t.sum := by
+  obtain ⟨L, hL⟩ := hs
+  obtain ⟨M, hM⟩ := ht
+  have hadd : (s+t).convergesTo (L+M) := hL.add hM
+  exact ⟨⟨L+M, hadd⟩, by rw [hadd.sum_eq, hL.sum_eq, hM.sum_eq]⟩
 
 instance Series.inst.smul : SMul ℝ Series where
   smul c s := {
@@ -275,7 +285,10 @@ theorem Series.convergesTo.smul {s:Series} {L c: ℝ} (hs: s.convergesTo L) :
   exact Filter.Tendsto.const_mul c hs
 
 theorem Series.smul {c:ℝ} {s:Series} (hs: s.converges) :
-    (c • s).converges ∧ (c • s).sum = c * s.sum := by sorry
+    (c • s).converges ∧ (c • s).sum = c * s.sum := by
+  obtain ⟨L, hL⟩ := hs
+  have hsm : (c • s).convergesTo (c * L) := hL.smul
+  exact ⟨⟨c*L, hsm⟩, by rw [hsm.sum_eq, hL.sum_eq]⟩
 
 /-- The corresponding API for subtraction was not in the textbook, but is useful in later sections, so is included here. -/
 instance Series.inst_sub : Sub Series where
@@ -309,7 +322,11 @@ theorem Series.convergesTo.sub {s t:Series} {L M: ℝ} (hs: s.convergesTo L) (ht
   exact Filter.Tendsto.sub hs ht
 
 theorem Series.sub {s t:Series} (hs: s.converges) (ht: t.converges) :
-    (s - t).converges ∧ (s-t).sum = s.sum - t.sum := by sorry
+    (s - t).converges ∧ (s-t).sum = s.sum - t.sum := by
+  obtain ⟨L, hL⟩ := hs
+  obtain ⟨M, hM⟩ := ht
+  have hsub : (s-t).convergesTo (L-M) := hL.sub hM
+  exact ⟨⟨L-M, hsub⟩, by rw [hsub.sum_eq, hL.sum_eq, hM.sum_eq]⟩
 
 abbrev Series.from (s:Series) (m₁:ℤ) : Series := mk' (m := max s.m m₁) (fun n ↦ s.seq (n:ℤ))
 
