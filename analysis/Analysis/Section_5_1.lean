@@ -181,8 +181,11 @@ example (ε:ℚ) : ¬ ε.Steady ((fun n:ℕ ↦ (2 ^ (n+1):ℚ) ):Sequence) := b
   obtain ⟨N, hN⟩ := exists_nat_gt ε
   refine ⟨N+1, N, ?_⟩; unfold Rat.Close; push_cast
   rw [show (2:ℚ)^(N+1+1) - 2^(N+1) = 2^(N+1) from by ring]
-  rw [abs_of_nonneg (by positivity)]
-  sorry
+  rw [abs_of_nonneg (by positivity), not_le]
+  have h2 : (N:ℚ) < 2^(N+1) := by
+    calc (N:ℚ) < 2^N := by exact_mod_cast Nat.lt_two_pow_self (n := N)
+      _ ≤ 2^(N+1) := by apply pow_le_pow_right₀ (by norm_num); omega
+  linarith
 
 /-- Example 5.1.5:The sequence 2, 2, 2, ... is ε-steady for any ε > 0.
 -/
