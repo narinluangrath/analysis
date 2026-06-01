@@ -458,20 +458,51 @@ example (a b c d e:Nat) (hab: a ≤ b) (hbc: b < c) (hde: d < e) :
 theorem Nat.strong_induction {m₀:Nat} {P: Nat → Prop}
   (hind: ∀ m, m ≥ m₀ → (∀ m', m₀ ≤ m' ∧ m' < m → P m') → P m) :
     ∀ m, m ≥ m₀ → P m := by
-  sorry
+  have key : ∀ N, ∀ m, m₀ ≤ m → m < N → P m := by
+    refine Nat.induction (fun N => ∀ m, m₀ ≤ m → m < N → P m) ?_ ?_
+    · intro m _ hlt
+      rw [lt_iff_succ_le, le_iff] at hlt
+      obtain ⟨e, he⟩ := hlt
+      rw [succ_add] at he
+      exact absurd he.symm (succ_ne _)
+    · intro N ih m hm0 hmN
+      rw [lt_iff_succ_le, le_iff] at hmN
+      obtain ⟨e, he⟩ := hmN
+      rw [succ_add] at he
+      have hN : N = m + e := succ_cancel he
+      rcases (le_iff_lt_or_eq m N).mp ((le_iff m N).mpr ⟨e, hN⟩) with hlt | heq
+      · exact ih m hm0 hlt
+      · subst heq
+        exact hind m hm0 (fun m' ⟨hm0', hm'm⟩ => ih m' hm0' hm'm)
+  intro m hm
+  exact key (m++) m hm (succ_gt_self m)
 
 /-- Exercise 2.2.6 (backwards induction)
     Compare with Mathlib's `Nat.decreasingInduction`. -/
 theorem Nat.backwards_induction {n:Nat} {P: Nat → Prop}
   (hind: ∀ m, P (m++) → P m) (hn: P n) :
     ∀ m, m ≤ n → P m := by
-  sorry
+  have key : ∀ k j, P (j + k) → P j := by
+    refine Nat.induction (fun k => ∀ j, P (j + k) → P j) ?_ ?_
+    · intro j h; rwa [add_zero] at h
+    · intro k ih j h
+      rw [add_succ] at h
+      exact ih j (hind _ h)
+  intro m hm
+  rw [le_iff] at hm
+  obtain ⟨k, hk⟩ := hm
+  exact key k m (hk ▸ hn)
 
 /-- Exercise 2.2.7 (induction from a starting point)
     Compare with Mathlib's `Nat.le_induction`. -/
 theorem Nat.induction_from {n:Nat} {P: Nat → Prop} (hind: ∀ m, P m → P (m++)) :
     P n → ∀ m, m ≥ n → P m := by
-  sorry
+  intro hn m hm
+  rw [ge_iff_le, le_iff] at hm
+  obtain ⟨d, rfl⟩ := hm
+  refine Nat.induction (fun d => P (n + d)) ?_ ?_ d
+  · show P (n + 0); rwa [add_zero]
+  · intro k ih; show P (n + k++); rw [add_succ]; exact hind _ ih
 
 
 
