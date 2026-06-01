@@ -473,11 +473,23 @@ theorem Function.comp_cancel_right {X Y Z:Set} {f: Function X Y} {g g': Function
 
 def Function.comp_cancel_left_without_hg : Decidable (∀ (X Y Z:Set) (f f': Function X Y) (g : Function Y Z) (heq : g ○ f = g ○ f'), f = f') := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro H
+  have hff' := H Nat Nat Nat (mk_fn (fun x => x)) (mk_fn (fun _ => (0:Nat)))
+    (mk_fn (fun _ => (0:Nat))) (by rw [eq_iff]; intro x; simp [comp_eval, eval_of])
+  rw [eq_iff] at hff'
+  have h1 := hff' (1:Nat)
+  simp [eval_of] at h1
 
 def Function.comp_cancel_right_without_hg : Decidable (∀ (X Y Z:Set) (f: Function X Y) (g g': Function Y Z) (heq : g ○ f = g' ○ f), g = g') := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro H
+  have hgg' := H Nat Nat Nat (mk_fn (fun _ => (0:Nat))) (mk_fn (fun x => x))
+    (mk_fn (fun _ => (0:Nat))) (by rw [eq_iff]; intro x; simp [comp_eval, eval_of])
+  rw [eq_iff] at hgg'
+  have h1 := hgg' (1:Nat)
+  simp [eval_of] at h1
 
 /--
   Exercise 3.3.5.
