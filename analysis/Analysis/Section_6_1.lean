@@ -451,11 +451,40 @@ theorem Sequence.mul_coe (a b: ℕ → ℝ) : (a:Sequence) * (b:Sequence) = (fun
     in applications. -/
 theorem Sequence.tendsTo_mul {a b:Sequence} {L M:ℝ} (ha: a.TendsTo L) (hb: b.TendsTo M) :
     (a * b).TendsTo (L * M) := by
-  sorry
+  rw [tendsTo_iff] at ha hb ⊢
+  intro ε hε
+  obtain ⟨N0, hN0⟩ := ha 1 one_pos
+  obtain ⟨N1, hN1⟩ := ha (ε/2/(|M|+1)) (by positivity)
+  obtain ⟨N2, hN2⟩ := hb (ε/2/(|L|+1)) (by positivity)
+  refine ⟨max N0 (max N1 N2), fun n hn => ?_⟩
+  have e0 := hN0 n (le_trans (le_max_left _ _) hn)
+  have e1 := hN1 n (le_trans (le_trans (le_max_left _ _) (le_max_right _ _)) hn)
+  have e2 := hN2 n (le_trans (le_trans (le_max_right _ _) (le_max_right _ _)) hn)
+  rw [Sequence.mul_eval]
+  have habs : |a n| ≤ |L| + 1 := by
+    calc |a n| = |(a n - L) + L| := by congr 1; ring
+      _ ≤ |a n - L| + |L| := abs_add_le _ _
+      _ ≤ |L| + 1 := by linarith
+  have t1 : |a n| * |b n - M| ≤ ε/2 := by
+    calc |a n| * |b n - M| ≤ (|L|+1) * (ε/2/(|L|+1)) := by gcongr
+      _ = ε/2 := by field_simp
+  have t2 : |M| * |a n - L| ≤ ε/2 := by
+    calc |M| * |a n - L| ≤ (|M|+1) * (ε/2/(|M|+1)) := by
+          gcongr
+          · linarith [abs_nonneg M]
+      _ = ε/2 := by field_simp
+  calc |a n * b n - L * M| = |a n * (b n - M) + M * (a n - L)| := by congr 1; ring
+    _ ≤ |a n * (b n - M)| + |M * (a n - L)| := abs_add_le _ _
+    _ = |a n| * |b n - M| + |M| * |a n - L| := by rw [abs_mul, abs_mul]
+    _ ≤ ε := by linarith
 
 theorem Sequence.lim_mul {a b:Sequence} (ha: a.Convergent) (hb: b.Convergent) :
     (a * b).Convergent ∧ lim (a * b) = lim a * lim b := by
-  sorry
+  have hmul := tendsTo_mul (lim_def ha) (lim_def hb)
+  have hconv : (a*b).Convergent := ⟨_, hmul⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (a*b) hne ⟨lim_def hconv, hmul⟩
 
 
 instance Sequence.inst_smul : SMul ℝ Sequence where
