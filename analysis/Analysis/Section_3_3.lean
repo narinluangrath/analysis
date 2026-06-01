@@ -506,12 +506,29 @@ theorem Function.comp_surjective {X Y Z:Set} {f: Function X Y} {g : Function Y Z
 def Function.comp_injective' : Decidable (∀ (X Y Z:Set) (f: Function X Y) (g : Function Y Z) (hinj :
     (g ○ f).one_to_one), g.one_to_one) := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro H
+  have hg := H ({(0:Object)}:Set) Nat Nat (mk_fn (fun _ => (0:Nat))) (mk_fn (fun _ => (0:Nat))) (by
+    intro x x' hne
+    exact absurd (Subtype.ext (((SetTheory.Set.mem_singleton _ _).mp x.property).trans
+      ((SetTheory.Set.mem_singleton _ _).mp x'.property).symm)) hne)
+  have hne := hg (0:Nat) (1:Nat) (by simp)
+  apply hne; simp [eval_of]
 
 def Function.comp_surjective' : Decidable (∀ (X Y Z:Set) (f: Function X Y) (g : Function Y Z) (hsurj :
     (g ○ f).onto), f.onto) := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro H
+  have hf := H Nat Nat ({(0:Object)}:Set) (mk_fn (fun _ => (0:Nat)))
+    (mk_fn (fun _ => (⟨(0:Object), (SetTheory.Set.mem_singleton _ _).mpr rfl⟩ : ({(0:Object)}:Set)))) (by
+    intro z
+    refine ⟨(0:Nat), ?_⟩
+    rw [comp_eval, eval_of]
+    exact Subtype.ext ((SetTheory.Set.mem_singleton _ _).mp z.property).symm)
+  obtain ⟨x, hx⟩ := hf (1:Nat)
+  rw [eval_of] at hx
+  simp at hx
 
 /-- Exercise 3.3.6 -/
 theorem Function.inverse_comp_self {X Y: Set} {f: Function X Y} (h: f.bijective) (x: X) :
