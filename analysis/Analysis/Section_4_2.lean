@@ -75,6 +75,12 @@ theorem Rat.eq_diff (n:Rat) : ∃ a b, b ≠ 0 ∧ n = a // b := by
   refine ⟨ a, b, h, ?_ ⟩
   simp [formalDiv, h]
 
+/-- (Helper) `a // b` with nonzero denominator is the quotient of the representative. -/
+theorem Rat.formalDiv_mk (a:ℤ) {b:ℤ} (hb:b≠0) :
+    a // b = Quotient.mk PreRat.instSetoid ⟨a,b,hb⟩ := by
+  show Quotient.mk PreRat.instSetoid _ = _
+  rw [dif_pos hb]
+
 /--
   Decidability of equality. Hint: modify the proof of `DecidableEq Int` from the previous
   section. However, because formal division handles the case of zero denominator separately, it
@@ -290,7 +296,15 @@ instance Rat.instCommRing : CommRing Rat where
 instance Rat.instRatCast : RatCast Rat where
   ratCast q := q.num // q.den
 
-theorem Rat.ratCast_inj : Function.Injective (fun n:ℚ ↦ (n:Rat)) := by sorry
+theorem Rat.ratCast_inj : Function.Injective (fun n:ℚ ↦ (n:Rat)) := by
+  intro a b h
+  have ha : (a.den:ℤ) ≠ 0 := by exact_mod_cast a.den_nz
+  have hb : (b.den:ℤ) ≠ 0 := by exact_mod_cast b.den_nz
+  have h2 : (a.num:ℤ) // (a.den:ℤ) = (b.num:ℤ) // (b.den:ℤ) := h
+  rw [Rat.eq _ _ ha hb] at h2
+  rw [← Rat.num_div_den a, ← Rat.num_div_den b,
+      div_eq_div_iff (by exact_mod_cast a.den_nz) (by exact_mod_cast b.den_nz)]
+  exact_mod_cast h2
 
 theorem Rat.coe_Rat_eq (a:ℤ) {b:ℤ} (hb: b ≠ 0) : (a/b:ℚ) = a // b := by
   set q := (a/b:ℚ)
@@ -606,16 +620,31 @@ abbrev Rat.equivRat : Rat ≃ ℚ where
   left_inv n := sorry
   right_inv n := sorry
 
-/-- Not in textbook: equivalence preserves order -/
-abbrev Rat.equivRat_order : Rat ≃o ℚ where
-  toEquiv := equivRat
-  map_rel_iff' := by sorry
+theorem Rat.equivRat_apply (a:ℤ) {b:ℤ} (hb:b≠0) : equivRat (a // b) = (a:ℚ)/b := by
+  rw [formalDiv_mk a hb]; rfl
 
 /-- Not in textbook: equivalence preserves ring operations -/
 abbrev Rat.equivRat_ring : Rat ≃+* ℚ where
   toEquiv := equivRat
-  map_add' := by sorry
-  map_mul' := by sorry
+  map_add' := by
+    intro x y
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y
+    show equivRat (a//b + c//d) = equivRat (a//b) + equivRat (c//d)
+    rw [add_eq _ _ hb hd, equivRat_apply _ (Int.mul_ne_zero hb hd), equivRat_apply _ hb,
+        equivRat_apply _ hd, div_add_div _ _ (by exact_mod_cast hb) (by exact_mod_cast hd)]
+    push_cast; ring
+  map_mul' := by
+    intro x y
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y
+    show equivRat (a//b * c//d) = equivRat (a//b) * equivRat (c//d)
+    rw [mul_eq _ _ hb hd, equivRat_apply _ (Int.mul_ne_zero hb hd), equivRat_apply _ hb,
+        equivRat_apply _ hd, div_mul_div_comm]
+    push_cast; ring
+
+/-- Not in textbook: equivalence preserves order -/
+abbrev Rat.equivRat_order : Rat ≃o ℚ where
+  toEquiv := equivRat
+  map_rel_iff' := by sorry
 
 /--
   (Not from textbook) The textbook rationals are isomorphic (as a field) to the Mathlib rationals.
