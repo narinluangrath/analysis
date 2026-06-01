@@ -198,22 +198,89 @@ theorem sInf.of_continuous_on_compact {a b:ℝ} (h:a < b) (f:ℝ → ℝ) (hf: C
 example : ∃ f: ℝ → ℝ, ContinuousOn f (.Ioo 1 2) ∧ BddOn f (.Ioo 1 2) ∧
   ∃ x₀ ∈ Set.Ioo 1 2, IsMinOn f (.Ioo 1 2) x₀ ∧
   ¬ ∃ x₀ ∈ Set.Ioo 1 2, IsMaxOn f (.Ioo 1 2) x₀
-  := by sorry
+  := by
+  refine ⟨fun x => (x - 3/2)^2, by fun_prop, ⟨1/4, ?_⟩, 3/2, by norm_num, ?_, ?_⟩
+  · intro x hx; rw [Set.mem_Ioo] at hx; rw [abs_le]; constructor <;> nlinarith [hx.1, hx.2]
+  · rw [isMinOn_iff]; intro x _; nlinarith [sq_nonneg (x - 3/2)]
+  · rintro ⟨x₀, hx₀, hmax⟩
+    rw [Set.mem_Ioo] at hx₀; rw [isMaxOn_iff] at hmax
+    have ht5 : |x₀ - 3/2| < 1/2 := by rw [abs_lt]; constructor <;> linarith [hx₀.1, hx₀.2]
+    have hy : (3/2 + (|x₀ - 3/2|+1/2)/2) ∈ Set.Ioo (1:ℝ) 2 := by
+      rw [Set.mem_Ioo]; constructor <;> nlinarith [abs_nonneg (x₀ - 3/2), ht5]
+    have hle := hmax _ hy
+    nlinarith [hle, sq_abs (x₀ - 3/2), abs_nonneg (x₀ - 3/2), ht5,
+      mul_pos (by linarith [ht5] : (0:ℝ) < 1/2 - |x₀ - 3/2|)
+              (by linarith [abs_nonneg (x₀ - 3/2)] : (0:ℝ) < 3*|x₀ - 3/2| + 1/2)]
 
 /-- Exercise 9.6.1 -/
 example : ∃ f: ℝ → ℝ, ContinuousOn f (.Ioo 1 2) ∧ BddOn f (.Ioo 1 2) ∧
   ∃ x₀ ∈ Set.Ioo 1 2, IsMaxOn f (.Ioo 1 2) x₀ ∧
   ¬ ∃ x₀ ∈ Set.Ioo 1 2, IsMinOn f (.Ioo 1 2) x₀
-  := by sorry
+  := by
+  refine ⟨fun x => -(x - 3/2)^2, by fun_prop, ⟨1/4, ?_⟩, 3/2, by norm_num, ?_, ?_⟩
+  · intro x hx; rw [Set.mem_Ioo] at hx; rw [abs_le]; constructor <;> nlinarith [hx.1, hx.2]
+  · rw [isMaxOn_iff]; intro x _; nlinarith [sq_nonneg (x - 3/2)]
+  · rintro ⟨x₀, hx₀, hmin⟩
+    rw [Set.mem_Ioo] at hx₀; rw [isMinOn_iff] at hmin
+    have ht5 : |x₀ - 3/2| < 1/2 := by rw [abs_lt]; constructor <;> linarith [hx₀.1, hx₀.2]
+    have hy : (3/2 + (|x₀ - 3/2|+1/2)/2) ∈ Set.Ioo (1:ℝ) 2 := by
+      rw [Set.mem_Ioo]; constructor <;> nlinarith [abs_nonneg (x₀ - 3/2), ht5]
+    have hle := hmin _ hy
+    nlinarith [hle, sq_abs (x₀ - 3/2), abs_nonneg (x₀ - 3/2), ht5,
+      mul_pos (by linarith [ht5] : (0:ℝ) < 1/2 - |x₀ - 3/2|)
+              (by linarith [abs_nonneg (x₀ - 3/2)] : (0:ℝ) < 3*|x₀ - 3/2| + 1/2)]
 
 /-- Exercise 9.6.1 -/
 example : ∃ f: ℝ → ℝ, BddOn f (.Icc (-1) 1) ∧
   ¬ ∃ x₀ ∈ Set.Icc (-1) 1, IsMinOn f (.Icc (-1) 1) x₀ ∧
   ¬ ∃ x₀ ∈ Set.Icc (-1) 1, IsMaxOn f (.Icc (-1) 1) x₀
-  := by sorry
+  := by
+  refine ⟨fun x => if |x| < 1 then x else 0, ⟨1, ?_⟩, ?_⟩
+  · intro x hx; rw [Set.mem_Icc] at hx; show |if |x| < 1 then x else 0| ≤ 1; split_ifs with h
+    · exact h.le
+    · simp
+  · rintro ⟨x₀, hx₀, hmin, -⟩
+    rw [Set.mem_Icc] at hx₀; rw [isMinOn_iff] at hmin
+    by_cases hc : |x₀| < 1
+    · have hfx0 : (if |x₀| < 1 then x₀ else 0) = x₀ := if_pos hc
+      have hx0gt : -1 < x₀ := by rw [abs_lt] at hc; linarith [hc.1]
+      set y := (x₀ - 1)/2 with hy
+      have hymem : y ∈ Set.Icc (-1:ℝ) 1 := by rw [Set.mem_Icc, hy]; constructor <;> linarith [hx₀.2]
+      have hyabs : |y| < 1 := by rw [abs_lt, hy]; constructor <;> linarith
+      have hh := hmin y hymem
+      rw [hfx0, if_pos hyabs, hy] at hh; linarith
+    · have hfx0 : (if |x₀| < 1 then x₀ else 0) = 0 := if_neg hc
+      have hymem : (-1/2:ℝ) ∈ Set.Icc (-1:ℝ) 1 := by norm_num
+      have hyabs : |(-1/2:ℝ)| < 1 := by norm_num
+      have hh := hmin (-1/2) hymem
+      rw [hfx0, if_pos hyabs] at hh; norm_num at hh
 
 /-- Exercise 9.6.1 -/
-example : ∃ f: ℝ → ℝ, ¬ BddAboveOn f (.Icc (-1) 1) ∧ ¬ BddBelowOn f (.Icc (-1) 1) := by sorry
+example : ∃ f: ℝ → ℝ, ¬ BddAboveOn f (.Icc (-1) 1) ∧ ¬ BddBelowOn f (.Icc (-1) 1) := by
+  refine ⟨fun x => if x = 0 then 0 else 1/x, ?_, ?_⟩
+  · rintro ⟨M, hM⟩
+    set c := max M 0 + 1 with hc
+    have hcpos : 0 < c := by rw [hc]; linarith [le_max_right M 0]
+    have hpos : (0:ℝ) < 1/c := by positivity
+    have hx : (1/c) ∈ Set.Icc (-1:ℝ) 1 := by
+      rw [Set.mem_Icc]; refine ⟨by linarith, ?_⟩
+      rw [div_le_one hcpos, hc]; linarith [le_max_right M 0]
+    have hne : (1/c : ℝ) ≠ 0 := ne_of_gt hpos
+    have hh := hM _ hx; dsimp only at hh
+    rw [if_neg hne, one_div_one_div] at hh
+    rw [hc] at hh; linarith [le_max_left M 0]
+  · rintro ⟨M, hM⟩
+    set c := max M 0 + 1 with hc
+    have hcpos : 0 < c := by rw [hc]; linarith [le_max_right M 0]
+    have hpos : (0:ℝ) < 1/c := by positivity
+    have hx : (-(1/c)) ∈ Set.Icc (-1:ℝ) 1 := by
+      rw [Set.mem_Icc]; refine ⟨?_, by linarith⟩
+      have : 1/c ≤ 1 := by rw [div_le_one hcpos, hc]; linarith [le_max_right M 0]
+      linarith
+    have hne : (-(1/c) : ℝ) ≠ 0 := by linarith
+    have hh := hM _ hx; dsimp only at hh
+    rw [if_neg hne, div_neg, one_div_one_div] at hh
+    rw [hc] at hh; linarith [le_max_left M 0]
 
 
 end Chapter9
