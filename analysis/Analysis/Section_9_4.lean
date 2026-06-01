@@ -41,9 +41,23 @@ example (c:ℝ) : Continuous (fun x:ℝ ↦ c) := continuous_const
 example : Continuous (fun x:ℝ ↦ x) := continuous_id
 
 /-- Example 9.4.4 --/
-example {x₀:ℝ} (h: x₀ ≠ 0) : ContinuousAt Real.sign x₀ := by sorry
+example {x₀:ℝ} (h: x₀ ≠ 0) : ContinuousAt Real.sign x₀ := by
+  rcases lt_or_gt_of_ne h with hx | hx
+  · refine (continuousAt_const (y := (-1:ℝ))).congr ?_
+    filter_upwards [Iio_mem_nhds hx] with y hy using (Real.sign_of_neg hy).symm
+  · refine (continuousAt_const (y := (1:ℝ))).congr ?_
+    filter_upwards [Ioi_mem_nhds hx] with y hy using (Real.sign_of_pos hy).symm
 
-example  :¬ ContinuousAt Real.sign 0 := by sorry
+example  :¬ ContinuousAt Real.sign 0 := by
+  intro hcont
+  have h1 : Filter.Tendsto Real.sign (nhdsWithin 0 (Set.Ioi 0)) (nhds (Real.sign 0)) :=
+    hcont.continuousWithinAt.tendsto
+  have h2 : Filter.Tendsto Real.sign (nhdsWithin 0 (Set.Ioi 0)) (nhds 1) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx using Real.sign_of_pos hx
+  have := tendsto_nhds_unique h1 h2
+  rw [Real.sign_zero] at this
+  norm_num at this
 
 /-- Example 9.4.5 --/
 example (x₀:ℝ) : ¬ ContinuousAt f_9_3_21 x₀ := by sorry
