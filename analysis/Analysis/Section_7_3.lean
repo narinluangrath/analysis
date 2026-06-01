@@ -73,8 +73,35 @@ theorem Series.converges_of_le {s t: Series} (hm: s.m = t.m) (hcomp: ∀ n ≥ s
 
 theorem Series.diverges_of_ge {s t: Series} (hm: s.m = t.m) (hcomp: ∀ n ≥ s.m, |s.seq n| ≤ t.seq n) (hdiv: ¬ s.absConverges) : t.diverges := by sorry
 
+theorem Series.partial_coe_eq_range {a:ℕ → ℝ} (N:ℤ) (hN: 0 ≤ N) :
+    (a:Series).partial N = ∑ k ∈ Finset.range (N.toNat + 1), a k := by
+  induction N, hN using Int.le_induction with
+  | base =>
+    rw [show (0:ℤ).toNat + 1 = 1 from rfl, Finset.sum_range_one]
+    unfold Series.partial
+    rw [Finset.Icc_self, Finset.sum_singleton]
+    exact Series.eval_coe a 0
+  | succ N hN ih =>
+    have hm : (a:Series).m = 0 := rfl
+    have hseq : (a:Series).seq (N+1) = a (N.toNat+1) := by
+      rw [show N+1 = ((N.toNat+1:ℕ):ℤ) by omega, Series.eval_coe]
+    rw [Series.partial_succ (a:Series) (by rw [hm]; omega), ih,
+        show (N+1).toNat = N.toNat + 1 by omega, hseq, Finset.sum_range_succ a (N.toNat+1)]
+
 /-- Lemma 7.3.3 (Geometric series) / Exercise 7.3.2 -/
-theorem Series.converges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series).convergesTo (1 / (1 - x)) := by sorry
+theorem Series.converges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series).convergesTo (1 / (1 - x)) := by
+  unfold Series.convergesTo
+  have hsum : Filter.Tendsto (fun M:ℕ => ∑ k ∈ Finset.range M, x^k) Filter.atTop (nhds (1-x)⁻¹) :=
+    (hasSum_geometric_of_norm_lt_one (by rwa [Real.norm_eq_abs])).tendsto_sum_nat
+  have hshift : Filter.Tendsto (fun M:ℕ => M+1) Filter.atTop Filter.atTop :=
+    Filter.tendsto_atTop_atTop.mpr (fun b => ⟨b, fun a ha => by omega⟩)
+  have hg : Filter.Tendsto (fun M:ℕ => ∑ k ∈ Finset.range (M+1), x^k) Filter.atTop (nhds (1/(1-x))) := by
+    rw [one_div]; exact hsum.comp hshift
+  have htn : Filter.Tendsto (Int.toNat) Filter.atTop Filter.atTop :=
+    Filter.tendsto_atTop_atTop.mpr (fun b => ⟨(b:ℤ), fun a ha => by omega⟩)
+  apply (hg.comp htn).congr'
+  filter_upwards [Filter.eventually_ge_atTop (0:ℤ)] with N hN
+  exact (Series.partial_coe_eq_range N hN).symm
 
 theorem Series.absConverges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series).absConverges := by sorry
 
