@@ -831,12 +831,37 @@ theorem SetTheory.Set.union_inter_cancel (A B:Set) : A ∪ (A ∩ B) = A := by
 
 /-- Exercise 3.1.9 -/
 theorem SetTheory.Set.partition_left {A B X:Set} (h_union: A ∪ B = X) (h_inter: A ∩ B = ∅) :
-    A = X \ B := by sorry
+    A = X \ B := by
+  apply ext; intro x; rw [mem_sdiff]
+  constructor
+  · intro hA
+    refine ⟨?_, ?_⟩
+    · rw [← h_union]; exact (mem_union x A B).mpr (Or.inl hA)
+    · intro hB
+      have : x ∈ A ∩ B := (mem_inter x A B).mpr ⟨hA, hB⟩
+      rw [h_inter] at this; exact not_mem_empty x this
+  · intro ⟨hX, hB⟩
+    rw [← h_union, mem_union] at hX
+    rcases hX with h | h
+    · exact h
+    · exact absurd h hB
 
 /-- Exercise 3.1.9 -/
 theorem SetTheory.Set.partition_right {A B X:Set} (h_union: A ∪ B = X) (h_inter: A ∩ B = ∅) :
     B = X \ A := by
-  sorry
+  apply ext; intro x; rw [mem_sdiff]
+  constructor
+  · intro hB
+    refine ⟨?_, ?_⟩
+    · rw [← h_union]; exact (mem_union x A B).mpr (Or.inr hB)
+    · intro hA
+      have : x ∈ A ∩ B := (mem_inter x A B).mpr ⟨hA, hB⟩
+      rw [h_inter] at this; exact not_mem_empty x this
+  · intro ⟨hX, hA⟩
+    rw [← h_union, mem_union] at hX
+    rcases hX with h | h
+    · exact absurd h hA
+    · exact h
 
 /--
   Exercise 3.1.10.
@@ -847,7 +872,9 @@ theorem SetTheory.Set.pairwise_disjoint (A B:Set) :
 
 /-- Exercise 3.1.10 -/
 theorem SetTheory.Set.union_eq_partition (A B:Set) : A ∪ B = (A \ B) ∪ (A ∩ B) ∪ (B \ A) := by
-  sorry
+  apply ext; intro x
+  simp only [mem_union, mem_inter, mem_sdiff]
+  by_cases hA : x ∈ A <;> by_cases hB : x ∈ B <;> tauto
 
 /--
   Exercise 3.1.11.
