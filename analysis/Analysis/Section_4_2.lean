@@ -583,7 +583,13 @@ instance Rat.instIsStrictOrderedRing : IsStrictOrderedRing Rat where
 
 /-- Exercise 4.2.6 -/
 theorem Rat.mul_lt_mul_right_of_neg (x y z:Rat) (hxy: x < y) (hz: z.isNeg) : x * z > y * z := by
-  sorry
+  obtain ⟨r, hr, hzr⟩ := hz
+  have h1 : x * r < y * r := mul_lt_mul_right hxy hr
+  rw [lt_iff] at h1
+  obtain ⟨s, hs, h1s⟩ := h1
+  rw [gt_iff]
+  have he : x * z - y * z = s := by rw [hzr]; linear_combination -h1s
+  rw [he]; exact hs
 
 
 /--
@@ -591,8 +597,11 @@ theorem Rat.mul_lt_mul_right_of_neg (x y z:Rat) (hxy: x < y) (hz: z.isNeg) : x *
   the API for Mathlib's version of the rationals.
 -/
 abbrev Rat.equivRat : Rat ≃ ℚ where
-  toFun := Quotient.lift (fun ⟨ a, b, h ⟩ ↦ a / b) (by
-    sorry)
+  toFun := Quotient.lift (fun ⟨ a, b, h ⟩ ↦ (a:ℚ) / b) (by
+    intro ⟨a,b,hb⟩ ⟨a',b',hb'⟩ h
+    simp only [PreRat.eq] at h
+    rw [div_eq_div_iff (by exact_mod_cast hb) (by exact_mod_cast hb')]
+    exact_mod_cast h)
   invFun := fun n: ℚ ↦ (n:Rat)
   left_inv n := sorry
   right_inv n := sorry
