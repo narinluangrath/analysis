@@ -362,10 +362,19 @@ def Rat.isNeg (q:Rat) : Prop := ∃ r:Rat, r.isPos ∧ q = -r
 theorem Rat.trichotomous (x:Rat) : x = 0 ∨ x.isPos ∨ x.isNeg := by sorry
 
 /-- Lemma 4.2.7 (trichotomy of rationals) / Exercise 4.2.4 -/
-theorem Rat.not_zero_and_pos (x:Rat) : ¬(x = 0 ∧ x.isPos) := by sorry
+theorem Rat.not_zero_and_pos (x:Rat) : ¬(x = 0 ∧ x.isPos) := by
+  rintro ⟨rfl, a, b, ha, hb, hab⟩
+  rw [eq_comm, div_eq_zero_iff] at hab
+  rcases hab with h | h
+  · have : a = 0 := coe_Int_inj h
+    omega
+  · have : b = 0 := coe_Int_inj h
+    omega
 
 /-- Lemma 4.2.7 (trichotomy of rationals) / Exercise 4.2.4 -/
-theorem Rat.not_zero_and_neg (x:Rat) : ¬(x = 0 ∧ x.isNeg) := by sorry
+theorem Rat.not_zero_and_neg (x:Rat) : ¬(x = 0 ∧ x.isNeg) := by
+  rintro ⟨rfl, r, hr, hrneg⟩
+  exact not_zero_and_pos r ⟨neg_eq_zero.mp hrneg.symm, hr⟩
 
 /-- Lemma 4.2.7 (trichotomy of rationals) / Exercise 4.2.4 -/
 theorem Rat.not_pos_and_neg (x:Rat) : ¬(x.isPos ∧ x.isNeg) := by sorry
