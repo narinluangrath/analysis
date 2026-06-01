@@ -21,7 +21,18 @@ namespace Chapter10
 theorem derivative_of_monotone (X:Set ℝ) {x₀:ℝ} (hx₀: ClusterPt x₀ (.principal (X \ {x₀})))
   {f:ℝ → ℝ} (hmono: Monotone f) (hderiv: DifferentiableWithinAt ℝ f X x₀) :
     derivWithin f X x₀ ≥ 0 := by
-  sorry
+  haveI : (nhdsWithin x₀ (X \ {x₀})).NeBot := hx₀
+  have hd := hderiv.hasDerivWithinAt
+  rw [hasDerivWithinAt_iff_tendsto_slope] at hd
+  have hslope : ∀ᶠ y in nhdsWithin x₀ (X \ {x₀}), 0 ≤ slope f x₀ y := by
+    filter_upwards [self_mem_nhdsWithin] with y hy
+    simp only [Set.mem_diff, Set.mem_singleton_iff] at hy
+    rw [slope_def_field]
+    rcases lt_trichotomy y x₀ with h | h | h
+    · rw [div_nonneg_iff]; right; exact ⟨by linarith [hmono h.le], by linarith⟩
+    · exact absurd h hy.2
+    · exact div_nonneg (by linarith [hmono h.le]) (by linarith)
+  exact ge_of_tendsto hd hslope
 
 theorem derivative_of_antitone (X:Set ℝ) {x₀:ℝ} (hx₀: ClusterPt x₀ (.principal (X \ {x₀})))
   {f:ℝ → ℝ} (hmono: Antitone f) (hderiv: DifferentiableWithinAt ℝ f X x₀) :
@@ -34,7 +45,11 @@ theorem derivative_of_antitone (X:Set ℝ) {x₀:ℝ} (hx₀: ClusterPt x₀ (.p
 theorem strictMono_of_positive_derivative {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
   (hderiv: DifferentiableOn ℝ f (.Icc a b)) (hpos: ∀ x ∈ Set.Ioo a b, derivWithin f (.Icc a b) x > 0) :
     StrictMonoOn f (.Icc a b) := by
-  sorry
+  apply strictMonoOn_of_deriv_pos (convex_Icc a b) hderiv.continuousOn
+  intro x hx
+  rw [interior_Icc] at hx
+  rw [← derivWithin_of_mem_nhds (Icc_mem_nhds hx.1 hx.2)]
+  exact hpos x hx
 
 theorem strictAnti_of_negative_derivative {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
   (hderiv: DifferentiableOn ℝ f (.Icc a b)) (hneg: ∀ x ∈ Set.Ioo a b, derivWithin f (.Icc a b) x < 0) :
