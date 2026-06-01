@@ -88,6 +88,23 @@ example : ∃ f: ℝ → ℝ, StrictMono f ∧ Differentiable ℝ f ∧ deriv f 
 /-- Exercise 10.3.5 -/
 example : ∃ (X : Set ℝ) (f : ℝ → ℝ), DifferentiableOn ℝ f X ∧
   (∀ x ∈ X, derivWithin f X x > 0) ∧ ¬ StrictMonoOn f X  := by
-  sorry
+  refine ⟨Set.Icc (-2) (-3/2) ∪ Set.Icc (3/2) 2, fun x => x^3 - 3*x, ?_, ?_, ?_⟩
+  · exact (by fun_prop : Differentiable ℝ (fun x:ℝ => x^3 - 3*x)).differentiableOn
+  · intro x hx
+    have huniq : UniqueDiffWithinAt ℝ (Set.Icc (-2:ℝ) (-3/2) ∪ Set.Icc (3/2) 2) x := by
+      rcases hx with h | h
+      · exact (uniqueDiffOn_Icc (by norm_num) x h).mono Set.subset_union_left
+      · exact (uniqueDiffOn_Icc (by norm_num) x h).mono Set.subset_union_right
+    have hderiv : HasDerivAt (fun x:ℝ => x^3 - 3*x) (3*x^2 - 3) x := by
+      have h1 : HasDerivAt (fun x:ℝ => x^3) (3*x^2) x := by simpa using hasDerivAt_pow 3 x
+      have h2 : HasDerivAt (fun x:ℝ => 3*x) 3 x := by simpa using (hasDerivAt_id x).const_mul 3
+      simpa using h1.sub h2
+    rw [hderiv.hasDerivWithinAt.derivWithin huniq]
+    rcases hx with h | h <;> (rw [Set.mem_Icc] at h; nlinarith [h.1, h.2])
+  · intro hmono
+    have h1 : (-3/2 : ℝ) ∈ Set.Icc (-2:ℝ) (-3/2) ∪ Set.Icc (3/2) 2 := by left; norm_num
+    have h2 : (3/2 : ℝ) ∈ Set.Icc (-2:ℝ) (-3/2) ∪ Set.Icc (3/2) 2 := by right; norm_num
+    have := hmono h1 h2 (by norm_num)
+    norm_num at this
 
 end Chapter10
