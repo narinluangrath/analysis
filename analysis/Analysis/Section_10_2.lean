@@ -108,13 +108,25 @@ theorem IsMaxOn.deriv_eq_zero_counter : ∃ (a b:ℝ) (hab: a < b) (f:ℝ → �
 theorem _root_.HasDerivWithinAt.exist_zero {a b:ℝ} (hab: a < b) {g:ℝ → ℝ}
   (hcont: ContinuousOn g (.Icc a b)) (hderiv: DifferentiableOn ℝ g (.Ioo a b))
   (hgab: g a = g b) : ∃ x ∈ Set.Ioo a b, HasDerivWithinAt g 0 (.Ioo a b) x := by
-  sorry
+  obtain ⟨c, hc, hc0⟩ := exists_hasDerivAt_eq_zero hab hcont hgab
+    (fun x hx => ((hderiv x hx).differentiableAt (Ioo_mem_nhds hx.1 hx.2)).hasDerivAt)
+  refine ⟨c, hc, ?_⟩
+  have hd : HasDerivAt g (deriv g c) c :=
+    ((hderiv c hc).differentiableAt (Ioo_mem_nhds hc.1 hc.2)).hasDerivAt
+  rw [hc0] at hd
+  exact hd.hasDerivWithinAt
 
 /-- Corollary 10.2.9 (Mean value theorem ) / Exercise 10.2.5 -/
 theorem _root_.HasDerivWithinAt.mean_value {a b:ℝ} (hab: a < b) {f:ℝ → ℝ}
   (hcont: ContinuousOn f (.Icc a b)) (hderiv: DifferentiableOn ℝ f (.Ioo a b)) :
   ∃ x ∈ Set.Ioo a b, HasDerivWithinAt f ((f b - f a) / (b - a)) (.Ioo a b) x := by
-  sorry
+  obtain ⟨c, hc, hc0⟩ := exists_hasDerivAt_eq_slope f (deriv f) hab hcont
+    (fun x hx => ((hderiv x hx).differentiableAt (Ioo_mem_nhds hx.1 hx.2)).hasDerivAt)
+  refine ⟨c, hc, ?_⟩
+  have hd : HasDerivAt f (deriv f c) c :=
+    ((hderiv c hc).differentiableAt (Ioo_mem_nhds hc.1 hc.2)).hasDerivAt
+  rw [hc0] at hd
+  exact hd.hasDerivWithinAt
 
 /-- Exercise 10.2.2 -/
 example : ∃ f:ℝ → ℝ, ContinuousOn f (.Icc (-1) 1) ∧
