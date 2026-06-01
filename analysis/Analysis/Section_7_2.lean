@@ -112,11 +112,21 @@ theorem Series.converges_iff_tail_decay (s:Series) :
 /-- Corollary 7.2.6 (Zero test) / Exercise 7.2.3 -/
 theorem Series.decay_of_converges {s:Series} (h: s.converges) :
     Filter.atTop.Tendsto s.seq (nhds 0) := by
-  sorry
+  obtain ⟨L, hL⟩ := h
+  have h2 : Filter.Tendsto (fun n:ℤ => s.partial (n-1)) Filter.atTop (nhds L) :=
+    hL.comp (Filter.tendsto_atTop_add_const_right Filter.atTop (-1) Filter.tendsto_id)
+  have key : Filter.Tendsto (fun n:ℤ => s.partial n - s.partial (n-1)) Filter.atTop (nhds 0) := by
+    have := hL.sub h2; rwa [sub_self] at this
+  apply key.congr'
+  filter_upwards [Filter.eventually_ge_atTop s.m] with n hn
+  have hps := Series.partial_succ s (N := n-1) (by linarith)
+  rw [sub_add_cancel] at hps
+  linarith
 
 theorem Series.diverges_of_nodecay {s:Series} (h: ¬ Filter.atTop.Tendsto s.seq (nhds 0)) :
     s.diverges := by
-  sorry
+  intro hc
+  exact h (decay_of_converges hc)
 
 /-- Example 7.2.7 -/
 theorem Series.example_7_2_7 : ((fun _:ℕ ↦ (1:ℝ)):Series).diverges := by
