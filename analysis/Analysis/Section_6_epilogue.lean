@@ -99,10 +99,34 @@ theorem Chapter6.Sequence.inf_eq_sInf (a:ℕ → ℝ):
     (a:Sequence).inf = sInf (Set.range (fun n ↦ (a n:EReal))) := by sorry
 
 theorem Chapter6.Sequence.bddAbove_iff (a:ℕ → ℝ):
-    (a:Sequence).BddAbove ↔ _root_.BddAbove (Set.range a) := by sorry
+    (a:Sequence).BddAbove ↔ _root_.BddAbove (Set.range a) := by
+  constructor
+  · rintro ⟨M, hM⟩
+    refine ⟨M, ?_⟩
+    rintro y ⟨k, rfl⟩
+    have := hM (k:ℤ) (by show (0:ℤ) ≤ (k:ℤ); positivity)
+    rwa [Sequence.eval_coe] at this
+  · rintro ⟨M, hM⟩
+    refine ⟨M, fun n hn => ?_⟩
+    have hn0 : (0:ℤ) ≤ n := hn
+    obtain ⟨k, rfl⟩ : ∃ k:ℕ, n = (k:ℤ) := ⟨n.toNat, by omega⟩
+    rw [Sequence.eval_coe]
+    exact hM ⟨k, rfl⟩
 
 theorem Chapter6.Sequence.bddBelow_iff (a:ℕ → ℝ):
-    (a:Sequence).BddBelow ↔ _root_.BddBelow (Set.range a) := by sorry
+    (a:Sequence).BddBelow ↔ _root_.BddBelow (Set.range a) := by
+  constructor
+  · rintro ⟨M, hM⟩
+    refine ⟨M, ?_⟩
+    rintro y ⟨k, rfl⟩
+    have := hM (k:ℤ) (by show (0:ℤ) ≤ (k:ℤ); positivity)
+    rwa [Sequence.eval_coe] at this
+  · rintro ⟨M, hM⟩
+    refine ⟨M, fun n hn => ?_⟩
+    have hn0 : (0:ℤ) ≤ n := hn
+    obtain ⟨k, rfl⟩ : ∃ k:ℕ, n = (k:ℤ) := ⟨n.toNat, by omega⟩
+    rw [Sequence.eval_coe]
+    exact hM ⟨k, rfl⟩
 
 theorem Chapter6.Sequence.Monotone_iff (a:ℕ → ℝ): (a:Sequence).IsMonotone ↔ Monotone a := by
   constructor
