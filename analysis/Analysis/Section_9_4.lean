@@ -109,12 +109,13 @@ theorem ContinuousWithinAt.div' {X:Set ℝ} (f g: ℝ → ℝ) {x₀:ℝ} (h : x
   rw [iff] at hf hg ⊢; convert hf.div (AdherentPt.of_mem h) hM hg using 1
 
 /-- Proposition 9.4.10 / Exercise 9.4.3  -/
-theorem Continuous.exp {a:ℝ} (ha: a>0) : Continuous (fun x:ℝ ↦ a ^ x) := by
-  sorry
+theorem Continuous.exp {a:ℝ} (ha: a>0) : Continuous (fun x:ℝ ↦ a ^ x) :=
+  Real.continuous_const_rpow (ne_of_gt ha)
 
 /-- Proposition 9.4.11 / Exercise 9.4.4 -/
 theorem Continuous.exp' (p:ℝ) : ContinuousOn (fun x:ℝ ↦ x ^ p) (.Ioi 0) := by
-  sorry
+  intro x hx
+  exact (Real.continuousAt_rpow_const x p (Or.inl (Set.mem_Ioi.mp hx).ne')).continuousWithinAt
 
 /-- Proposition 9.4.12 -/
 theorem Continuous.abs : Continuous (fun x:ℝ ↦ |x|) := continuous_abs
@@ -125,14 +126,16 @@ theorem ContinuousWithinAt.comp {X Y: Set ℝ} {f g:ℝ → ℝ} (hf: ∀ x ∈ 
 /-- Example 9.4.14 -/
 example : Continuous (fun x:ℝ ↦ 3*x + 1) := by fun_prop
 
-example : Continuous (fun x:ℝ ↦ (5:ℝ)^x) := by
-  sorry
+example : Continuous (fun x:ℝ ↦ (5:ℝ)^x) := Real.continuous_const_rpow (by norm_num)
 
-example : Continuous (fun x:ℝ ↦ (5:ℝ)^(3*x+1)) := by
-  sorry
+example : Continuous (fun x:ℝ ↦ (5:ℝ)^(3*x+1)) :=
+  (Real.continuous_const_rpow (by norm_num)).comp (by fun_prop)
 
 example : Continuous (fun x:ℝ ↦ |x^2-8*x+8|^(Real.sqrt 2) / (x^2 + 1)) := by
-  sorry
+  apply Continuous.div
+  · exact (continuous_abs.comp (by fun_prop)).rpow_const (fun x => Or.inr (Real.sqrt_nonneg 2))
+  · fun_prop
+  · intro x; positivity
 
 /-- Exercise 9.4.6 -/
 theorem ContinuousOn.restrict {X Y:Set ℝ} {f: ℝ → ℝ} (hY: Y ⊆ X) (hf: ContinuousOn f X) : ContinuousOn f Y :=
