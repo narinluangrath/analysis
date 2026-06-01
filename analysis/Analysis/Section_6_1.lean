@@ -455,7 +455,29 @@ lemma Sequence.isBounded_def (a:Sequence) :
   a.IsBounded ↔ ∃ M ≥ 0, a.BoundedBy M := by rfl
 
 theorem Sequence.bounded_of_cauchy {a:Sequence} (h: a.IsCauchy) : a.IsBounded := by
-  sorry
+  obtain ⟨N0, hN0, hsteady⟩ := h 1 one_pos
+  rw [Real.steady_def] at hsteady
+  set N := max a.m N0 with hNdef
+  have hfm : (a.from N0).m = N := by rw [hNdef]
+  have htail : ∀ n, n ≥ N → |a n| ≤ |a N| + 1 := by
+    intro n hn
+    have hc := hsteady n (by rw [hfm]; exact hn) N (by rw [hfm])
+    rw [Real.close_def, Real.dist_eq,
+        Sequence.from_eval a (le_trans (le_max_right _ _) hn),
+        Sequence.from_eval a (le_max_right _ _)] at hc
+    calc |a n| = |(a n - a N) + a N| := by congr 1; ring
+      _ ≤ |a n - a N| + |a N| := abs_add_le _ _
+      _ ≤ |a N| + 1 := by linarith
+  have hne : (Finset.Icc a.m N).Nonempty := Finset.nonempty_Icc.mpr (le_max_left _ _)
+  set B := (Finset.Icc a.m N).sup' hne (fun n => |a n|) with hB
+  refine ⟨max B (|a N|+1), le_trans (by positivity) (le_max_right _ _), fun n => ?_⟩
+  rcases le_or_gt N n with hge | hlt
+  · exact le_trans (htail n hge) (le_max_right _ _)
+  · rcases le_or_gt a.m n with hge2 | hlt2
+    · have hmem : n ∈ Finset.Icc a.m N := by rw [Finset.mem_Icc]; omega
+      exact le_trans (Finset.le_sup' (fun n => |a n|) hmem) (le_max_left _ _)
+    · rw [a.vanish n hlt2, abs_zero]
+      exact le_trans (by positivity) (le_max_right _ _)
 
 /-- Corollary 6.1.17 -/
 theorem Sequence.bounded_of_convergent {a:Sequence} (h: a.Convergent) : a.IsBounded := by
