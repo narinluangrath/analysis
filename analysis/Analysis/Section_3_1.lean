@@ -890,7 +890,22 @@ theorem SetTheory.Set.union_eq_partition (A B:Set) : A ∪ B = (A \ B) ∪ (A �
   `Set.specification_axiom'`, or anything built from them (like differences and intersections).
 -/
 theorem SetTheory.Set.specification_from_replacement {A:Set} {P: A → Prop} :
-    ∃ B, B ⊆ A ∧ ∀ x, x.val ∈ B ↔ P x := by sorry
+    ∃ B, B ⊆ A ∧ ∀ x, x.val ∈ B ↔ P x := by
+  have hP : ∀ (x:A) (y y':Object), (y = x.val ∧ P x) ∧ (y' = x.val ∧ P x) → y = y' :=
+    fun x y y' ⟨⟨hy,_⟩, ⟨hy',_⟩⟩ => hy.trans hy'.symm
+  refine ⟨A.replace hP, ?_, ?_⟩
+  · intro y hy
+    rw [replacement_axiom] at hy
+    obtain ⟨x, hx, _⟩ := hy
+    rw [hx]; exact x.property
+  · intro x
+    rw [replacement_axiom]
+    constructor
+    · rintro ⟨a, ha, hPa⟩
+      have : a = x := Subtype.coe_injective ha.symm
+      rwa [this] at hPa
+    · intro hPx
+      exact ⟨x, rfl, hPx⟩
 
 /-- Exercise 3.1.12.-/
 theorem SetTheory.Set.subset_union_subset {A B A' B':Set} (hA'A: A' ⊆ A) (hB'B: B' ⊆ B) :
@@ -906,7 +921,14 @@ theorem SetTheory.Set.subset_inter_subset {A B A' B':Set} (hA'A: A' ⊆ A) (hB'B
 
 /-- Exercise 3.1.12.-/
 theorem SetTheory.Set.subset_diff_subset_counter :
-    ∃ (A B A' B':Set), (A' ⊆ A) ∧ (B' ⊆ B) ∧ ¬ (A' \ B') ⊆ (A \ B) := by sorry
+    ∃ (A B A' B':Set), (A' ⊆ A) ∧ (B' ⊆ B) ∧ ¬ (A' \ B') ⊆ (A \ B) := by
+  refine ⟨{1}, {1}, {1}, ∅, subset_self _, empty_subset _, ?_⟩
+  intro hsub
+  have hmem : (1:Object) ∈ ({1}:Set) \ (∅:Set) := by
+    rw [mem_sdiff]; exact ⟨(mem_singleton _ _).mpr rfl, not_mem_empty _⟩
+  have h2 := hsub 1 hmem
+  rw [mem_sdiff] at h2
+  exact h2.2 ((mem_singleton _ _).mpr rfl)
 
 /-
   Final part of Exercise 3.1.12: state and prove a reasonable substitute positive result for the
