@@ -203,7 +203,12 @@ theorem close_mul_mul {ε δ x y z w:ℚ} (hxy: ε.Close x y) (hzw: δ.Close z w
 in some later exercises. -/
 theorem close_mul_mul' {ε δ x y z w:ℚ} (hxy: ε.Close x y) (hzw: δ.Close z w) :
     (ε*|z|+δ*|y|).Close (x * z) (y * w) := by
-    sorry
+  rw [close_iff] at *
+  rw [show x*z - y*w = (x-y)*z + y*(z-w) by ring]
+  calc |(x-y)*z + y*(z-w)| ≤ |(x-y)*z| + |y*(z-w)| := abs_add_le _ _
+    _ = |x-y| * |z| + |y| * |z-w| := by rw [_root_.abs_mul, _root_.abs_mul]
+    _ ≤ ε * |z| + |y| * δ := by gcongr <;> assumption
+    _ = ε*|z| + δ*|y| := by ring
 
 /-- Definition 4.3.9 (exponentiation).  Here we use the Mathlib definition.-/
 lemma pow_zero (x:ℚ) : x^0 = 1 := _root_.pow_zero x
@@ -214,31 +219,32 @@ example : (0:ℚ)^0 = 1 := pow_zero 0
 lemma pow_succ (x:ℚ) (n:ℕ) : x^(n+1) = x^n * x := _root_.pow_succ x n
 
 /-- Proposition 4.3.10(a) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_add (x:ℚ) (m n:ℕ) : x^n * x^m = x^(n+m) := by sorry
+theorem pow_add (x:ℚ) (m n:ℕ) : x^n * x^m = x^(n+m) := (_root_.pow_add x n m).symm
 
 /-- Proposition 4.3.10(a) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_mul (x:ℚ) (m n:ℕ) : (x^n)^m = x^(n*m) := by sorry
+theorem pow_mul (x:ℚ) (m n:ℕ) : (x^n)^m = x^(n*m) := (_root_.pow_mul x n m).symm
 
 /-- Proposition 4.3.10(a) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem mul_pow (x y:ℚ) (n:ℕ) : (x*y)^n = x^n * y^n := by sorry
+theorem mul_pow (x y:ℚ) (n:ℕ) : (x*y)^n = x^n * y^n := _root_.mul_pow x y n
 
 /-- Proposition 4.3.10(b) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_eq_zero (x:ℚ) (n:ℕ) (hn : 0 < n) : x^n = 0 ↔ x = 0 := by sorry
+theorem pow_eq_zero (x:ℚ) (n:ℕ) (hn : 0 < n) : x^n = 0 ↔ x = 0 := _root_.pow_eq_zero_iff hn.ne'
 
 /-- Proposition 4.3.10(c) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_nonneg {x:ℚ} (n:ℕ) (hx: x ≥ 0) : x^n ≥ 0 := by sorry
+theorem pow_nonneg {x:ℚ} (n:ℕ) (hx: x ≥ 0) : x^n ≥ 0 := _root_.pow_nonneg hx n
 
 /-- Proposition 4.3.10(c) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_pos {x:ℚ} (n:ℕ) (hx: x > 0) : x^n > 0 := by sorry
+theorem pow_pos {x:ℚ} (n:ℕ) (hx: x > 0) : x^n > 0 := _root_.pow_pos hx n
 
 /-- Proposition 4.3.10(c) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_ge_pow (x y:ℚ) (n:ℕ) (hxy: x ≥ y) (hy: y ≥ 0) : x^n ≥ y^n := by sorry
+theorem pow_ge_pow (x y:ℚ) (n:ℕ) (hxy: x ≥ y) (hy: y ≥ 0) : x^n ≥ y^n := pow_le_pow_left₀ hy hxy n
 
 /-- Proposition 4.3.10(c) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_gt_pow (x y:ℚ) (n:ℕ) (hxy: x > y) (hy: y ≥ 0) (hn: n > 0) : x^n > y^n := by sorry
+theorem pow_gt_pow (x y:ℚ) (n:ℕ) (hxy: x > y) (hy: y ≥ 0) (hn: n > 0) : x^n > y^n :=
+  pow_lt_pow_left₀ hxy hy hn.ne'
 
 /-- Proposition 4.3.10(d) (Properties of exponentiation, I) / Exercise 4.3.3 -/
-theorem pow_abs (x:ℚ) (n:ℕ) : |x|^n = |x^n| := by sorry
+theorem pow_abs (x:ℚ) (n:ℕ) : |x|^n = |x^n| := (_root_.abs_pow x n).symm
 
 /--
   Definition 4.3.11 (Exponentiation to a negative number).
