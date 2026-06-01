@@ -412,11 +412,26 @@ theorem Sequence.add_coe (a b: ℕ → ℝ) : (a:Sequence) + (b:Sequence) = (fun
     in applications. -/
 theorem Sequence.tendsTo_add {a b:Sequence} {L M:ℝ} (ha: a.TendsTo L) (hb: b.TendsTo M) :
   (a+b).TendsTo (L+M) := by
-  sorry
+  rw [tendsTo_iff] at ha hb ⊢
+  intro ε hε
+  obtain ⟨Na, hNa⟩ := ha (ε/2) (by linarith)
+  obtain ⟨Nb, hNb⟩ := hb (ε/2) (by linarith)
+  refine ⟨max Na Nb, fun n hn => ?_⟩
+  rw [Sequence.add_eval]
+  have h1 := hNa n (le_trans (le_max_left _ _) hn)
+  have h2 := hNb n (le_trans (le_max_right _ _) hn)
+  calc |a n + b n - (L + M)| = |(a n - L) + (b n - M)| := by congr 1; ring
+    _ ≤ |a n - L| + |b n - M| := abs_add_le _ _
+    _ ≤ ε/2 + ε/2 := by linarith
+    _ = ε := by ring
 
 theorem Sequence.lim_add {a b:Sequence} (ha: a.Convergent) (hb: b.Convergent) :
   (a + b).Convergent ∧ lim (a + b) = lim a + lim b := by
-  sorry
+  have htab := tendsTo_add (lim_def ha) (lim_def hb)
+  have hconv : (a+b).Convergent := ⟨_, htab⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (a+b) hne ⟨lim_def hconv, htab⟩
 
 instance Sequence.inst_mul : Mul Sequence where
   mul a b := {
@@ -461,11 +476,25 @@ theorem Sequence.smul_coe (c:ℝ) (a:ℕ → ℝ) : (c • (a:Sequence)) = (fun 
     in applications. -/
 theorem Sequence.tendsTo_smul (c:ℝ) {a:Sequence} {L:ℝ} (ha: a.TendsTo L) :
     (c • a).TendsTo (c * L) := by
-  sorry
+  rw [tendsTo_iff] at ha ⊢
+  intro ε hε
+  rcases eq_or_ne c 0 with hc | hc
+  · refine ⟨a.m, fun n _ => ?_⟩
+    rw [Sequence.smul_eval, hc]; simp; linarith
+  · obtain ⟨N, hN⟩ := ha (ε/|c|) (div_pos hε (abs_pos.mpr hc))
+    refine ⟨N, fun n hn => ?_⟩
+    rw [Sequence.smul_eval, show c * a n - c * L = c * (a n - L) by ring, abs_mul,
+      show ε = |c| * (ε/|c|) by field_simp]
+    gcongr
+    exact hN n hn
 
 theorem Sequence.lim_smul (c:ℝ) {a:Sequence} (ha: a.Convergent) :
     (c • a).Convergent ∧ lim (c • a) = c * lim a := by
-  sorry
+  have hsm := tendsTo_smul c (lim_def ha)
+  have hconv : (c • a).Convergent := ⟨_, hsm⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (c • a) hne ⟨lim_def hconv, hsm⟩
 
 instance Sequence.inst_sub : Sub Sequence where
   sub a b := {
@@ -485,11 +514,26 @@ theorem Sequence.sub_coe (a b: ℕ → ℝ) : (a:Sequence) - (b:Sequence) = (fun
     in applications. -/
 theorem Sequence.tendsTo_sub {a b:Sequence} {L M:ℝ} (ha: a.TendsTo L) (hb: b.TendsTo M) :
     (a - b).TendsTo (L - M) := by
-  sorry
+  rw [tendsTo_iff] at ha hb ⊢
+  intro ε hε
+  obtain ⟨Na, hNa⟩ := ha (ε/2) (by linarith)
+  obtain ⟨Nb, hNb⟩ := hb (ε/2) (by linarith)
+  refine ⟨max Na Nb, fun n hn => ?_⟩
+  rw [Sequence.sub_eval]
+  have h1 := hNa n (le_trans (le_max_left _ _) hn)
+  have h2 := hNb n (le_trans (le_max_right _ _) hn)
+  calc |a n - b n - (L - M)| = |(a n - L) + -(b n - M)| := by congr 1; ring
+    _ ≤ |a n - L| + |-(b n - M)| := abs_add_le _ _
+    _ ≤ ε/2 + ε/2 := by rw [abs_neg]; linarith
+    _ = ε := by ring
 
 theorem Sequence.LIM_sub {a b:Sequence} (ha: a.Convergent) (hb: b.Convergent) :
     (a - b).Convergent ∧ lim (a - b) = lim a - lim b := by
-  sorry
+  have hsub := tendsTo_sub (lim_def ha) (lim_def hb)
+  have hconv : (a-b).Convergent := ⟨_, hsub⟩
+  refine ⟨hconv, ?_⟩
+  by_contra hne
+  exact tendsTo_unique (a-b) hne ⟨lim_def hconv, hsub⟩
 
 noncomputable instance Sequence.inst_inv : Inv Sequence where
   inv a := {
