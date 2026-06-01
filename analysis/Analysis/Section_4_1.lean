@@ -326,16 +326,30 @@ theorem Int.lt_trans {a b c:Int} (hab: a < b) (hbc: b < c) : a < c := by
   exact ht0 (by omega)
 
 /-- Lemma 4.1.11(f) (Order trichotomy) / Exercise 4.1.7 -/
-theorem Int.trichotomous' (a b:Int) : a > b ∨ a < b ∨ a = b := by sorry
+theorem Int.trichotomous' (a b:Int) : a > b ∨ a < b ∨ a = b := by
+  obtain h | ⟨n, hn, hx⟩ | ⟨n, hn, hx⟩ := Int.trichotomous (a - b)
+  · right; right; exact sub_eq_zero.mp h
+  · left
+    rw [gt_iff_lt, lt_iff_exists_positive_difference]
+    exact ⟨n, by omega, by rw [← hx]; ring⟩
+  · right; left
+    rw [lt_iff_exists_positive_difference]
+    exact ⟨n, by omega, by linear_combination -hx⟩
 
 /-- Lemma 4.1.11(f) (Order trichotomy) / Exercise 4.1.7 -/
-theorem Int.not_gt_and_lt (a b:Int) : ¬ (a > b ∧ a < b):= by sorry
+theorem Int.not_gt_and_lt (a b:Int) : ¬ (a > b ∧ a < b):= by
+  rintro ⟨hgt, hlt⟩
+  exact (lt_trans hlt hgt).2 rfl
 
 /-- Lemma 4.1.11(f) (Order trichotomy) / Exercise 4.1.7 -/
-theorem Int.not_gt_and_eq (a b:Int) : ¬ (a > b ∧ a = b):= by sorry
+theorem Int.not_gt_and_eq (a b:Int) : ¬ (a > b ∧ a = b):= by
+  rintro ⟨hgt, rfl⟩
+  exact absurd rfl hgt.2
 
 /-- Lemma 4.1.11(f) (Order trichotomy) / Exercise 4.1.7 -/
-theorem Int.not_lt_and_eq (a b:Int) : ¬ (a < b ∧ a = b):= by sorry
+theorem Int.not_lt_and_eq (a b:Int) : ¬ (a < b ∧ a = b):= by
+  rintro ⟨hlt, rfl⟩
+  exact absurd rfl hlt.2
 
 /-- (Not from textbook) Establish the decidability of this order. -/
 instance Int.decidableRel : DecidableRel (· ≤ · : Int → Int → Prop) := by
@@ -354,7 +368,10 @@ instance Int.decidableRel : DecidableRel (· ≤ · : Int → Int → Prop) := b
   exact Quotient.recOnSubsingleton₂ n m this
 
 /-- (Not from textbook) 0 is the only additive identity -/
-lemma Int.is_additive_identity_iff_eq_0 (b : Int) : (∀ a, a = a + b) ↔ b = 0 := by sorry
+lemma Int.is_additive_identity_iff_eq_0 (b : Int) : (∀ a, a = a + b) ↔ b = 0 := by
+  constructor
+  · intro h; have := h 0; rw [zero_add] at this; exact this.symm
+  · intro h a; rw [h, add_zero]
 
 /-- (Not from textbook) Int has the structure of a linear ordering. -/
 instance Int.instLinearOrder : LinearOrder Int where
@@ -366,7 +383,7 @@ instance Int.instLinearOrder : LinearOrder Int where
   toDecidableLE := decidableRel
 
 /-- Exercise 4.1.3 -/
-theorem Int.neg_one_mul (a:Int) : -1 * a = -a := by sorry
+theorem Int.neg_one_mul (a:Int) : -1 * a = -a := by ring
 
 /-- Exercise 4.1.8 -/
 theorem Int.no_induction : ∃ P: Int → Prop, (P 0 ∧ ∀ n, P n → P (n+1)) ∧ ¬ ∀ n, P n := by sorry
