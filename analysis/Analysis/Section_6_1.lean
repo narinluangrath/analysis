@@ -297,7 +297,23 @@ example : ¬ (0.01:ℝ).CloseSeq seq_6_1_6 1 := by
   intro h; specialize h 0 (by positivity); simp [seq_6_1_6] at h; norm_num at h
 
 /-- Examples 6.1.6 -/
-example : (0.01:ℝ).EventuallyClose seq_6_1_6 1 := by sorry
+example : (0.01:ℝ).EventuallyClose seq_6_1_6 1 := by
+  have hm : seq_6_1_6.m = 0 := rfl
+  have heval : ∀ n:ℤ, n ≥ 0 → seq_6_1_6 n = 1 - (10:ℝ)^(-n-1) := by
+    intro n hn
+    rw [seq_6_1_6]
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun, ge_iff_le]
+    rw [if_pos (by omega), show ((n.toNat:ℕ):ℤ) = n from Int.toNat_of_nonneg hn]
+  rw [Real.eventuallyClose_def]
+  refine ⟨1, by rw [hm]; norm_num, ?_⟩
+  rw [Real.closeSeq_def]
+  intro n hn
+  have hfm : (seq_6_1_6.from 1).m = 1 := by show max seq_6_1_6.m 1 = 1; rw [hm]; norm_num
+  rw [hfm] at hn
+  rw [Sequence.from_eval seq_6_1_6 hn, heval n (by omega), Real.dist_eq,
+    show (1 - (10:ℝ)^(-n-1)) - 1 = -(10^(-n-1)) by ring, abs_neg, abs_of_nonneg (by positivity)]
+  calc (10:ℝ)^(-n-1) ≤ (10:ℝ)^(-2:ℤ) := by apply zpow_le_zpow_right₀ (by norm_num); omega
+    _ = 0.01 := by norm_num
 
 /-- Examples 6.1.6 -/
 example : seq_6_1_6.TendsTo 1 := by sorry
