@@ -46,7 +46,8 @@ theorem Filter.Tendsto.AtTop.iff {X: Set ℝ} (f:ℝ → ℝ) (L:ℝ) : Filter.T
 
 /-- Exercise 9.10.4 -/
 example : Filter.Tendsto (fun x:ℝ ↦ 1/x) (.atTop ⊓ .principal (.Ioi 0)) (nhds 0) := by
-  sorry
+  apply Filter.Tendsto.mono_left _ inf_le_left
+  simpa [one_div] using tendsto_inv_atTop_zero
 
 open Classical in
 /-- Exercise 9.10.1 -/
