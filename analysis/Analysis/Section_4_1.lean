@@ -257,10 +257,24 @@ theorem Int.sub_eq_formal_sub (a b:ℕ) : (a:Int) - (b:Int) = a —— b := by
   rw [sub_eq, natCast_eq, natCast_eq, neg_eq, add_eq]; congr 1 <;> ring
 
 /-- Proposition 4.1.8 (No zero divisors) / Exercise 4.1.5 -/
-theorem Int.mul_eq_zero {a b:Int} (h: a * b = 0) : a = 0 ∨ b = 0 := by sorry
+theorem Int.mul_eq_zero {a b:Int} (h: a * b = 0) : a = 0 ∨ b = 0 := by
+  obtain ⟨p, q, rfl⟩ := eq_diff a
+  obtain ⟨r, s, rfl⟩ := eq_diff b
+  rw [mul_eq, show (0:Int) = 0 —— 0 from rfl, Int.eq] at h
+  simp only [add_zero, zero_add] at h
+  rw [show (0:Int) = 0 —— 0 from rfl, Int.eq, Int.eq]
+  have hc : (p*r + q*s : ℤ) = p*s + q*r := by exact_mod_cast h
+  have hz : ((p:ℤ) - q) * ((r:ℤ) - s) = 0 := by linear_combination hc
+  rcases _root_.mul_eq_zero.mp hz with h1 | h2
+  · left; omega
+  · right; omega
 
 /-- Corollary 4.1.9 (Cancellation law) / Exercise 4.1.6 -/
-theorem Int.mul_right_cancel₀ (a b c:Int) (h: a*c = b*c) (hc: c ≠ 0) : a = b := by sorry
+theorem Int.mul_right_cancel₀ (a b c:Int) (h: a*c = b*c) (hc: c ≠ 0) : a = b := by
+  have hzero : (a - b) * c = 0 := by rw [sub_mul, h, sub_self]
+  rcases mul_eq_zero hzero with h1 | h2
+  · exact sub_eq_zero.mp h1
+  · exact absurd h2 hc
 
 /-- Definition 4.1.10 (Ordering of the integers) -/
 instance Int.instLE : LE Int where
@@ -295,7 +309,13 @@ theorem Int.add_lt_add_right {a b:Int} (c:Int) (h: a < b) : a+c < b+c := by
   intro he; exact hne (add_right_cancel he)
 
 /-- Lemma 4.1.11(c) (Positive multiplication preserves order) / Exercise 4.1.7 -/
-theorem Int.mul_lt_mul_of_pos_right {a b c:Int} (hab : a < b) (hc: 0 < c) : a*c < b*c := by sorry
+theorem Int.mul_lt_mul_of_pos_right {a b c:Int} (hab : a < b) (hc: 0 < c) : a*c < b*c := by
+  rw [lt_iff_exists_positive_difference] at *
+  obtain ⟨n, hn, hb⟩ := hab
+  obtain ⟨m, hm, hcm⟩ := hc
+  rw [zero_add] at hcm
+  refine ⟨n*m, Nat.mul_ne_zero hn hm, ?_⟩
+  rw [hb, hcm]; push_cast; ring
 
 /-- Lemma 4.1.11(d) (Negation reverses order) / Exercise 4.1.7 -/
 theorem Int.neg_gt_neg {a b:Int} (h: b < a) : -a < -b := by
