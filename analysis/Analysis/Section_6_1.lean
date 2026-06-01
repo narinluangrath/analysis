@@ -934,12 +934,37 @@ theorem Sequence.mono_if {a: ℕ → ℝ} (ha: ∀ n, a (n+1) > a n) {n m:ℕ} (
 /-- Exercise 6.1.3 -/
 theorem Sequence.tendsTo_of_from {a: Sequence} {c:ℝ} (m:ℤ) :
     a.TendsTo c ↔ (a.from m).TendsTo c := by
-  sorry
+  rw [tendsTo_iff, tendsTo_iff]
+  constructor
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max N m, fun n hn => ?_⟩
+    rw [Sequence.from_eval a (le_trans (le_max_right _ _) hn)]
+    exact hN n (le_trans (le_max_left _ _) hn)
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max N m, fun n hn => ?_⟩
+    have hc := hN n (le_trans (le_max_left _ _) hn)
+    rwa [Sequence.from_eval a (le_trans (le_max_right _ _) hn)] at hc
 
 /-- Exercise 6.1.4 -/
 theorem Sequence.tendsTo_of_shift {a: Sequence} {c:ℝ} (k:ℕ) :
     a.TendsTo c ↔ (Sequence.mk' a.m (fun n : {n // n ≥ a.m} ↦ a (n+k))).TendsTo c := by
-  sorry
+  rw [tendsTo_iff, tendsTo_iff]
+  constructor
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max N a.m, fun n hn => ?_⟩
+    have hnm : n ≥ a.m := le_trans (le_max_right _ _) hn
+    rw [Sequence.eval_mk _ hnm]
+    exact hN (n + (k:ℤ)) (by have := le_trans (le_max_left _ _) hn; omega)
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max (N+k) (a.m+k), fun n hn => ?_⟩
+    have hnk : n - (k:ℤ) ≥ a.m := by have := le_trans (le_max_right _ _) hn; omega
+    have hb := hN (n - (k:ℤ)) (by have := le_trans (le_max_left _ _) hn; omega)
+    rw [Sequence.eval_mk _ hnk] at hb
+    rwa [show (n - (k:ℤ)) + (k:ℤ) = n by ring] at hb
 
 /-- Exercise 6.1.7 -/
 theorem Sequence.isBounded_of_rat (a: Chapter5.Sequence) :
