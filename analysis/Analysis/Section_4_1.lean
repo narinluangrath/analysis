@@ -38,8 +38,8 @@ structure PreInt where
 instance PreInt.instSetoid : Setoid PreInt where
   r a b := a.minuend + b.subtrahend = b.minuend + a.subtrahend
   iseqv := {
-    refl := by sorry
-    symm := by sorry
+    refl := by intro x; rfl
+    symm := by intro x y h; exact h.symm
     trans := by
       -- This proof is written to follow the structure of the original text.
       intro ⟨ a,b ⟩ ⟨ c,d ⟩ ⟨ e,f ⟩ h1 h2; simp_all
@@ -145,11 +145,15 @@ example : 3 = 3 —— 0 := rfl
 example : 3 = 4 —— 1 := by rw [Int.ofNat_eq, Int.eq]
 
 /-- (Not from textbook) 0 is the only natural whose cast is 0 -/
-lemma Int.cast_eq_0_iff_eq_0 (n : ℕ) : (n : Int) = 0 ↔ n = 0 := by sorry
+lemma Int.cast_eq_0_iff_eq_0 (n : ℕ) : (n : Int) = 0 ↔ n = 0 := by
+  rw [natCast_eq, show (0:Int) = 0 —— 0 from rfl, Int.eq]; omega
 
 /-- Definition 4.1.4 (Negation of integers) / Exercise 4.1.2 -/
 instance Int.instNeg : Neg Int where
-  neg := Quotient.lift (fun ⟨ a, b ⟩ ↦ b —— a) (by sorry)
+  neg := Quotient.lift (fun ⟨ a, b ⟩ ↦ b —— a) (by
+    intro ⟨a,b⟩ ⟨c,d⟩ h
+    rw [PreInt.eq] at h
+    rw [Int.eq]; omega)
 
 theorem Int.neg_eq (a b:ℕ) : -(a —— b) = b —— a := rfl
 
