@@ -187,7 +187,14 @@ theorem _root_.UniformContinuousOn.of_lipschitz {f:ℝ → ℝ}
   (hderiv: DifferentiableOn ℝ f .univ)
   (hlip: BddOn (deriv f) .univ) :
   UniformContinuousOn f (.univ) := by
-  sorry
+  rw [differentiableOn_univ] at hderiv
+  obtain ⟨M, hM⟩ := hlip
+  have hlipw : LipschitzWith M.toNNReal f := by
+    apply lipschitzWith_of_nnnorm_deriv_le hderiv
+    intro x
+    rw [← NNReal.coe_le_coe, coe_nnnorm, Real.norm_eq_abs, Real.coe_toNNReal', le_max_iff]
+    exact Or.inl (hM x (Set.mem_univ x))
+  exact hlipw.uniformContinuous.uniformContinuousOn
 
 
 end Chapter10
