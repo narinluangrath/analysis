@@ -81,7 +81,15 @@ theorem Rat.eq_diff (n:Rat) : ∃ a b, b ≠ 0 ∧ n = a // b := by
   may be more convenient to avoid that operation and work directly with the `Quotient` API.
 -/
 instance Rat.decidableEq : DecidableEq Rat := by
-  sorry
+  intro a b
+  have : ∀ (n m:PreRat),
+      Decidable (Quotient.mk PreRat.instSetoid n = Quotient.mk PreRat.instSetoid m) := by
+    intro ⟨a,b,hb⟩ ⟨c,d,hd⟩
+    apply decidable_of_iff (a*d = c*b)
+    constructor
+    · intro h; exact Quotient.sound (by exact h)
+    · intro h; exact Quotient.exact h
+  exact Quotient.recOnSubsingleton₂ a b this
 
 /-- Lemma 4.2.3 (Addition well-defined) -/
 instance Rat.add_inst : Add Rat where
@@ -167,8 +175,22 @@ theorem Rat.coe_Int_inj : Function.Injective (fun n:ℤ ↦ (n:Rat)) := by
 -/
 instance Rat.instInv : Inv Rat where
   inv := Quotient.lift (fun ⟨ a, b, h1 ⟩ ↦ b // a) (by
-    sorry -- hint: split into the `a=0` and `a≠0` cases
-)
+    intro ⟨a,b,h1⟩ ⟨a',b',h1'⟩ h
+    simp only [PreRat.eq] at h
+    by_cases ha : a = 0
+    · have ha' : a' = 0 := by
+        rw [ha, zero_mul] at h
+        rcases mul_eq_zero.mp h.symm with h' | h'
+        · exact h'
+        · exact absurd h' h1
+      simp [formalDiv, ha, ha']
+    · have ha' : a' ≠ 0 := by
+        intro h'; rw [h', zero_mul] at h
+        rcases mul_eq_zero.mp h with h'' | h''
+        · exact ha h''
+        · exact h1' h''
+      rw [Rat.eq _ _ ha ha']
+      linear_combination -h)
 
 lemma Rat.inv_eq (a:ℤ) {b:ℤ} (hb: b ≠ 0) : (a // b)⁻¹ = b // a := by
   convert Quotient.lift_mk _ _ _ <;> simp [hb]
