@@ -511,10 +511,19 @@ theorem Function.self_comp_inverse {X Y: Set} {f: Function X Y} (h: f.bijective)
   exact (inverse_eval h y (f.inverse h y)).mp rfl
 
 theorem Function.inverse_bijective {X Y: Set} {f: Function X Y} (h: f.bijective) :
-    (f.inverse h).bijective := by sorry
+    (f.inverse h).bijective := by
+  constructor
+  · rw [one_to_one_iff]
+    intro y y' hyy
+    have : f (f.inverse h y) = f (f.inverse h y') := by rw [hyy]
+    rwa [self_comp_inverse, self_comp_inverse] at this
+  · intro x
+    exact ⟨f x, inverse_comp_self h x⟩
 
 theorem Function.inverse_inverse {X Y: Set} {f: Function X Y} (h: f.bijective) :
-    (f.inverse h).inverse (f.inverse_bijective h) = f := by sorry
+    (f.inverse h).inverse (f.inverse_bijective h) = f := by
+  rw [eq_iff]; intro x
+  exact ((inverse_eval (f.inverse_bijective h) x (f x)).mpr (inverse_comp_self h x)).symm
 
 /-- Exercise 3.3.7 -/
 theorem Function.comp_bijective {X Y Z:Set} {f: Function X Y} {g : Function Y Z} (hf: f.bijective)
@@ -524,7 +533,10 @@ theorem Function.comp_bijective {X Y Z:Set} {f: Function X Y} {g : Function Y Z}
 theorem Function.inv_of_comp {X Y Z:Set} {f: Function X Y} {g : Function Y Z}
   (hf: f.bijective) (hg: g.bijective) :
     (g ○ f).inverse (Function.comp_bijective hf hg) = (f.inverse hf) ○ (g.inverse hg) := by
-  sorry
+  rw [eq_iff]; intro z
+  rw [comp_eval]
+  refine ((inverse_eval (comp_bijective hf hg) z _).mpr ?_).symm
+  rw [comp_eval, self_comp_inverse, self_comp_inverse]
 
 /-- Exercise 3.3.8 -/
 abbrev Function.inclusion {X Y:Set} (h: X ⊆ Y) :
