@@ -150,7 +150,21 @@ example : ∃ f:ℝ → ℝ, ContinuousOn f (.Icc (-1) 1) ∧
 example : ∃ f:ℝ → ℝ, DifferentiableOn ℝ f (.Icc (-1) 1) ∧
   HasDerivWithinAt f 0 (.Ioo (-1) 1) 0 ∧
   ¬ IsLocalMaxOn f (.Icc (-1) 1) 0 ∧ ¬ IsLocalMinOn f (.Icc (-1) 1) 0 := by
-  sorry
+  refine ⟨fun x => x^3, by fun_prop, ?_, ?_, ?_⟩
+  · have : HasDerivAt (fun x:ℝ => x^3) 0 0 := by simpa using hasDerivAt_pow 3 (0:ℝ)
+    exact this.hasDerivWithinAt
+  · intro h
+    have hlm := h.isLocalMax (Icc_mem_nhds (by norm_num) (by norm_num))
+    obtain ⟨ε, hε, hball⟩ := Metric.eventually_nhds_iff.mp hlm
+    have h2 := hball (show dist (ε/2:ℝ) 0 < ε by
+      rw [Real.dist_eq, sub_zero, abs_of_pos (by linarith)]; linarith)
+    simp only at h2; nlinarith [hε, h2, pow_pos (show (0:ℝ) < ε/2 by linarith) 3]
+  · intro h
+    have hlm := h.isLocalMin (Icc_mem_nhds (by norm_num) (by norm_num))
+    obtain ⟨ε, hε, hball⟩ := Metric.eventually_nhds_iff.mp hlm
+    have h2 := hball (show dist (-ε/2:ℝ) 0 < ε by
+      rw [Real.dist_eq, sub_zero, abs_of_neg (by linarith)]; linarith)
+    simp only at h2; nlinarith [hε, h2, pow_pos (show (0:ℝ) < ε/2 by linarith) 3]
 
 /-- Exercise 10.2.6 -/
 theorem lipschitz_bound {M a b:ℝ} (hM: M > 0) (hab: a < b) {f:ℝ → ℝ}
