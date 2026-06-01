@@ -79,7 +79,27 @@ example : ∃ (X:Set ℝ) (f:ℝ → ℝ), ContinuousOn f X ∧ ¬ MonotoneOn f 
   · intro h; have := h (Set.mem_univ (-1)) (Set.mem_univ 0) (by norm_num); norm_num at this
   · intro h; have := h (Set.mem_univ 0) (Set.mem_univ 1) (by norm_num); norm_num at this
 
-example : ∃ (X:Set ℝ) (f:ℝ → ℝ), MonotoneOn f X ∧ ¬ ContinuousOn f X := by sorry
+example : ∃ (X:Set ℝ) (f:ℝ → ℝ), MonotoneOn f X ∧ ¬ ContinuousOn f X := by
+  refine ⟨Set.univ, fun x => if x ≥ 0 then 1 else 0, ?_, ?_⟩
+  · intro a _ b _ hab
+    by_cases ha : a ≥ 0
+    · have hb : b ≥ 0 := le_trans ha hab
+      simp [ha, hb]
+    · simp only [ha, if_false]
+      split_ifs <;> norm_num
+  · intro hcont
+    rw [continuousOn_univ] at hcont
+    have h1 : Filter.Tendsto (fun x => if x ≥ (0:ℝ) then (1:ℝ) else 0)
+        (nhdsWithin 0 (Set.Iio 0)) (nhds (if (0:ℝ) ≥ 0 then (1:ℝ) else 0)) :=
+      hcont.continuousAt.continuousWithinAt.tendsto
+    have h2 : Filter.Tendsto (fun x => if x ≥ (0:ℝ) then (1:ℝ) else 0)
+        (nhdsWithin 0 (Set.Iio 0)) (nhds 0) := by
+      apply tendsto_nhds_of_eventually_eq
+      filter_upwards [self_mem_nhdsWithin] with x hx
+      simp only [Set.mem_Iio] at hx
+      simp [show ¬(x ≥ 0) by linarith]
+    have := tendsto_nhds_unique h1 h2
+    norm_num at this
 
 /-- Proposition 9.8.3 / Exercise 9.8.4 -/
 theorem MonotoneOn.exist_inverse {a b:ℝ} (h: a < b) (f: ℝ → ℝ) (hcont: ContinuousOn f (.Icc a b)) (hmono: StrictMonoOn f (.Icc a b)) :
@@ -126,11 +146,27 @@ theorem IsMaxOn.of_strictantitone_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ}
 
 theorem BddOn.of_monotone {a b:ℝ} {f:ℝ → ℝ} (hf: MonotoneOn f (.Icc a b)) :
   BddOn f (.Icc a b) := by
-  sorry
+  refine ⟨|f a| + |f b|, fun x hx => ?_⟩
+  obtain ⟨hax, hxb⟩ := Set.mem_Icc.mp hx
+  have hab : a ≤ b := le_trans hax hxb
+  have h1 : f a ≤ f x := hf (Set.mem_Icc.mpr ⟨le_refl a, hab⟩) hx hax
+  have h2 : f x ≤ f b := hf hx (Set.mem_Icc.mpr ⟨hab, le_refl b⟩) hxb
+  rw [abs_le]
+  constructor <;>
+    nlinarith [neg_abs_le (f a), le_abs_self (f b), neg_abs_le (f b), le_abs_self (f a),
+      abs_nonneg (f a), abs_nonneg (f b)]
 
 theorem BddOn.of_antitone {a b:ℝ} {f:ℝ → ℝ} (hf: AntitoneOn f (.Icc a b)) :
   BddOn f (.Icc a b) := by
-  sorry
+  refine ⟨|f a| + |f b|, fun x hx => ?_⟩
+  obtain ⟨hax, hxb⟩ := Set.mem_Icc.mp hx
+  have hab : a ≤ b := le_trans hax hxb
+  have h1 : f x ≤ f a := hf (Set.mem_Icc.mpr ⟨le_refl a, hab⟩) hx hax
+  have h2 : f b ≤ f x := hf hx (Set.mem_Icc.mpr ⟨hab, le_refl b⟩) hxb
+  rw [abs_le]
+  constructor <;>
+    nlinarith [neg_abs_le (f a), le_abs_self (f b), neg_abs_le (f b), le_abs_self (f a),
+      abs_nonneg (f a), abs_nonneg (f b)]
 
 
 
