@@ -216,6 +216,32 @@ theorem Equiv.uniq {P Q : PeanoAxioms} (equiv1 equiv2 : PeanoAxioms.Equiv P Q) :
 /-- A sample result: recursion is well-defined on any structure obeying the Peano axioms-/
 theorem Nat.recurse_uniq {P : PeanoAxioms} (f: P.Nat → P.Nat → P.Nat) (c: P.Nat) :
     ∃! (a: P.Nat → P.Nat), a P.zero = c ∧ ∀ n, a (P.succ n) = f n (a n) := by
-  sorry
+  classical
+  set ic : ℕ ≃ P.Nat :=
+    _root_.Equiv.ofBijective P.natCast ⟨natCast_injective P, natCast_surjective P⟩ with hic
+  have hic0 : ic 0 = P.zero := rfl
+  have hicsucc : ∀ m:ℕ, ic (m+1) = P.succ (ic m) := fun m => rfl
+  set g : ℕ → P.Nat := fun n => Nat.rec (motive := fun _ => P.Nat) c (fun k acc => f (ic k) acc) n
+    with hg
+  have hg0 : g 0 = c := rfl
+  have hgsucc : ∀ k, g (k+1) = f (ic k) (g k) := fun k => rfl
+  have hsymm_succ : ∀ x:P.Nat, ic.symm (P.succ x) = ic.symm x + 1 := by
+    intro x
+    apply ic.injective
+    rw [_root_.Equiv.apply_symm_apply, hicsucc, _root_.Equiv.apply_symm_apply]
+  refine ⟨fun x => g (ic.symm x), ⟨?_, ?_⟩, ?_⟩
+  · show g (ic.symm P.zero) = c
+    rw [← hic0, _root_.Equiv.symm_apply_apply, hg0]
+  · intro n
+    show g (ic.symm (P.succ n)) = f n (g (ic.symm n))
+    rw [hsymm_succ, hgsucc, _root_.Equiv.apply_symm_apply]
+  · intro a' ⟨ha0, hasucc⟩
+    funext x
+    refine P.induction (fun x => a' x = g (ic.symm x)) ?_ ?_ x
+    · show a' P.zero = g (ic.symm P.zero)
+      rw [ha0, ← hic0, _root_.Equiv.symm_apply_apply, hg0]
+    · intro k hk
+      show a' (P.succ k) = g (ic.symm (P.succ k))
+      rw [hasucc, hk, hsymm_succ, hgsucc, _root_.Equiv.apply_symm_apply]
 
 end PeanoAxioms
