@@ -688,7 +688,16 @@ theorem Series.telescope {a:ℕ → ℝ} (ha: Filter.atTop.Tendsto a (nhds 0)) :
 def Series.exercise_7_2_1_convergent :
   Decidable ( (mk' (m := 1) (fun n ↦ (-1:ℝ)^(n:ℤ))).converges ) := by
   -- The first line of this proof should be `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro hconv
+  have hdecay := decay_of_converges hconv
+  rw [Metric.tendsto_atTop] at hdecay
+  obtain ⟨N, hN⟩ := hdecay 1 one_pos
+  have hd := hN (max N 1) (le_max_left _ _)
+  rw [show (mk' (m := 1) (fun n ↦ (-1:ℝ)^(n:ℤ))).seq (max N 1) = (-1:ℝ)^((max N 1):ℤ) from
+        Series.eval_mk' _ (by omega),
+      Real.dist_eq, sub_zero, abs_zpow, abs_neg, abs_one, one_zpow] at hd
+  norm_num at hd
 
 
 end Chapter7
