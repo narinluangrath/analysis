@@ -204,7 +204,7 @@ instance Nat.isOrderedRing : IsOrderedRing Nat where
   mul_le_mul_of_nonneg_left := by
     intro a _ b c hbc; obtain ⟨d, hd⟩ := hbc; exact ⟨a * d, by rw [hd, mul_add]⟩
   mul_le_mul_of_nonneg_right := by
-    sorry
+    intro c _ a b hab; obtain ⟨d, hd⟩ := hab; exact ⟨d * c, by rw [hd, add_mul]⟩
 
 /-- This illustration of the `gcongr` tactic is not from the
     textbook. -/
