@@ -450,10 +450,27 @@ theorem Sequence.bounded_of_convergent {a:Sequence} (h: a.Convergent) : a.IsBoun
   sorry
 
 /-- Example 6.1.18 -/
-example : ¬ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).IsBounded := by sorry
+example : ¬ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).IsBounded := by
+  rw [Sequence.isBounded_def]
+  rintro ⟨M, hM, hB⟩
+  obtain ⟨m, hm⟩ := exists_nat_gt M
+  have hb := hB (m:ℤ)
+  rw [Sequence.eval_coe] at hb
+  rw [abs_of_pos (by positivity)] at hb
+  linarith
 
 /-- Example 6.1.18 -/
-example : ¬ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).Convergent := by sorry
+example : ¬ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).Convergent := by
+  rintro ⟨L, hL⟩
+  rw [Sequence.tendsTo_iff] at hL
+  obtain ⟨N, hN⟩ := hL 1 one_pos
+  obtain ⟨m0, hm0⟩ := exists_nat_gt (L+1)
+  set m : ℕ := max m0 N.toNat with hmdef
+  have hmN : (m:ℤ) ≥ N := by rw [hmdef]; omega
+  have hb := hN (m:ℤ) hmN
+  rw [Sequence.eval_coe, abs_le] at hb
+  have hm0le : (m0:ℝ) ≤ (m:ℝ) := by rw [hmdef]; exact_mod_cast le_max_left _ _
+  linarith [hb.2, hm0, hm0le]
 
 instance Sequence.inst_add : Add Sequence where
   add a b := {
