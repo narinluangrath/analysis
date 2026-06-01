@@ -994,7 +994,34 @@ theorem Sequence.lim_div_fail :
 
 theorem Chapter5.Sequence.IsCauchy_iff (a:Chapter5.Sequence) :
     a.IsCauchy ↔ ∀ ε > (0:ℝ), ∃ N ≥ a.n₀, ∀ n ≥ N, ∀ m ≥ N, |a n - a m| ≤ ε := by
-  sorry
+  constructor
+  · intro h ε hε
+    obtain ⟨ε', hε'pos, hε'lt⟩ := exists_pos_rat_lt hε
+    rw [Chapter5.Sequence.isCauchy_def] at h
+    obtain ⟨N, hN, hsteady⟩ := h ε' hε'pos
+    rw [Rat.steady_def] at hsteady
+    refine ⟨max a.n₀ N, le_max_left _ _, fun n hn m hm => ?_⟩
+    have hnN : n ≥ N := le_trans (le_max_right _ _) hn
+    have hmN : m ≥ N := le_trans (le_max_right _ _) hm
+    have hc := hsteady n hn m hm
+    simp only [Rat.Close] at hc
+    rw [dif_pos hn, dif_pos hm] at hc
+    have hcast : ((|a n - a m| : ℚ):ℝ) ≤ (ε':ℝ) := by exact_mod_cast hc
+    linarith
+  · intro hcond
+    rw [Chapter5.Sequence.isCauchy_def]
+    intro ε' hε'
+    rw [Rat.eventuallySteady_def]
+    obtain ⟨N, hN, hbound⟩ := hcond (ε':ℝ) (by exact_mod_cast hε')
+    refine ⟨N, hN, ?_⟩
+    rw [Rat.steady_def]
+    intro n hn m hm
+    have hnN : n ≥ N := le_trans (le_max_right _ _) hn
+    have hmN : m ≥ N := le_trans (le_max_right _ _) hm
+    simp only [Rat.Close]
+    rw [dif_pos hn, dif_pos hm]
+    have hb := hbound n hnN m hmN
+    exact_mod_cast hb
 end Chapter6
 
 -- additional definitions for exercise 6.1.10
