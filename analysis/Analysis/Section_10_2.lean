@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Analysis.Calculus.Deriv.Abs
 import Analysis.Section_9_6
 
 /-!
@@ -102,7 +103,10 @@ theorem IsLocalMinOn.deriv_eq_zero {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} {x₀:
 theorem IsMaxOn.deriv_eq_zero_counter : ∃ (a b:ℝ) (hab: a < b) (f:ℝ → ℝ)
   (x₀:ℝ) (hx₀: x₀ ∈ Set.Icc a b) (h: IsMaxOn f (.Icc a b) x₀) (L:ℝ)
   (hderiv: HasDerivWithinAt f L (.Icc a b) x₀), L ≠ 0 := by
-  sorry
+  refine ⟨0, 1, by norm_num, id, 1, by norm_num, ?_, 1, hasDerivWithinAt_id 1 _, by norm_num⟩
+  rw [isMaxOn_iff]
+  intro x hx
+  exact (Set.mem_Icc.mp hx).2
 
 /-- Theorem 10.2.7 (Rolle's theorem) / Exercise 10.2.4 -/
 theorem _root_.HasDerivWithinAt.exist_zero {a b:ℝ} (hab: a < b) {g:ℝ → ℝ}
@@ -131,7 +135,16 @@ theorem _root_.HasDerivWithinAt.mean_value {a b:ℝ} (hab: a < b) {f:ℝ → ℝ
 /-- Exercise 10.2.2 -/
 example : ∃ f:ℝ → ℝ, ContinuousOn f (.Icc (-1) 1) ∧
   IsMaxOn f (.Icc (-1) 1) 0 ∧ ¬ DifferentiableWithinAt ℝ f (.Icc (-1) 1) 0 := by
-  sorry
+  refine ⟨fun x => -|x|, by fun_prop, ?_, ?_⟩
+  · rw [isMaxOn_iff]
+    intro x _
+    simp only [abs_zero, neg_zero]
+    exact neg_nonpos_of_nonneg (abs_nonneg x)
+  · intro h
+    have h2 : DifferentiableWithinAt ℝ (fun x => |x|) (Set.Icc (-1:ℝ) 1) 0 := by
+      simpa using h.neg
+    exact not_differentiableAt_abs_zero
+      (h2.differentiableAt (Icc_mem_nhds (by norm_num) (by norm_num)))
 
 /-- Exercise 10.2.3 -/
 example : ∃ f:ℝ → ℝ, DifferentiableOn ℝ f (.Icc (-1) 1) ∧
