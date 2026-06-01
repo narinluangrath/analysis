@@ -135,18 +135,31 @@ theorem Rat.coe_Nat_eq (n:ℕ) : (n:Rat) = n // 1 := rfl
 theorem Rat.of_Nat_eq (n:ℕ) : (ofNat(n):Rat) = (ofNat(n):Nat) // 1 := rfl
 
 /-- natCast distributes over successor -/
-theorem Rat.natCast_succ (n: ℕ) : ((n + 1: ℕ): Rat) = (n: Rat) + 1 := by sorry
+theorem Rat.natCast_succ (n: ℕ) : ((n + 1: ℕ): Rat) = (n: Rat) + 1 := by
+  rw [coe_Nat_eq, coe_Nat_eq, show (1:Rat) = (1:ℤ)//1 from rfl,
+      add_eq _ _ one_ne_zero one_ne_zero, Rat.eq _ _ (by norm_num) (by norm_num)]
+  push_cast; ring
 
 /-- intCast distributes over addition -/
-lemma Rat.intCast_add (a b:ℤ) : (a:Rat) + (b:Rat) = (a+b:ℤ) := by sorry
+lemma Rat.intCast_add (a b:ℤ) : (a:Rat) + (b:Rat) = (a+b:ℤ) := by
+  rw [coe_Int_eq, coe_Int_eq, coe_Int_eq, add_eq _ _ one_ne_zero one_ne_zero,
+      Rat.eq _ _ (by norm_num) one_ne_zero]
+  ring
 
 /-- intCast distributes over multiplication -/
-lemma Rat.intCast_mul (a b:ℤ) : (a:Rat) * (b:Rat) = (a*b:ℤ) := by sorry
+lemma Rat.intCast_mul (a b:ℤ) : (a:Rat) * (b:Rat) = (a*b:ℤ) := by
+  rw [coe_Int_eq, coe_Int_eq, coe_Int_eq, mul_eq _ _ one_ne_zero one_ne_zero,
+      Rat.eq _ _ (by norm_num) one_ne_zero]
+  ring
 
 /-- intCast commutes with negation -/
 lemma Rat.intCast_neg (a:ℤ) : - (a:Rat) = (-a:ℤ) := rfl
 
-theorem Rat.coe_Int_inj : Function.Injective (fun n:ℤ ↦ (n:Rat)) := by sorry
+theorem Rat.coe_Int_inj : Function.Injective (fun n:ℤ ↦ (n:Rat)) := by
+  intro a b h
+  have h2 : (a:Rat) = (b:Rat) := h
+  rw [coe_Int_eq, coe_Int_eq, Rat.eq _ _ one_ne_zero one_ne_zero] at h2
+  simpa using h2
 
 /--
   Whereas the book leaves the inverse of 0 undefined, it is more convenient in Lean to assign a
@@ -178,7 +191,12 @@ AddGroup.ofLeftAxioms (by
       add_eq _ _ hb hdf, ←mul_assoc b, eq _ _ hbdf hbdf]
   ring
 )
- (by sorry) (by sorry)
+ (by intro x; obtain ⟨a,b,hb,rfl⟩ := eq_diff x
+     rw [show (0:Rat) = 0//1 from rfl, add_eq _ _ one_ne_zero hb,
+         Rat.eq _ _ (Int.mul_ne_zero one_ne_zero hb) hb]; ring)
+ (by intro x; obtain ⟨a,b,hb,rfl⟩ := eq_diff x
+     rw [neg_eq _ hb, add_eq _ _ hb hb, show (0:Rat) = 0//1 from rfl,
+         Rat.eq _ _ (Int.mul_ne_zero hb hb) one_ne_zero]; ring)
 
 /-- Proposition 4.2.4 (laws of algebra) / Exercise 4.2.3 -/
 instance Rat.instAddCommGroup : AddCommGroup Rat where
