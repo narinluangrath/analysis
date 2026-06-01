@@ -161,11 +161,20 @@ theorem SetTheory.Set.not_mem_empty : ∀ x, x ∉ (∅:Set) := emptyset_mem
 
 /-- Empty set has no elements -/
 theorem SetTheory.Set.eq_empty_iff_forall_notMem {X:Set} : X = ∅ ↔ (∀ x, x ∉ X) := by
-  sorry
+  constructor
+  · intro h x; rw [h]; exact not_mem_empty x
+  · intro h; apply ext; intro x
+    constructor
+    · intro hx; exact absurd hx (h x)
+    · intro hx; exact absurd hx (not_mem_empty x)
 
 /-- Empty set is unique -/
 theorem SetTheory.Set.empty_unique : ∃! (X:Set), ∀ x, x ∉ X := by
-  sorry
+  refine ⟨∅, not_mem_empty, fun Y hY => ?_⟩
+  apply ext; intro x
+  constructor
+  · intro hx; exact absurd hx (hY x)
+  · intro hx; exact absurd hx (not_mem_empty x)
 
 /-- Lemma 3.1.5 (Single choice) -/
 lemma SetTheory.Set.nonempty_def {X:Set} (h: X ≠ ∅) : ∃ x, x ∈ X := by
@@ -247,7 +256,11 @@ theorem SetTheory.Set.pair_self (a:Object) : ({a,a}:Set) = {a} := by
 /-- Exercise 3.1.1 -/
 theorem SetTheory.Set.pair_eq_pair {a b c d:Object} (h: ({a,b}:Set) = {c,d}) :
     a = c ∧ b = d ∨ a = d ∧ b = c := by
-  sorry
+  have ha := (mem_pair a c d).mp (h ▸ (mem_pair a a b).mpr (Or.inl rfl))
+  have hb := (mem_pair b c d).mp (h ▸ (mem_pair b a b).mpr (Or.inr rfl))
+  have hc := (mem_pair c a b).mp (h.symm ▸ (mem_pair c c d).mpr (Or.inl rfl))
+  have hd := (mem_pair d a b).mp (h.symm ▸ (mem_pair d c d).mpr (Or.inr rfl))
+  grind
 
 abbrev SetTheory.Set.empty : Set := ∅
 abbrev SetTheory.Set.singleton_empty : Set := {(empty: Object)}
@@ -265,7 +278,10 @@ theorem SetTheory.Set.emptyset_neq_pair : empty ≠ pair_empty := by
 
 /-- Exercise 3.1.2 -/
 theorem SetTheory.Set.singleton_empty_neq_pair : singleton_empty ≠ pair_empty := by
-  sorry
+  intro h
+  have hmem : (singleton_empty:Object) ∈ pair_empty := (mem_pair _ _ _).mpr (Or.inr rfl)
+  rw [← h, mem_singleton, coe_eq_iff] at hmem
+  exact emptyset_neq_singleton hmem.symm
 
 /--
   Remark 3.1.11.
