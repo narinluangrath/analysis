@@ -259,29 +259,36 @@ example (x:ℚ): x^(-3:ℤ) = 1/(x*x*x) := by convert zpow_neg x 3; ring
 theorem pow_eq_zpow (x:ℚ) (n:ℕ): x^(n:ℤ) = x^n := zpow_natCast x n
 
 /-- Proposition 4.3.12(a) (Properties of exponentiation, II) / Exercise 4.3.4 -/
-theorem zpow_add (x:ℚ) (n m:ℤ) (hx: x ≠ 0): x^n * x^m = x^(n+m) := by sorry
+theorem zpow_add (x:ℚ) (n m:ℤ) (hx: x ≠ 0): x^n * x^m = x^(n+m) := (zpow_add₀ hx n m).symm
 
 /-- Proposition 4.3.12(a) (Properties of exponentiation, II) / Exercise 4.3.4 -/
-theorem zpow_mul (x:ℚ) (n m:ℤ) : (x^n)^m = x^(n*m) := by sorry
+theorem zpow_mul (x:ℚ) (n m:ℤ) : (x^n)^m = x^(n*m) := (_root_.zpow_mul x n m).symm
 
 /-- Proposition 4.3.12(a) (Properties of exponentiation, II) / Exercise 4.3.4 -/
-theorem mul_zpow (x y:ℚ) (n:ℤ) : (x*y)^n = x^n * y^n := by sorry
+theorem mul_zpow (x y:ℚ) (n:ℤ) : (x*y)^n = x^n * y^n := _root_.mul_zpow x y n
 
 /-- Proposition 4.3.12(b) (Properties of exponentiation, II) / Exercise 4.3.4 -/
-theorem zpow_pos {x:ℚ} (n:ℤ) (hx: x > 0) : x^n > 0 := by sorry
+theorem zpow_pos {x:ℚ} (n:ℤ) (hx: x > 0) : x^n > 0 := _root_.zpow_pos hx n
 
 /-- Proposition 4.3.12(b) (Properties of exponentiation, II) / Exercise 4.3.4 -/
-theorem zpow_ge_zpow {x y:ℚ} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n > 0): x^n ≥ y^n := by sorry
+theorem zpow_ge_zpow {x y:ℚ} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n > 0): x^n ≥ y^n := by
+  lift n to ℕ using hn.le with k
+  rw [zpow_natCast, zpow_natCast]
+  exact pow_le_pow_left₀ hy.le hxy k
 
 theorem zpow_ge_zpow_ofneg {x y:ℚ} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n < 0) : x^n ≤ y^n := by
-  sorry
+  have hxp : 0 < x^(-n) := _root_.zpow_pos (by linarith) _
+  have hyp : 0 < y^(-n) := _root_.zpow_pos hy _
+  have h1 : y^(-n) ≤ x^(-n) := zpow_ge_zpow hxy hy (by omega)
+  rw [show x^n = (x^(-n))⁻¹ by simp, show y^n = (y^(-n))⁻¹ by simp]
+  exact inv_anti₀ hyp h1
 
 /-- Proposition 4.3.12(c) (Properties of exponentiation, II) / Exercise 4.3.4 -/
 theorem zpow_inj {x y:ℚ} {n:ℤ} (hx: x > 0) (hy : y > 0) (hn: n ≠ 0) (hxy: x^n = y^n) : x = y := by
   sorry
 
 /-- Proposition 4.3.12(d) (Properties of exponentiation, II) / Exercise 4.3.4 -/
-theorem zpow_abs (x:ℚ) (n:ℤ) : |x|^n = |x^n| := by sorry
+theorem zpow_abs (x:ℚ) (n:ℤ) : |x|^n = |x^n| := (abs_zpow x n).symm
 
 /-- Exercise 4.3.5 -/
-theorem two_pow_geq (N:ℕ) : 2^N ≥ N := by sorry
+theorem two_pow_geq (N:ℕ) : 2^N ≥ N := Nat.le_of_lt (Nat.lt_two_pow_self)
