@@ -282,7 +282,38 @@ theorem Series.Basel_problem :  (mk' (m := 1) fun n ↦ 1 / (n:ℝ) ^ 2 : Series
   simpa [←Complex.ofReal_inj]
 
 /-- Exercise 7.3.3 -/
-theorem Series.nonneg_sum_zero {a:ℕ → ℝ} (ha: (a:Series).nonneg) (hconv: (a:Series).converges) : (a:Series).sum = 0 ↔ ∀ n, a n = 0 := by sorry
+theorem Series.nonneg_sum_zero {a:ℕ → ℝ} (ha: (a:Series).nonneg) (hconv: (a:Series).converges) : (a:Series).sum = 0 ↔ ∀ n, a n = 0 := by
+  have hm : (a:Series).m = 0 := rfl
+  constructor
+  · intro hsum n
+    have hp1 : (a:Series).partial (n:ℤ) = 0 := by
+      have h1 := partial_le_sum_of_nonneg ha hconv (n:ℤ)
+      rw [hsum] at h1
+      exact le_antisymm h1 (partial_nonneg ha _)
+    have hp0 : (a:Series).partial ((n:ℤ)-1) = 0 := by
+      have h1 := partial_le_sum_of_nonneg ha hconv ((n:ℤ)-1)
+      rw [hsum] at h1
+      exact le_antisymm h1 (partial_nonneg ha _)
+    have hps := Series.partial_succ (a:Series) (N := (n:ℤ)-1) (by rw [hm]; omega)
+    rw [sub_add_cancel] at hps
+    have hseq : (a:Series).seq (n:ℤ) = a n := Series.eval_coe a n
+    rw [hp1, hp0, hseq] at hps
+    linarith
+  · intro hzero
+    have hpe : ∀ N, (a:Series).partial N = 0 := by
+      intro N
+      unfold Series.partial
+      rw [hm]
+      apply Finset.sum_eq_zero
+      intro k hk
+      simp only [Finset.mem_Icc] at hk
+      rw [show k = ((k.toNat:ℕ):ℤ) by omega, Series.eval_coe]
+      exact hzero _
+    have hconv0 : (a:Series).convergesTo 0 := by
+      show Filter.Tendsto (a:Series).partial Filter.atTop (nhds 0)
+      rw [show (a:Series).partial = fun _ => (0:ℝ) from funext hpe]
+      exact tendsto_const_nhds
+    exact sum_of_converges hconv0
 
 
 end Chapter7
