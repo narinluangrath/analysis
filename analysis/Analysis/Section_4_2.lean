@@ -200,22 +200,66 @@ AddGroup.ofLeftAxioms (by
 
 /-- Proposition 4.2.4 (laws of algebra) / Exercise 4.2.3 -/
 instance Rat.instAddCommGroup : AddCommGroup Rat where
-  add_comm := by sorry
+  add_comm := by
+    intro x y
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y
+    rw [add_eq _ _ hb hd, add_eq _ _ hd hb, eq _ _ (Int.mul_ne_zero hb hd) (Int.mul_ne_zero hd hb)]
+    ring
 
 /-- Proposition 4.2.4 (laws of algebra) / Exercise 4.2.3 -/
 instance Rat.instCommMonoid : CommMonoid Rat where
-  mul_comm := by sorry
-  mul_assoc := by sorry
-  one_mul := by sorry
-  mul_one := by sorry
+  mul_comm := by
+    intro x y
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y
+    rw [mul_eq _ _ hb hd, mul_eq _ _ hd hb, eq _ _ (Int.mul_ne_zero hb hd) (Int.mul_ne_zero hd hb)]
+    ring
+  mul_assoc := by
+    intro x y z
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y; obtain ⟨e,f,hf,rfl⟩ := eq_diff z
+    rw [mul_eq _ _ hb hd, mul_eq _ _ (Int.mul_ne_zero hb hd) hf, mul_eq _ _ hd hf,
+        mul_eq _ _ hb (Int.mul_ne_zero hd hf),
+        eq _ _ (Int.mul_ne_zero (Int.mul_ne_zero hb hd) hf) (Int.mul_ne_zero hb (Int.mul_ne_zero hd hf))]
+    ring
+  one_mul := by
+    intro x; obtain ⟨a,b,hb,rfl⟩ := eq_diff x
+    rw [show (1:Rat) = 1//1 from rfl, mul_eq _ _ one_ne_zero hb,
+        eq _ _ (Int.mul_ne_zero one_ne_zero hb) hb]; ring
+  mul_one := by
+    intro x; obtain ⟨a,b,hb,rfl⟩ := eq_diff x
+    rw [show (1:Rat) = 1//1 from rfl, mul_eq _ _ hb one_ne_zero,
+        eq _ _ (Int.mul_ne_zero hb one_ne_zero) hb]; ring
 
 /-- Proposition 4.2.4 (laws of algebra) / Exercise 4.2.3 -/
 instance Rat.instCommRing : CommRing Rat where
-  left_distrib := by sorry
-  right_distrib := by sorry
-  zero_mul := by sorry
-  mul_zero := by sorry
-  mul_assoc := by sorry
+  left_distrib := by
+    intro x y z
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y; obtain ⟨e,f,hf,rfl⟩ := eq_diff z
+    rw [add_eq _ _ hd hf, mul_eq _ _ hb (Int.mul_ne_zero hd hf), mul_eq _ _ hb hd, mul_eq _ _ hb hf,
+        add_eq _ _ (Int.mul_ne_zero hb hd) (Int.mul_ne_zero hb hf),
+        eq _ _ (Int.mul_ne_zero hb (Int.mul_ne_zero hd hf)) (Int.mul_ne_zero (Int.mul_ne_zero hb hd) (Int.mul_ne_zero hb hf))]
+    ring
+  right_distrib := by
+    intro x y z
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y; obtain ⟨e,f,hf,rfl⟩ := eq_diff z
+    rw [add_eq _ _ hb hd, mul_eq _ _ (Int.mul_ne_zero hb hd) hf, mul_eq _ _ hb hf, mul_eq _ _ hd hf,
+        add_eq _ _ (Int.mul_ne_zero hb hf) (Int.mul_ne_zero hd hf),
+        eq _ _ (Int.mul_ne_zero (Int.mul_ne_zero hb hd) hf) (Int.mul_ne_zero (Int.mul_ne_zero hb hf) (Int.mul_ne_zero hd hf))]
+    ring
+  zero_mul := by
+    intro x; obtain ⟨a,b,hb,rfl⟩ := eq_diff x
+    rw [show (0:Rat) = 0//1 from rfl, mul_eq _ _ one_ne_zero hb,
+        eq _ _ (Int.mul_ne_zero one_ne_zero hb) one_ne_zero]; ring
+  mul_zero := by
+    intro x; obtain ⟨a,b,hb,rfl⟩ := eq_diff x
+    rw [show (0:Rat) = 0//1 from rfl, mul_eq _ _ hb one_ne_zero,
+        eq _ _ (Int.mul_ne_zero hb one_ne_zero) one_ne_zero]; ring
+  mul_assoc := by
+    intro x y z
+    obtain ⟨a,b,hb,rfl⟩ := eq_diff x; obtain ⟨c,d,hd,rfl⟩ := eq_diff y; obtain ⟨e,f,hf,rfl⟩ := eq_diff z
+    rw [mul_eq _ _ hb hd, mul_eq _ _ (Int.mul_ne_zero hb hd) hf, mul_eq _ _ hd hf,
+        mul_eq _ _ hb (Int.mul_ne_zero hd hf),
+        eq _ _ (Int.mul_ne_zero (Int.mul_ne_zero hb hd) hf) (Int.mul_ne_zero hb (Int.mul_ne_zero hd hf))]
+    ring
   -- Usually CommRing will generate a natCast instance and a proof for this.
   -- However, we are using a custom natCast for which `natCast_succ` cannot
   -- be proven automatically by `rfl`. Luckily we have proven it already.
