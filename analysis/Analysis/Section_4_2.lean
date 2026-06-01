@@ -45,9 +45,12 @@ structure PreRat where
 instance PreRat.instSetoid : Setoid PreRat where
   r a b := a.numerator * b.denominator = b.numerator * a.denominator
   iseqv := {
-    refl := by sorry
-    symm := by sorry
-    trans := by sorry
+    refl := by intro x; rfl
+    symm := by intro x y h; exact h.symm
+    trans := by
+      intro ⟨a,b,hb⟩ ⟨c,d,hd⟩ ⟨e,f,hf⟩ h1 h2
+      have h3 : a*f*d = e*b*d := by linear_combination f*h1 + b*h2
+      exact mul_right_cancel₀ hd h3
     }
 
 @[simp]
@@ -95,7 +98,10 @@ theorem Rat.add_eq (a c:ℤ) {b d:ℤ} (hb: b ≠ 0) (hd: d ≠ 0) :
 
 /-- Lemma 4.2.3 (Multiplication well-defined) -/
 instance Rat.mul_inst : Mul Rat where
-  mul := Quotient.lift₂ (fun ⟨ a, b, h1 ⟩ ⟨ c, d, h2 ⟩ ↦ (a*c) // (b*d)) (by sorry)
+  mul := Quotient.lift₂ (fun ⟨ a, b, h1 ⟩ ⟨ c, d, h2 ⟩ ↦ (a*c) // (b*d)) (by
+    intro ⟨ a, b, h1 ⟩ ⟨ c, d, h2 ⟩ ⟨ a', b', h1' ⟩ ⟨ c', d', h2' ⟩ h3 h4
+    simp_all [Quotient.eq]
+    linear_combination (c*d')*h3 + (a'*b)*h4)
 
 /-- Definition 4.2.2 (Multiplication of rationals) -/
 theorem Rat.mul_eq (a c:ℤ) {b d:ℤ} (hb: b ≠ 0) (hd: d ≠ 0) :
@@ -104,7 +110,9 @@ theorem Rat.mul_eq (a c:ℤ) {b d:ℤ} (hb: b ≠ 0) (hd: d ≠ 0) :
 
 /-- Lemma 4.2.3 (Negation well-defined) -/
 instance Rat.neg_inst : Neg Rat where
-  neg := Quotient.lift (fun ⟨ a, b, h1 ⟩ ↦ (-a) // b) (by sorry)
+  neg := Quotient.lift (fun ⟨ a, b, h1 ⟩ ↦ (-a) // b) (by
+    intro ⟨a,b,h1⟩ ⟨a',b',h1'⟩ h
+    simp_all [Quotient.eq])
 
 /-- Definition 4.2.2 (Negation of rationals) -/
 theorem Rat.neg_eq (a:ℤ) {b:ℤ} (hb: b ≠ 0) : - (a // b) = (-a) // b := by
