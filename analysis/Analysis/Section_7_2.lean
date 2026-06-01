@@ -1,5 +1,6 @@
 import Mathlib.Tactic
 import Mathlib.Algebra.Field.Power
+import Mathlib.Analysis.PSeries
 
 /-!
 # Analysis I, Section 7.2: Infinite series
@@ -439,10 +440,35 @@ theorem Series.example_7_2_13a : example_7_2_13.converges := by
   exact (converges_of_alternating ha ha').mpr hadecay
 
 theorem Series.example_7_2_13b : ¬ example_7_2_13.absConverges := by
-  sorry
+  have hm : example_7_2_13.abs.m = 1 := rfl
+  have hbridge : ∀ k:ℕ, example_7_2_13.abs.partial (k:ℤ) = ∑ i ∈ Finset.range k, (1 / (i + 1) : ℝ) := by
+    intro k
+    induction k with
+    | zero =>
+      simp only [Nat.cast_zero, Finset.range_zero, Finset.sum_empty]
+      unfold Series.partial
+      rw [hm, Finset.Icc_eq_empty (by norm_num : ¬ (1:ℤ) ≤ 0), Finset.sum_empty]
+    | succ k ih =>
+      have hge : ((k:ℤ)+1) ≥ 1 := by omega
+      rw [show ((k+1:ℕ):ℤ) = (k:ℤ)+1 by push_cast; ring,
+        Series.partial_succ example_7_2_13.abs (by rw [hm]; omega), ih, Finset.sum_range_succ]
+      congr 1
+      rw [show example_7_2_13.abs.seq ((k:ℤ)+1) = |example_7_2_13.seq ((k:ℤ)+1)| from
+            Series.eval_mk' _ hge,
+        show example_7_2_13.seq ((k:ℤ)+1) = (-1:ℝ)^((k:ℤ)+1) / (((k:ℤ)+1:ℤ):ℝ) from
+            Series.eval_mk' _ hge,
+        abs_div, abs_zpow, abs_neg, abs_one, one_zpow, abs_of_pos (by positivity)]
+      push_cast; ring
+  intro hconv
+  obtain ⟨L, hL⟩ := hconv
+  have hsub : Filter.Tendsto (fun k:ℕ => example_7_2_13.abs.partial (k:ℤ)) Filter.atTop (nhds L) :=
+    hL.comp tendsto_natCast_atTop_atTop
+  have hsub' : Filter.Tendsto (fun k:ℕ => example_7_2_13.abs.partial (k:ℤ)) Filter.atTop Filter.atTop :=
+    Filter.Tendsto.congr (fun k => (hbridge k).symm) Real.tendsto_sum_range_one_div_nat_succ_atTop
+  exact not_tendsto_atTop_of_tendsto_nhds hsub hsub'
 
 theorem Series.example_7_2_13c :  example_7_2_13.condConverges := by
-  sorry
+  exact ⟨example_7_2_13a, example_7_2_13b⟩
 
 instance Series.inst_add : Add Series where
   add a b := {
