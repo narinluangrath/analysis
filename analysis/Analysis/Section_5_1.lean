@@ -423,7 +423,29 @@ lemma IsBounded.finite {n:ℕ} (a: Fin n → ℚ) : ∃ M ≥ 0,  BoundedBy a M 
 
 /-- Lemma 5.1.15 (Cauchy sequences are bounded) / Exercise 5.1.1 -/
 lemma Sequence.isBounded_of_isCauchy {a:Sequence} (h: a.IsCauchy) : a.IsBounded := by
-  sorry
+  obtain ⟨N, hN, hsteady⟩ := h 1 one_pos
+  rw [Rat.steady_def] at hsteady
+  have hfromn0 : (a.from N).n₀ = N := by show max a.n₀ N = N; omega
+  have htail : ∀ n:ℤ, n ≥ N → |a n| ≤ |a N| + 1 := by
+    intro n hn
+    have hc := hsteady n (by rw [hfromn0]; exact hn) N (by rw [hfromn0])
+    rw [Rat.Close, Sequence.from_eval a hn, Sequence.from_eval a (le_refl N)] at hc
+    calc |a n| = |a N + (a n - a N)| := by congr 1; ring
+      _ ≤ |a N| + |a n - a N| := abs_add_le _ _
+      _ ≤ |a N| + 1 := by linarith
+  set K := (N - a.n₀).toNat with hK
+  obtain ⟨M0, hM0pos, hM0⟩ := IsBounded.finite (fun i:Fin K => a (a.n₀ + (i:ℕ)))
+  refine ⟨max M0 (|a N| + 1), le_trans hM0pos (le_max_left _ _), ?_⟩
+  intro n
+  rcases lt_or_ge n N with hlt | hge
+  · rcases lt_or_ge n a.n₀ with hlt2 | hge2
+    · rw [show a n = a.seq n from rfl, a.vanish n hlt2, abs_zero]; positivity
+    · have hi : (n - a.n₀).toNat < K := by rw [hK]; omega
+      have hb := hM0 ⟨(n - a.n₀).toNat, hi⟩
+      simp only [Fin.val_mk] at hb
+      rw [show a.n₀ + (((n - a.n₀).toNat : ℕ):ℤ) = n by omega] at hb
+      exact le_trans hb (le_max_left _ _)
+  · exact le_trans (htail n hge) (le_max_right _ _)
 
 /-- Exercise 5.1.2 -/
 theorem Sequence.isBounded_add {a b:ℕ → ℚ} (ha: (a:Sequence).IsBounded) (hb: (b:Sequence).IsBounded):
