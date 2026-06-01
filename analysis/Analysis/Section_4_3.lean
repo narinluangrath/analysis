@@ -53,7 +53,13 @@ theorem abs_of_zero : abs 0 = 0 := rfl
   Henceforth we use the Mathlib absolute value.
 -/
 theorem abs_eq_abs (x: ℚ) : abs x = |x| := by
-  sorry
+  unfold abs
+  split_ifs with h1 h2
+  · exact (_root_.abs_of_pos h1).symm
+  · exact (_root_.abs_of_neg h2).symm
+  · push_neg at h1 h2
+    have : x = 0 := le_antisymm h1 h2
+    simp [this]
 
 abbrev dist (x y : ℚ) := |x - y|
 
@@ -64,38 +70,39 @@ abbrev dist (x y : ℚ) := |x - y|
 theorem dist_eq (x y: ℚ) : dist x y = |x-y| := rfl
 
 /-- Proposition 4.3.3(a) / Exercise 4.3.1 -/
-theorem abs_nonneg (x: ℚ) : |x| ≥ 0 := by sorry
+theorem abs_nonneg (x: ℚ) : |x| ≥ 0 := _root_.abs_nonneg x
 
 /-- Proposition 4.3.3(a) / Exercise 4.3.1 -/
-theorem abs_eq_zero_iff (x: ℚ) : |x| = 0 ↔ x = 0 := by sorry
+theorem abs_eq_zero_iff (x: ℚ) : |x| = 0 ↔ x = 0 := _root_.abs_eq_zero
 
 /-- Proposition 4.3.3(b) / Exercise 4.3.1 -/
-theorem abs_add (x y:ℚ) : |x + y| ≤ |x| + |y| := by sorry
+theorem abs_add (x y:ℚ) : |x + y| ≤ |x| + |y| := _root_.abs_add_le x y
 
 /-- Proposition 4.3.3(c) / Exercise 4.3.1 -/
-theorem abs_le_iff (x y:ℚ) : -y ≤ x ∧ x ≤ y ↔ |x| ≤ y := by sorry
+theorem abs_le_iff (x y:ℚ) : -y ≤ x ∧ x ≤ y ↔ |x| ≤ y := _root_.abs_le.symm
 
 /-- Proposition 4.3.3(c) / Exercise 4.3.1 -/
-theorem le_abs (x:ℚ) : -|x| ≤ x ∧ x ≤ |x| := by sorry
+theorem le_abs (x:ℚ) : -|x| ≤ x ∧ x ≤ |x| := ⟨neg_abs_le x, le_abs_self x⟩
 
 /-- Proposition 4.3.3(d) / Exercise 4.3.1 -/
-theorem abs_mul (x y:ℚ) : |x * y| = |x| * |y| := by sorry
+theorem abs_mul (x y:ℚ) : |x * y| = |x| * |y| := _root_.abs_mul x y
 
 /-- Proposition 4.3.3(d) / Exercise 4.3.1 -/
-theorem abs_neg (x:ℚ) : |-x| = |x| := by sorry
+theorem abs_neg (x:ℚ) : |-x| = |x| := _root_.abs_neg x
 
 /-- Proposition 4.3.3(e) / Exercise 4.3.1 -/
-theorem dist_nonneg (x y:ℚ) : dist x y ≥ 0 := by sorry
+theorem dist_nonneg (x y:ℚ) : dist x y ≥ 0 := _root_.abs_nonneg _
 
 /-- Proposition 4.3.3(e) / Exercise 4.3.1 -/
 theorem dist_eq_zero_iff (x y:ℚ) : dist x y = 0 ↔ x = y := by
-  sorry
+  rw [dist_eq, _root_.abs_eq_zero, sub_eq_zero]
 
 /-- Proposition 4.3.3(f) / Exercise 4.3.1 -/
-theorem dist_symm (x y:ℚ) : dist x y = dist y x := by sorry
+theorem dist_symm (x y:ℚ) : dist x y = dist y x := by
+  rw [dist_eq, dist_eq, abs_sub_comm]
 
 /-- Proposition 4.3.3(f) / Exercise 4.3.1 -/
-theorem dist_le (x y z:ℚ) : dist x z ≤ dist x y + dist y z := by sorry
+theorem dist_le (x y z:ℚ) : dist x z ≤ dist x y + dist y z := abs_sub_le x y z
 
 /--
   Definition 4.3.4 (eps-closeness).  In the text the notion is undefined for ε zero or negative,
