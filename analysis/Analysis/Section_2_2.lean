@@ -382,20 +382,23 @@ theorem Nat.trichotomous (a b:Nat) : a < b ∨ a = b ∨ a > b := by
 def Nat.decLe : (a b : Nat) → Decidable (a ≤ b)
   | 0, b => by
     apply isTrue
-    sorry
+    exact zero_le b
   | a++, b => by
     cases decLe a b with
     | isTrue h =>
       cases decEq a b with
       | isTrue h =>
         apply isFalse
-        sorry
+        intro hle; rw [← lt_iff_succ_le] at hle; exact (ne_of_lt _ _ hle) h
       | isFalse h =>
         apply isTrue
-        sorry
+        rw [← lt_iff_succ_le]
+        rcases (le_iff_lt_or_eq a b).mp ‹a ≤ b› with hlt | heq
+        · exact hlt
+        · exact absurd heq h
     | isFalse h =>
       apply isFalse
-      sorry
+      intro hle; rw [← lt_iff_succ_le] at hle; exact h (le_of_lt hle)
 
 instance Nat.decidableRel : DecidableRel (· ≤ · : Nat → Nat → Prop) := Nat.decLe
 
