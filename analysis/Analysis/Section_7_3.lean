@@ -24,7 +24,11 @@ open Real
 
 abbrev Series.nonneg (s: Series) : Prop := ∀ n, s.seq n ≥ 0
 
-abbrev Series.partial_of_nonneg {s: Series} (h: s.nonneg) : Monotone s.partial := by sorry
+abbrev Series.partial_of_nonneg {s: Series} (h: s.nonneg) : Monotone s.partial := by
+  intro N₁ N₂ hN
+  apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.Icc_subset_Icc_right hN)
+  intro i _ _
+  exact h i
 
 /-- Proposition 7.3.1 -/
 theorem Series.converges_of_nonneg_iff {s: Series} (h: s.nonneg) : s.converges ↔ ∃ M, ∀ N, s.partial N ≤ M := by
