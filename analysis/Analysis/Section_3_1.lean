@@ -945,7 +945,38 @@ theorem SetTheory.Set.subset_diff_subset_counter :
 -/
 
 /-- Exercise 3.1.13 -/
-theorem SetTheory.Set.singleton_iff (A:Set) (hA: A ≠ ∅) : (¬∃ B ⊂ A, B ≠ ∅) ↔ ∃ x, A = {x} := by sorry
+theorem SetTheory.Set.singleton_iff (A:Set) (hA: A ≠ ∅) : (¬∃ B ⊂ A, B ≠ ∅) ↔ ∃ x, A = {x} := by
+  constructor
+  · intro h
+    obtain ⟨x, hx⟩ := nonempty_def hA
+    refine ⟨x, ext fun y => ?_⟩
+    rw [mem_singleton]
+    constructor
+    · intro hy
+      by_contra hne
+      apply h
+      refine ⟨{x}, ?_, ?_⟩
+      · rw [ssubset_def]
+        refine ⟨fun z hz => ?_, ?_⟩
+        · rw [mem_singleton] at hz; rw [hz]; exact hx
+        · intro heq
+          rw [← heq, mem_singleton] at hy
+          exact hne hy
+      · intro hempty
+        have : x ∈ ({x}:Set) := (mem_singleton _ _).mpr rfl
+        rw [hempty] at this; exact not_mem_empty _ this
+    · intro hy; rw [hy]; exact hx
+  · rintro ⟨x, rfl⟩ ⟨B, hBsub, hBne⟩
+    rw [ssubset_def] at hBsub
+    obtain ⟨hsub, hne⟩ := hBsub
+    apply hne
+    obtain ⟨b, hb⟩ := nonempty_def hBne
+    apply ext; intro z
+    rw [mem_singleton]
+    constructor
+    · intro hz; have := hsub z hz; rwa [mem_singleton] at this
+    · intro hz; rw [hz]
+      have := hsub b hb; rw [mem_singleton] at this; rwa [← this]
 
 
 /-
