@@ -173,7 +173,13 @@ theorem lipschitz_bound {M a b:ℝ} (hM: M > 0) (hab: a < b) {f:ℝ → ℝ}
   (hlip: ∀ x ∈ Set.Ioo a b, |derivWithin f (.Ioo a b) x| ≤ M)
   {x y:ℝ} (hx: x ∈ Set.Ioo a b) (hy: y ∈ Set.Ioo a b) :
   |f x - f y| ≤ M * |x - y| := by
-  sorry
+  have key := (convex_Ioo a b).norm_image_sub_le_of_norm_hasDerivWithin_le
+    (f := f) (f' := fun z => derivWithin f (Set.Ioo a b) z) (C := M)
+    (fun z hz => (hderiv z hz).hasDerivWithinAt)
+    (fun z hz => by rw [Real.norm_eq_abs]; exact hlip z hz) hx hy
+  rw [Real.norm_eq_abs, Real.norm_eq_abs] at key
+  rw [abs_sub_comm x y, abs_sub_comm (f x) (f y)]
+  exact key
 
 /-- Exercise 10.2.7 -/
 theorem _root_.UniformContinuousOn.of_lipschitz {f:ℝ → ℝ}
