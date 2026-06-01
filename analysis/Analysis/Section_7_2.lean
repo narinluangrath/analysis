@@ -264,7 +264,15 @@ theorem Series.smul_coe (a: ℕ → ℝ) (c: ℝ) : (c • a:Series) = (fun n �
 /-- Proposition 7.2.14 (b) (Series laws) / Exercise 7.2.5.  The `convergesTo` form can be more convenient for applications. -/
 theorem Series.convergesTo.smul {s:Series} {L c: ℝ} (hs: s.convergesTo L) :
     (c • s).convergesTo (c * L) := by
-  sorry
+  have hpe : (c • s).partial = fun N => c * s.partial N := by
+    funext N
+    show ∑ n ∈ Finset.Icc s.m N, (if n ≥ s.m then c * s.seq n else 0) = c * s.partial N
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro n hn; simp only [Finset.mem_Icc] at hn; rw [if_pos hn.1]
+  show Filter.Tendsto (c • s).partial Filter.atTop (nhds (c * L))
+  rw [hpe]
+  exact Filter.Tendsto.const_mul c hs
 
 theorem Series.smul {c:ℝ} {s:Series} (hs: s.converges) :
     (c • s).converges ∧ (c • s).sum = c * s.sum := by sorry
@@ -284,7 +292,21 @@ theorem Series.sub_coe (a b: ℕ → ℝ) : (a:Series) - (b:Series) = (fun n ↦
 
 theorem Series.convergesTo.sub {s t:Series} {L M: ℝ} (hs: s.convergesTo L) (ht: t.convergesTo M) :
     (s - t).convergesTo (L - M) := by
-  sorry
+  have key : ∀ N, (s-t).partial N = s.partial N - t.partial N := by
+    intro N
+    show ∑ n ∈ Finset.Icc (min s.m t.m) N, (s.seq n - t.seq n) = s.partial N - t.partial N
+    rw [Finset.sum_sub_distrib]
+    congr 1
+    · symm
+      apply Finset.sum_subset (Finset.Icc_subset_Icc_left (min_le_left _ _))
+      intro n hn hn'; simp only [Finset.mem_Icc] at hn hn'; exact s.vanish n (by omega)
+    · symm
+      apply Finset.sum_subset (Finset.Icc_subset_Icc_left (min_le_right _ _))
+      intro n hn hn'; simp only [Finset.mem_Icc] at hn hn'; exact t.vanish n (by omega)
+  have hpe : (s-t).partial = fun N => s.partial N - t.partial N := funext key
+  show Filter.Tendsto (s-t).partial Filter.atTop (nhds (L-M))
+  rw [hpe]
+  exact Filter.Tendsto.sub hs ht
 
 theorem Series.sub {s t:Series} (hs: s.converges) (ht: t.converges) :
     (s - t).converges ∧ (s-t).sum = s.sum - t.sum := by sorry
