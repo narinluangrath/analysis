@@ -104,9 +104,33 @@ theorem Chapter6.Sequence.bddAbove_iff (a:ℕ → ℝ):
 theorem Chapter6.Sequence.bddBelow_iff (a:ℕ → ℝ):
     (a:Sequence).BddBelow ↔ _root_.BddBelow (Set.range a) := by sorry
 
-theorem Chapter6.Sequence.Monotone_iff (a:ℕ → ℝ): (a:Sequence).IsMonotone ↔ Monotone a := by sorry
+theorem Chapter6.Sequence.Monotone_iff (a:ℕ → ℝ): (a:Sequence).IsMonotone ↔ Monotone a := by
+  constructor
+  · intro h
+    apply monotone_nat_of_le_succ
+    intro k
+    have hk := h (k:ℤ) (by show (0:ℤ) ≤ (k:ℤ); positivity)
+    rwa [show ((k:ℤ)+1) = ((k+1:ℕ):ℤ) by push_cast; ring, Sequence.eval_coe,
+      Sequence.eval_coe] at hk
+  · intro h n hn
+    have hn0 : (0:ℤ) ≤ n := hn
+    obtain ⟨k, rfl⟩ : ∃ k:ℕ, n = (k:ℤ) := ⟨n.toNat, by omega⟩
+    rw [show ((k:ℤ)+1) = ((k+1:ℕ):ℤ) by push_cast; ring, Sequence.eval_coe, Sequence.eval_coe]
+    exact h (Nat.le_succ k)
 
-theorem Chapter6.Sequence.Antitone_iff (a:ℕ → ℝ): (a:Sequence).IsAntitone ↔ Antitone a := by sorry
+theorem Chapter6.Sequence.Antitone_iff (a:ℕ → ℝ): (a:Sequence).IsAntitone ↔ Antitone a := by
+  constructor
+  · intro h
+    apply antitone_nat_of_succ_le
+    intro k
+    have hk := h (k:ℤ) (by show (0:ℤ) ≤ (k:ℤ); positivity)
+    rwa [show ((k:ℤ)+1) = ((k+1:ℕ):ℤ) by push_cast; ring, Sequence.eval_coe,
+      Sequence.eval_coe] at hk
+  · intro h n hn
+    have hn0 : (0:ℤ) ≤ n := hn
+    obtain ⟨k, rfl⟩ : ∃ k:ℕ, n = (k:ℤ) := ⟨n.toNat, by omega⟩
+    rw [show ((k:ℤ)+1) = ((k+1:ℕ):ℤ) by push_cast; ring, Sequence.eval_coe, Sequence.eval_coe]
+    exact h (Nat.le_succ k)
 
 /-- Identification with `MapClusterPt` -/
 theorem Chapter6.Sequence.limit_point_iff (a:ℕ → ℝ) (L:ℝ) :
