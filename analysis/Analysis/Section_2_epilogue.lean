@@ -188,15 +188,16 @@ abbrev Equiv.trans {P Q R: PeanoAxioms} (equiv1 : Equiv P Q) (equiv2 : Equiv Q R
 noncomputable abbrev Equiv.fromNat (P : PeanoAxioms) : Equiv Mathlib_Nat P where
   equiv := {
     toFun := P.natCast
-    invFun := by sorry
-    left_inv := by sorry
-    right_inv := by sorry
+    invFun := Function.surjInv (natCast_surjective P)
+    left_inv := Function.leftInverse_surjInv ⟨natCast_injective P, natCast_surjective P⟩
+    right_inv := Function.rightInverse_surjInv (natCast_surjective P)
   }
-  equiv_zero := by sorry
-  equiv_succ n := by sorry
+  equiv_zero := rfl
+  equiv_succ n := rfl
 
 /-- The task here is to establish that any two structures obeying the Peano axioms are equivalent. -/
-noncomputable abbrev Equiv.mk' (P Q : PeanoAxioms) : Equiv P Q := by sorry
+noncomputable abbrev Equiv.mk' (P Q : PeanoAxioms) : Equiv P Q :=
+  (Equiv.fromNat P).symm.trans (Equiv.fromNat Q)
 
 /-- There is only one equivalence between any two structures obeying the Peano axioms. -/
 theorem Equiv.uniq {P Q : PeanoAxioms} (equiv1 equiv2 : PeanoAxioms.Equiv P Q) :
@@ -205,7 +206,12 @@ theorem Equiv.uniq {P Q : PeanoAxioms} (equiv1 equiv2 : PeanoAxioms.Equiv P Q) :
   obtain ⟨equiv2, equiv_zero2, equiv_succ2⟩ := equiv2
   congr
   ext n
-  sorry
+  refine P.induction (fun n => equiv1 n = equiv2 n) ?_ ?_ n
+  · show equiv1 P.zero = equiv2 P.zero
+    rw [equiv_zero1, equiv_zero2]
+  · intro k hk
+    show equiv1 (P.succ k) = equiv2 (P.succ k)
+    rw [equiv_succ1, equiv_succ2, hk]
 
 /-- A sample result: recursion is well-defined on any structure obeying the Peano axioms-/
 theorem Nat.recurse_uniq {P : PeanoAxioms} (f: P.Nat → P.Nat → P.Nat) (c: P.Nat) :
