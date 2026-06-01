@@ -310,8 +310,21 @@ theorem Rat.div_eq (q r:Rat) : q/r = q * r⁻¹ := by rfl
 
 /-- Proposition 4.2.4 (laws of algebra) / Exercise 4.2.3 -/
 instance Rat.instField : Field Rat where
-  exists_pair_ne := by sorry
-  mul_inv_cancel := by sorry
+  exists_pair_ne := ⟨0, 1, by
+    intro h
+    rw [show (0:Rat) = 0//1 from rfl, show (1:Rat) = 1//1 from rfl,
+        eq _ _ one_ne_zero one_ne_zero] at h
+    norm_num at h⟩
+  mul_inv_cancel := by
+    intro a ha
+    obtain ⟨p,q,hq,rfl⟩ := eq_diff a
+    have hp : p ≠ 0 := by
+      intro hp0
+      apply ha
+      rw [hp0, show (0:Rat) = 0//1 from rfl, eq _ _ hq one_ne_zero]; ring
+    rw [inv_eq _ hq, mul_eq _ _ hq hp, show (1:Rat) = 1//1 from rfl,
+        eq _ _ (Int.mul_ne_zero hq hp) one_ne_zero]
+    ring
   inv_zero := rfl
   ratCast_def := by
     intro q
@@ -324,7 +337,10 @@ instance Rat.instField : Field Rat where
   qsmul := _
   nnqsmul := _
 
-example : (3//4) / (5//6) = 9 // 10 := by sorry
+example : (3//4) / (5//6) = 9 // 10 := by
+  rw [Rat.div_eq, Rat.inv_eq _ (by norm_num), Rat.mul_eq _ _ (by norm_num) (by norm_num),
+      Rat.eq _ _ (by norm_num) (by norm_num)]
+  norm_num
 
 /-- Definition of subtraction -/
 theorem Rat.sub_eq (a b:Rat) : a - b = a + (-b) := by rfl
@@ -333,8 +349,8 @@ def Rat.coe_int_hom : ℤ →+* Rat where
   toFun n := (n:Rat)
   map_zero' := rfl
   map_one' := rfl
-  map_add' := by sorry
-  map_mul' := by sorry
+  map_add' := by intro a b; exact (intCast_add a b).symm
+  map_mul' := by intro a b; exact (intCast_mul a b).symm
 
 /-- Definition 4.2.6 (positivity) -/
 def Rat.isPos (q:Rat) : Prop := ∃ a b:ℤ, a > 0 ∧ b > 0 ∧ q = a/b
