@@ -14,6 +14,8 @@ Working notes for solving `sorry`s in `analysis/Analysis/*.lean`.
 - Mirror a sibling proof in the same file when one direction (left/right) is already done.
 - **Restricted-filter limits** `atTop ⊓ 𝓟 (range f)`: rewrite with `← Filter.map_comap` (gives `map f (comap f atTop) = atTop ⊓ 𝓟 (range f)`), then `Nat.comap_cast_atTop` (`comap cast atTop = atTop`) collapses it to `map cast atTop`, then `Filter.tendsto_map'_iff` turns `Tendsto g (map f l)` into `Tendsto (g∘f) l`. Great for "sequence vs function-on-ℝ-restricted-to-ℕ" equivalences.
 - `tendsto_inv_atTop_zero : Tendsto (·⁻¹) atTop (nhds 0)`; combine with `Filter.Tendsto.mono_left _ inf_le_left` for restricted filters; `simpa [one_div]` to match `1/x`.
+- **IVT / continuous image of Icc**: `ContinuousOn.image_Icc (hab : a ≤ b) : f '' Icc a b = Icc (sInf ..) (sSup ..)`. `intermediate_value_Icc (hab) (hf) : Icc (f a) (f b) ⊆ f '' Icc a b`; primed version `intermediate_value_Icc'` uses `Icc (f b) (f a)` (decreasing). Fixed-point: set `g = f x - x`, apply `intermediate_value_Icc'` to get `0 ∈ g '' Icc`.
+- `Set.mem_image_of_mem` (NOT bare `mem_image_of_mem`). `Set.mem_Icc` to unpack `x ∈ Icc a b` into `a ≤ x ∧ x ≤ b`.
 - Defeq `if h:P then ... else ...` with a known proof: `rw [dif_pos hex]` substitutes your `hex` for the chooser; then `congr 1` + `Nat.cast_injective hex.choose_spec` to pin the witness.
 
 ## Conventions

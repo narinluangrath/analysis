@@ -186,13 +186,23 @@ example : ∃ x:ℝ, 0 ≤ x ∧ x ≤ 2 ∧ x^2 = 2 := by
 
 /-- Corollary 9.7.4 (Images of continuous functions) / Exercise 9.7.1 -/
 theorem continuous_image_Icc {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) {y:ℝ} (hy: sInf (f '' .Icc a b) ≤ y ∧ y ≤ sSup (f '' .Icc a b)) : ∃ c ∈ Set.Icc a b, f c = y := by
-  sorry
+  have hmem : y ∈ f '' Set.Icc a b := by
+    rw [hf.image_Icc hab.le]; exact ⟨hy.1, hy.2⟩
+  obtain ⟨c, hc, hcy⟩ := hmem; exact ⟨c, hc, hcy⟩
 
-theorem continuous_image_Icc' {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) : f '' .Icc a b = .Icc (sInf (f '' .Icc a b)) (sSup (f '' .Icc a b)) := by
-  sorry
+theorem continuous_image_Icc' {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) : f '' .Icc a b = .Icc (sInf (f '' .Icc a b)) (sSup (f '' .Icc a b)) :=
+  hf.image_Icc hab.le
 
 /-- Exercise 9.7.2 -/
 theorem exists_fixed_pt {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc 0 1)) (hmap: f '' .Icc 0 1 ⊆ .Icc 0 1) : ∃ x ∈ Set.Icc 0 1, f x = x := by
-  sorry
+  set g : ℝ → ℝ := fun x => f x - x with hg
+  have hgcont : ContinuousOn g (Set.Icc 0 1) := hf.sub continuousOn_id
+  have hf0 : f 0 ∈ Set.Icc (0:ℝ) 1 := hmap (Set.mem_image_of_mem f (by norm_num : (0:ℝ) ∈ Set.Icc 0 1))
+  have hf1 : f 1 ∈ Set.Icc (0:ℝ) 1 := hmap (Set.mem_image_of_mem f (by norm_num : (1:ℝ) ∈ Set.Icc 0 1))
+  rw [Set.mem_Icc] at hf0 hf1
+  have h0mem : (0:ℝ) ∈ Set.Icc (g 1) (g 0) := by
+    rw [Set.mem_Icc]; simp only [hg]; constructor <;> linarith [hf0.1, hf1.2]
+  obtain ⟨c, hc, hcg⟩ := intermediate_value_Icc' (by norm_num : (0:ℝ) ≤ 1) hgcont h0mem
+  exact ⟨c, hc, by simp only [hg] at hcg; linarith⟩
 
 end Chapter9
