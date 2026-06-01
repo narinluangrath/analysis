@@ -131,11 +131,23 @@ theorem Series.diverges_of_nodecay {s:Series} (h: ¬ Filter.atTop.Tendsto s.seq 
 /-- Example 7.2.7 -/
 theorem Series.example_7_2_7 : ((fun _:ℕ ↦ (1:ℝ)):Series).diverges := by
   apply diverges_of_nodecay
-  sorry
+  intro h
+  rw [Metric.tendsto_atTop] at h
+  obtain ⟨N, hN⟩ := h 1 one_pos
+  have := hN (max N 0) (le_max_left _ _)
+  rw [show (max N 0:ℤ) = (((max N 0).toNat:ℕ):ℤ) by omega] at this
+  simp only [Series.eval_coe, Real.dist_eq, sub_zero] at this
+  norm_num at this
 
 theorem Series.example_7_2_7' : ((fun n:ℕ ↦ (-1:ℝ)^n):Series).diverges := by
   apply diverges_of_nodecay
-  sorry
+  intro h
+  rw [Metric.tendsto_atTop] at h
+  obtain ⟨N, hN⟩ := h 1 one_pos
+  have := hN (max N 0) (le_max_left _ _)
+  rw [show (max N 0:ℤ) = (((max N 0).toNat:ℕ):ℤ) by omega] at this
+  simp only [Series.eval_coe, Real.dist_eq, sub_zero, abs_pow] at this
+  norm_num at this
 
 /-- Definition 7.2.8 (Absolute convergence) -/
 abbrev Series.abs (s:Series) : Series := mk' (m:=s.m) (fun n ↦ |s.seq n|)
