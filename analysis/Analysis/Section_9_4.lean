@@ -65,11 +65,34 @@ example (x₀:ℝ) : ¬ ContinuousAt f_9_3_21 x₀ := by sorry
 /-- Example 9.4.6 --/
 noncomputable abbrev f_9_4_6 (x:ℝ) : ℝ := if x ≥ 0 then 1 else 0
 
-example {x₀:ℝ} (h: x₀ ≠ 0) : ContinuousAt f_9_4_6 x₀ := by sorry
+example {x₀:ℝ} (h: x₀ ≠ 0) : ContinuousAt f_9_4_6 x₀ := by
+  rcases lt_or_gt_of_ne h with hx | hx
+  · refine (continuousAt_const (y := (0:ℝ))).congr ?_
+    filter_upwards [Iio_mem_nhds hx] with y hy
+    have : ¬ (y ≥ 0) := by simp only [Set.mem_Iio] at hy; linarith
+    simp [f_9_4_6, this]
+  · refine (continuousAt_const (y := (1:ℝ))).congr ?_
+    filter_upwards [Ioi_mem_nhds hx] with y hy
+    have : y ≥ 0 := by simp only [Set.mem_Ioi] at hy; linarith
+    simp [f_9_4_6, this]
 
-example : ¬ ContinuousAt f_9_4_6 0 := by sorry
+example : ¬ ContinuousAt f_9_4_6 0 := by
+  intro hcont
+  have h1 : Filter.Tendsto f_9_4_6 (nhdsWithin 0 (Set.Iio 0)) (nhds (f_9_4_6 0)) :=
+    hcont.continuousWithinAt.tendsto
+  have h2 : Filter.Tendsto f_9_4_6 (nhdsWithin 0 (Set.Iio 0)) (nhds 0) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    have : ¬ (x ≥ 0) := by simp only [Set.mem_Iio] at hx; linarith
+    simp [f_9_4_6, this]
+  have := tendsto_nhds_unique h1 h2
+  simp [f_9_4_6] at this
 
-example : ContinuousWithinAt f_9_4_6 (.Ici 0) 0 := by sorry
+example : ContinuousWithinAt f_9_4_6 (.Ici 0) 0 := by
+  show Filter.Tendsto f_9_4_6 (nhdsWithin 0 (Set.Ici 0)) (nhds (f_9_4_6 0))
+  apply tendsto_nhds_of_eventually_eq
+  filter_upwards [self_mem_nhdsWithin] with x hx
+  simp [f_9_4_6, Set.mem_Ici.mp hx]
 
 /-- Proposition 9.4.7 / Exercise 9.4.1.  It is possible that the hypothesis `x₀ ∈ X` is unnecessary. -/
 theorem ContinuousWithinAt.tfae (X:Set ℝ) (f: ℝ → ℝ) {x₀:ℝ} (h : x₀ ∈ X) :
