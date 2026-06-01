@@ -363,7 +363,24 @@ theorem Sequence.lim_harmonic :
 
 /-- Proposition 6.1.12 / Exercise 6.1.5 -/
 theorem Sequence.IsCauchy.convergent {a:Sequence} (h:a.Convergent) : a.IsCauchy := by
-  sorry
+  obtain ⟨L, hL⟩ := h
+  rw [tendsTo_iff] at hL
+  rw [Sequence.isCauchy_def]
+  intro ε hε
+  obtain ⟨N0, hN0⟩ := hL (ε/2) (by linarith)
+  set M := max a.m N0 with hMdef
+  refine ⟨M, le_max_left _ _, ?_⟩
+  rw [Real.steady_def]
+  intro n hn m hm
+  have hfm : (a.from M).m = M := by rw [hMdef]; show max a.m (max a.m N0) = max a.m N0; omega
+  rw [hfm] at hn hm
+  rw [Real.close_def, Real.dist_eq, Sequence.from_eval a hn, Sequence.from_eval a hm]
+  have h1 := hN0 n (le_trans (le_max_right _ _) hn)
+  have h2 := hN0 m (le_trans (le_max_right _ _) hm)
+  calc |a n - a m| = |(a n - L) + -(a m - L)| := by congr 1; ring
+    _ ≤ |a n - L| + |-(a m - L)| := abs_add_le _ _
+    _ ≤ ε/2 + ε/2 := by rw [abs_neg]; linarith
+    _ = ε := by ring
 
 /-- Example 6.1.13 -/
 example : ¬ (0.1:ℝ).EventuallySteady ((fun n ↦ (-1:ℝ)^n):Sequence) := by
