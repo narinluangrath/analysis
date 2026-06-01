@@ -354,13 +354,74 @@ theorem Sequence.IsCauchy.convergent {a:Sequence} (h:a.Convergent) : a.IsCauchy 
   sorry
 
 /-- Example 6.1.13 -/
-example : ¬ (0.1:ℝ).EventuallySteady ((fun n ↦ (-1:ℝ)^n):Sequence) := by sorry
+example : ¬ (0.1:ℝ).EventuallySteady ((fun n ↦ (-1:ℝ)^n):Sequence) := by
+  rw [Real.eventuallySteady_def]
+  rintro ⟨N, hN, hsteady⟩
+  rw [Real.steady_def] at hsteady
+  set a : Sequence := ((fun n ↦ (-1:ℝ)^n):Sequence) with ha
+  have hm : a.m = 0 := rfl
+  have hfm : (a.from N).m = max 0 N := by show max a.m N = max 0 N; rw [hm]
+  set k : ℕ := (max 0 N).toNat with hk
+  have hkz : ((k:ℕ):ℤ) = max 0 N := by rw [hk, Int.toNat_of_nonneg (le_max_left _ _)]
+  have hge0 : (k:ℤ) ≥ (a.from N).m := by rw [hfm, hkz]
+  have hge1 : (k:ℤ)+1 ≥ (a.from N).m := by rw [hfm, hkz]; omega
+  have hc := hsteady (k:ℤ) hge0 ((k:ℤ)+1) hge1
+  rw [Real.close_def, Real.dist_eq,
+      Sequence.from_eval a (by rw [hkz]; exact le_max_right _ _ : (k:ℤ) ≥ N),
+      Sequence.from_eval a (by rw [hkz]; have := le_max_right 0 N; omega : (k:ℤ)+1 ≥ N)] at hc
+  rw [ha, show ((k:ℤ)+1) = (((k+1:ℕ)):ℤ) by push_cast; ring] at hc
+  simp only [Sequence.instCoeFun] at hc
+  rw [if_pos (by positivity), if_pos (by positivity), Int.toNat_natCast, Int.toNat_natCast,
+    pow_succ] at hc
+  rcases Nat.even_or_odd k with he | ho
+  · rw [he.neg_one_pow] at hc; norm_num at hc
+  · rw [ho.neg_one_pow] at hc; norm_num at hc
 
 /-- Example 6.1.13 -/
-example : ¬ ((fun n ↦ (-1:ℝ)^n):Sequence).IsCauchy := by sorry
+example : ¬ ((fun n ↦ (-1:ℝ)^n):Sequence).IsCauchy := by
+  intro h
+  obtain ⟨N, hN, hsteady⟩ := h 0.1 (by norm_num)
+  rw [Real.steady_def] at hsteady
+  set a : Sequence := ((fun n ↦ (-1:ℝ)^n):Sequence) with ha
+  have hm : a.m = 0 := rfl
+  have hfm : (a.from N).m = max 0 N := by show max a.m N = max 0 N; rw [hm]
+  set k : ℕ := (max 0 N).toNat with hk
+  have hkz : ((k:ℕ):ℤ) = max 0 N := by rw [hk, Int.toNat_of_nonneg (le_max_left _ _)]
+  have hge0 : (k:ℤ) ≥ (a.from N).m := by rw [hfm, hkz]
+  have hge1 : (k:ℤ)+1 ≥ (a.from N).m := by rw [hfm, hkz]; omega
+  have hc := hsteady (k:ℤ) hge0 ((k:ℤ)+1) hge1
+  rw [Real.close_def, Real.dist_eq,
+      Sequence.from_eval a (by rw [hkz]; exact le_max_right _ _ : (k:ℤ) ≥ N),
+      Sequence.from_eval a (by rw [hkz]; have := le_max_right 0 N; omega : (k:ℤ)+1 ≥ N)] at hc
+  rw [ha, show ((k:ℤ)+1) = (((k+1:ℕ)):ℤ) by push_cast; ring] at hc
+  simp only [Sequence.instCoeFun] at hc
+  rw [if_pos (by positivity), if_pos (by positivity), Int.toNat_natCast, Int.toNat_natCast,
+    pow_succ] at hc
+  rcases Nat.even_or_odd k with he | ho
+  · rw [he.neg_one_pow] at hc; norm_num at hc
+  · rw [ho.neg_one_pow] at hc; norm_num at hc
 
 /-- Example 6.1.13 -/
-example : ¬ ((fun n ↦ (-1:ℝ)^n):Sequence).Convergent := by sorry
+example : ¬ ((fun n ↦ (-1:ℝ)^n):Sequence).Convergent := by
+  rintro ⟨L, hL⟩
+  rw [Sequence.tendsTo_iff] at hL
+  obtain ⟨N, hN⟩ := hL 0.5 (by norm_num)
+  set a : Sequence := ((fun n ↦ (-1:ℝ)^n):Sequence) with ha
+  set k : ℕ := (max 0 N).toNat with hk
+  have hkz : ((k:ℕ):ℤ) = max 0 N := by rw [hk, Int.toNat_of_nonneg (le_max_left _ _)]
+  have e1 : a (2*(k:ℤ)) = 1 := by
+    rw [ha]; simp only [Sequence.instCoeFun]
+    rw [if_pos (by positivity), show (2*(k:ℤ)).toNat = 2*k by omega, (even_two_mul k).neg_one_pow]
+  have e2 : a (2*(k:ℤ)+1) = -1 := by
+    rw [ha]; simp only [Sequence.instCoeFun]
+    rw [if_pos (by positivity), show (2*(k:ℤ)+1).toNat = 2*k+1 by omega,
+      Odd.neg_one_pow (show Odd (2*k+1) from ⟨k, rfl⟩)]
+  have h1 := hN (2*(k:ℤ)) (by rw [hkz] at *; have := le_max_right 0 N; omega)
+  have h2 := hN (2*(k:ℤ)+1) (by rw [hkz] at *; have := le_max_right 0 N; omega)
+  rw [e1] at h1; rw [e2] at h2
+  rw [abs_le] at h1 h2
+  norm_num at h1 h2
+  linarith [h1.1, h1.2, h2.1, h2.2]
 
 /-- Proposition 6.1.15 / Exercise 6.1.6 (Formal limits are genuine limits)-/
 theorem Sequence.lim_eq_LIM {a:ℕ → ℚ} (h: (a:Chapter5.Sequence).IsCauchy) :
