@@ -70,7 +70,9 @@ theorem Chapter6.Sequence.lim_eq_CauSeq_lim (a:ℕ → ℝ) (ha: (a:Sequence).Is
 /-- Identification with `limUnder` -/
 theorem Chapter6.Sequence.lim_eq_limUnder (a:ℕ → ℝ) (ha: (a:Sequence).Convergent) :
     Chapter6.lim (a:Sequence) = limUnder Filter.atTop a := by
-    sorry
+  have h1 := lim_def ha
+  rw [tendsto_iff_Tendsto] at h1
+  exact h1.limUnder_eq.symm
 
 /-- Identification with `Bornology.IsBounded` -/
 theorem Chapter6.Sequence.isBounded_iff_isBounded_range (a:ℕ → ℝ):
