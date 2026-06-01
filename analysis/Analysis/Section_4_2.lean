@@ -648,10 +648,46 @@ abbrev Rat.equivRat_ring : Rat ≃+* ℚ where
         equivRat_apply _ hd, div_mul_div_comm]
     push_cast; ring
 
+theorem Rat.equivRat_intCast (p:ℤ) : equivRat (p:Rat) = (p:ℚ) := by
+  rw [coe_Int_eq, equivRat_apply p one_ne_zero, Int.cast_one, div_one]
+
+theorem Rat.isPos_equivRat_pos {z:Rat} (h:z.isPos) : 0 < equivRat z := by
+  obtain ⟨p, q, hp, hq, rfl⟩ := h
+  show (0:ℚ) < equivRat_ring (↑p / ↑q)
+  rw [map_div₀, show (equivRat_ring (↑p:Rat)) = (p:ℚ) from equivRat_intCast p,
+      show (equivRat_ring (↑q:Rat)) = (q:ℚ) from equivRat_intCast q]
+  positivity
+
+theorem Rat.isPos_iff_equivRat_pos (z:Rat) : z.isPos ↔ 0 < equivRat z := by
+  refine ⟨isPos_equivRat_pos, fun h => ?_⟩
+  rcases trichotomous z with hz | hz | hz
+  · rw [hz, show equivRat (0:Rat) = 0 from map_zero equivRat_ring] at h; exact absurd h (lt_irrefl 0)
+  · exact hz
+  · exfalso
+    obtain ⟨r, hr, rfl⟩ := hz
+    have hrp := isPos_equivRat_pos hr
+    rw [show equivRat (-r) = -equivRat_ring r from map_neg equivRat_ring r] at h
+    have : equivRat_ring r = equivRat r := rfl
+    linarith
+
+theorem Rat.isNeg_iff_neg_isPos (w:Rat) : w.isNeg ↔ (-w).isPos := by
+  constructor
+  · rintro ⟨r, hr, rfl⟩; rwa [neg_neg]
+  · intro h; exact ⟨-w, h, by ring⟩
+
+theorem Rat.equivRat_lt (x y:Rat) : x < y ↔ equivRat x < equivRat y := by
+  rw [lt_iff, isNeg_iff_neg_isPos, isPos_iff_equivRat_pos,
+      show equivRat (-(x-y)) = equivRat y - equivRat x from by
+        rw [neg_sub]; exact map_sub equivRat_ring y x]
+  constructor <;> intro h <;> linarith
+
 /-- Not in textbook: equivalence preserves order -/
 abbrev Rat.equivRat_order : Rat ≃o ℚ where
   toEquiv := equivRat
-  map_rel_iff' := by sorry
+  map_rel_iff' := by
+    intro a b
+    show equivRat a ≤ equivRat b ↔ a ≤ b
+    rw [← not_lt, ← not_lt, equivRat_lt]
 
 /--
   (Not from textbook) The textbook rationals are isomorphic (as a field) to the Mathlib rationals.
