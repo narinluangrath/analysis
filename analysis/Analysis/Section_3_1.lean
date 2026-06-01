@@ -481,7 +481,16 @@ theorem SetTheory.Set.specify_subset {A:Set} (P: A → Prop) : A.specify P ⊆ A
 /-- This exercise may require some understanding of how subtypes are implemented in Lean. -/
 theorem SetTheory.Set.specify_congr {A A':Set} (hAA':A = A') {P: A → Prop} {P': A' → Prop}
   (hPP': (x:Object) → (h:x ∈ A) → (h':x ∈ A') → P ⟨ x, h⟩ ↔ P' ⟨ x, h'⟩ ) :
-    A.specify P = A'.specify P' := by sorry
+    A.specify P = A'.specify P' := by
+  apply ext; intro x
+  rw [specification_axiom'', specification_axiom'']
+  constructor
+  · rintro ⟨h, hP⟩
+    have h' : x ∈ A' := hAA' ▸ h
+    exact ⟨h', (hPP' x h h').mp hP⟩
+  · rintro ⟨h', hP'⟩
+    have h : x ∈ A := hAA'.symm ▸ h'
+    exact ⟨h, (hPP' x h h').mpr hP'⟩
 
 instance SetTheory.Set.instIntersection : Inter Set where
   inter X Y := X.specify (fun x ↦ x.val ∈ Y)
