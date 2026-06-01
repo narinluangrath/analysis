@@ -38,9 +38,20 @@ theorem IsLocalMinOn.iff (X:Set ℝ) (f:ℝ → ℝ) (x₀:ℝ) :
 /-- Example 10.2.3 -/
 abbrev f_10_2_3 : ℝ → ℝ := fun x ↦ x^2 - x^4
 
-example : ¬ IsMinOn f_10_2_3 .univ 0 := by sorry
+example : ¬ IsMinOn f_10_2_3 .univ 0 := by
+  intro h
+  rw [isMinOn_iff] at h
+  have := h 2 (Set.mem_univ 2)
+  simp only [f_10_2_3] at this
+  norm_num at this
 
-example : IsMinOn f_10_2_3 (.Ioo (-1) 1) 0 := by sorry
+example : IsMinOn f_10_2_3 (.Ioo (-1) 1) 0 := by
+  rw [isMinOn_iff]
+  intro x hx
+  simp only [Set.mem_Ioo] at hx
+  simp only [f_10_2_3]
+  have h1 : (0:ℝ) ≤ 1 - x^2 := by nlinarith [hx.1, hx.2]
+  nlinarith [mul_nonneg (sq_nonneg x) h1]
 
 example : IsLocalMaxOn f_10_2_3 .univ 0 := by sorry
 
@@ -55,12 +66,12 @@ example (n:ℤ) : IsMinOn (· : ℝ → ℝ)  ((↑· : ℤ → ℝ) '' .univ) n
 
 /-- Remark 10.2.5 -/
 theorem IsLocalMaxOn.of_restrict {X Y:Set ℝ} (hXY: Y ⊆ X) (f:ℝ → ℝ) (x₀:ℝ)
-  (h: IsLocalMaxOn f X x₀) : IsLocalMaxOn f Y x₀ := by
-  sorry
+  (h: IsLocalMaxOn f X x₀) : IsLocalMaxOn f Y x₀ :=
+  h.filter_mono (nhdsWithin_mono _ hXY)
 
 theorem IsLocalMinOn.of_restrict {X Y:Set ℝ} (hXY: Y ⊆ X) (f:ℝ → ℝ) (x₀:ℝ)
-  (h: IsLocalMinOn f X x₀) : IsLocalMinOn f Y x₀ := by
-  sorry
+  (h: IsLocalMinOn f X x₀) : IsLocalMinOn f Y x₀ :=
+  h.filter_mono (nhdsWithin_mono _ hXY)
 
 /-- Proposition 10.2.6 (Local extrema are stationary) / Exercise 10.2.1 -/
 theorem IsLocalMaxOn.deriv_eq_zero {a b:ℝ} (hab: a < b) {f:ℝ → ℝ} {x₀:ℝ}
