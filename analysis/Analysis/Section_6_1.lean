@@ -164,7 +164,19 @@ instance Chapter5.Sequence.inst_coe_sequence : Coe Chapter5.Sequence Sequence wh
 theorem Chapter5.coe_sequence_eval (a: Chapter5.Sequence) (n:ℤ) : (a:Sequence) n = (a n:ℝ) := rfl
 
 theorem Sequence.is_steady_of_rat (ε:ℚ) (a: Chapter5.Sequence) :
-    ε.Steady a ↔ (ε:ℝ).Steady (a:Sequence) := by sorry
+    ε.Steady a ↔ (ε:ℝ).Steady (a:Sequence) := by
+  rw [Rat.steady_def, Real.steady_def]
+  constructor
+  · intro h n hn m hm
+    have hh := h n hn m hm
+    simp only [Rat.Close] at hh
+    rw [Real.Close, Real.dist_eq, Chapter5.coe_sequence_eval, Chapter5.coe_sequence_eval]
+    exact_mod_cast hh
+  · intro h n hn m hm
+    have hh := h n hn m hm
+    rw [Real.Close, Real.dist_eq, Chapter5.coe_sequence_eval, Chapter5.coe_sequence_eval] at hh
+    simp only [Rat.Close]
+    exact_mod_cast hh
 
 theorem Sequence.is_eventuallySteady_of_rat (ε:ℚ) (a: Chapter5.Sequence) :
     ε.EventuallySteady a ↔ (ε:ℝ).EventuallySteady (a:Sequence) := by sorry
