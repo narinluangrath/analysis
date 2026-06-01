@@ -136,11 +136,27 @@ abbrev natCast (P : PeanoAxioms) : ℕ → P.Nat := fun n ↦ match n with
 
 /-- One can start the proof here with `unfold Function.Injective`, although it is not strictly necessary. -/
 theorem natCast_injective (P : PeanoAxioms) : Function.Injective P.natCast := by
-  sorry
+  have key : ∀ n m : ℕ, P.natCast n = P.natCast m → n = m := by
+    intro n
+    induction' n with n ih
+    · intro m h
+      cases m with
+      | zero => rfl
+      | succ m => exact absurd h.symm (P.succ_ne _)
+    · intro m h
+      cases m with
+      | zero => exact absurd h (P.succ_ne _)
+      | succ m => exact congrArg _ (ih m (P.succ_cancel h))
+  intro n m h
+  exact key n m h
 
 /-- One can start the proof here with `unfold Function.Surjective`, although it is not strictly necessary. -/
 theorem natCast_surjective (P : PeanoAxioms) : Function.Surjective P.natCast := by
-  sorry
+  intro y
+  refine P.induction (fun y => ∃ n:ℕ, P.natCast n = y) ⟨0, rfl⟩ ?_ y
+  intro k hk
+  obtain ⟨n, hn⟩ := hk
+  exact ⟨n+1, by show P.succ (P.natCast n) = P.succ k; rw [hn]⟩
 
 /-- The notion of an equivalence between two structures obeying the Peano axioms.
     The symbol `≃` is an alias for Mathlib's `Equiv` class; for instance `P.Nat ≃ Q.Nat` is
