@@ -987,7 +987,8 @@ theorem SetTheory.Set.coe_subset (X Y:Set) :
 
 theorem SetTheory.Set.coe_ssubset (X Y:Set) :
     (X : _root_.Set Object) ⊂ (Y : _root_.Set Object) ↔ X ⊂ Y := by
-  sorry
+  rw [ssubset_iff_subset_ne, SetTheory.Set.ssubset_def, coe_subset]
+  simp [coe_inj']
 
 /-- Compatibility of singleton -/
 theorem SetTheory.Set.coe_singleton (x: Object) : (({x}:Set) : _root_.Set Object) = {x} := by
@@ -1019,6 +1020,7 @@ theorem SetTheory.Set.coe_diff (X Y: Set) :
 /-- Compatibility of disjointness -/
 theorem SetTheory.Set.coe_Disjoint (X Y: Set) :
     Disjoint (X : _root_.Set Object) (Y : _root_.Set Object) ↔ Disjoint X Y := by
-  sorry
+  rw [Set.disjoint_iff_inter_eq_empty, ← coe_intersection, ← coe_empty, coe_inj',
+      SetTheory.Set.disjoint_iff]
 
 end Chapter3
