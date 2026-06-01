@@ -56,9 +56,21 @@ example : IsMinOn f_10_2_3 (.Ioo (-1) 1) 0 := by
 example : IsLocalMaxOn f_10_2_3 .univ 0 := by sorry
 
 /-- Example 10.2.4 -/
-example : ¬ ∃ x, IsMaxOn (· : ℝ → ℝ)  ((↑· : ℤ → ℝ) '' .univ) x := by sorry
+example : ¬ ∃ x, IsMaxOn (· : ℝ → ℝ)  ((↑· : ℤ → ℝ) '' .univ) x := by
+  rintro ⟨x, hx⟩
+  rw [isMaxOn_iff] at hx
+  obtain ⟨n, hn⟩ := exists_int_gt x
+  have := hx (n:ℝ) ⟨n, Set.mem_univ n, rfl⟩
+  simp only at this
+  linarith
 
-example : ¬ ∃ x, IsMinOn (· : ℝ → ℝ)  ((↑· : ℤ → ℝ) '' .univ) x := by sorry
+example : ¬ ∃ x, IsMinOn (· : ℝ → ℝ)  ((↑· : ℤ → ℝ) '' .univ) x := by
+  rintro ⟨x, hx⟩
+  rw [isMinOn_iff] at hx
+  obtain ⟨n, hn⟩ := exists_int_lt x
+  have := hx (n:ℝ) ⟨n, Set.mem_univ n, rfl⟩
+  simp only at this
+  linarith
 
 example (n:ℤ) : IsMaxOn (· : ℝ → ℝ)  ((↑· : ℤ → ℝ) '' .univ) n := by sorry
 
