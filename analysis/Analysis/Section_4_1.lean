@@ -275,22 +275,55 @@ theorem Int.le_iff (a b:Int) : a ≤ b ↔ ∃ t:ℕ, b = a + t := by rfl
 theorem Int.lt_iff (a b:Int): a < b ↔ (∃ t:ℕ, b = a + t) ∧ a ≠ b := by rfl
 
 /-- Lemma 4.1.11(a) (Properties of order) / Exercise 4.1.7 -/
-theorem Int.lt_iff_exists_positive_difference (a b:Int) : a < b ↔ ∃ n:ℕ, n ≠ 0 ∧ b = a + n := by sorry
+theorem Int.lt_iff_exists_positive_difference (a b:Int) : a < b ↔ ∃ n:ℕ, n ≠ 0 ∧ b = a + n := by
+  rw [lt_iff]
+  constructor
+  · rintro ⟨⟨t, ht⟩, hne⟩
+    refine ⟨t, ?_, ht⟩
+    rintro rfl; rw [Nat.cast_zero, add_zero] at ht; exact hne ht.symm
+  · rintro ⟨n, hn0, hn⟩
+    refine ⟨⟨n, hn⟩, ?_⟩
+    rintro rfl
+    have h2 : a + 0 = a + ↑n := by rw [add_zero]; exact hn
+    exact hn0 ((cast_eq_0_iff_eq_0 n).mp (add_left_cancel h2).symm)
 
 /-- Lemma 4.1.11(b) (Addition preserves order) / Exercise 4.1.7 -/
-theorem Int.add_lt_add_right {a b:Int} (c:Int) (h: a < b) : a+c < b+c := by sorry
+theorem Int.add_lt_add_right {a b:Int} (c:Int) (h: a < b) : a+c < b+c := by
+  rw [lt_iff] at *
+  obtain ⟨⟨t, ht⟩, hne⟩ := h
+  refine ⟨⟨t, by rw [ht]; ring⟩, ?_⟩
+  intro he; exact hne (add_right_cancel he)
 
 /-- Lemma 4.1.11(c) (Positive multiplication preserves order) / Exercise 4.1.7 -/
 theorem Int.mul_lt_mul_of_pos_right {a b c:Int} (hab : a < b) (hc: 0 < c) : a*c < b*c := by sorry
 
 /-- Lemma 4.1.11(d) (Negation reverses order) / Exercise 4.1.7 -/
-theorem Int.neg_gt_neg {a b:Int} (h: b < a) : -a < -b := by sorry
+theorem Int.neg_gt_neg {a b:Int} (h: b < a) : -a < -b := by
+  rw [lt_iff] at *
+  obtain ⟨⟨t, ht⟩, hne⟩ := h
+  refine ⟨⟨t, by rw [ht]; ring⟩, ?_⟩
+  intro he; exact hne (neg_injective he).symm
 
 /-- Lemma 4.1.11(d) (Negation reverses order) / Exercise 4.1.7 -/
-theorem Int.neg_ge_neg {a b:Int} (h: b ≤ a) : -a ≤ -b := by sorry
+theorem Int.neg_ge_neg {a b:Int} (h: b ≤ a) : -a ≤ -b := by
+  rw [le_iff] at *
+  obtain ⟨t, ht⟩ := h
+  exact ⟨t, by rw [ht]; ring⟩
 
 /-- Lemma 4.1.11(e) (Order is transitive) / Exercise 4.1.7 -/
-theorem Int.lt_trans {a b c:Int} (hab: a < b) (hbc: b < c) : a < c := by sorry
+theorem Int.lt_trans {a b c:Int} (hab: a < b) (hbc: b < c) : a < c := by
+  rw [lt_iff] at *
+  obtain ⟨⟨t, ht⟩, hne1⟩ := hab
+  obtain ⟨⟨s, hs⟩, _⟩ := hbc
+  have ht0 : t ≠ 0 := by rintro rfl; rw [Nat.cast_zero, add_zero] at ht; exact hne1 ht.symm
+  refine ⟨⟨t + s, by rw [hs, ht]; push_cast; ring⟩, ?_⟩
+  intro he
+  have hc : c = a + ↑(t + s) := by rw [hs, ht]; push_cast; ring
+  rw [← he] at hc
+  have h2 : a + 0 = a + ↑(t + s) := by rw [add_zero]; exact hc
+  have h0 : (↑(t + s):Int) = 0 := (add_left_cancel h2).symm
+  rw [cast_eq_0_iff_eq_0] at h0
+  exact ht0 (by omega)
 
 /-- Lemma 4.1.11(f) (Order trichotomy) / Exercise 4.1.7 -/
 theorem Int.trichotomous' (a b:Int) : a > b ∨ a < b ∨ a = b := by sorry
