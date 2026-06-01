@@ -105,9 +105,25 @@ theorem Series.converges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series
 
 theorem Series.absConverges_geom {x: ℝ} (hx: |x| < 1) : (fun n ↦ x ^ n : Series).absConverges := by sorry
 
-theorem Series.diverges_geom {x: ℝ} (hx: |x| ≥ 1) : (fun n ↦ x ^ n : Series).diverges := by sorry
+theorem Series.diverges_geom {x: ℝ} (hx: |x| ≥ 1) : (fun n ↦ x ^ n : Series).diverges := by
+  apply Series.diverges_of_nodecay
+  intro h
+  rw [Metric.tendsto_atTop] at h
+  obtain ⟨N, hN⟩ := h 1 one_pos
+  have key := hN (max N 0) (le_max_left _ _)
+  rw [Real.dist_eq, sub_zero,
+      show (max N 0:ℤ) = (((max N 0).toNat:ℕ):ℤ) by omega, Series.eval_coe, abs_pow] at key
+  have : (1:ℝ) ≤ |x|^(max N 0).toNat := one_le_pow₀ hx
+  linarith
 
-theorem Series.converges_geom_iff (x: ℝ) : (fun n ↦ x ^ n : Series).converges ↔ |x| < 1 := by sorry
+theorem Series.converges_geom_iff (x: ℝ) : (fun n ↦ x ^ n : Series).converges ↔ |x| < 1 := by
+  constructor
+  · intro h
+    by_contra hx
+    push_neg at hx
+    exact (diverges_geom hx) h
+  · intro hx
+    exact ⟨_, converges_geom hx⟩
 
 /-- Proposition 7.3.4 (Cauchy criterion) -/
 theorem Series.cauchy_criterion {s:Series} (hm: s.m = 1) (hs:s.nonneg) (hmono: ∀ n ≥ 1, s.seq (n+1) ≤ s.seq n) : s.converges ↔ (fun k ↦ 2^k * s.seq (2^k): Series).converges := by
