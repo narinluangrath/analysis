@@ -285,7 +285,10 @@ theorem zpow_ge_zpow_ofneg {x y:ℚ} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n <
 
 /-- Proposition 4.3.12(c) (Properties of exponentiation, II) / Exercise 4.3.4 -/
 theorem zpow_inj {x y:ℚ} {n:ℤ} (hx: x > 0) (hy : y > 0) (hn: n ≠ 0) (hxy: x^n = y^n) : x = y := by
-  sorry
+  rcases lt_or_gt_of_ne hn with hn' | hn'
+  · have h2 : x^(-n) = y^(-n) := by rw [_root_.zpow_neg, _root_.zpow_neg, hxy]
+    exact (zpow_left_strictMonoOn₀ (by omega : 0 < -n)).injOn (le_of_lt hx) (le_of_lt hy) h2
+  · exact (zpow_left_strictMonoOn₀ hn').injOn (le_of_lt hx) (le_of_lt hy) hxy
 
 /-- Proposition 4.3.12(d) (Properties of exponentiation, II) / Exercise 4.3.4 -/
 theorem zpow_abs (x:ℚ) (n:ℤ) : |x|^n = |x^n| := (abs_zpow x n).symm
