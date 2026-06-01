@@ -26,7 +26,12 @@ example : ContinuousOn (fun x:ℝ ↦ 1/x) (.Icc 0 2) := by
   sorry
 
 example : ¬ BddOn (fun x:ℝ ↦ 1/x) (.Icc 0 2) := by
-  sorry
+  rintro ⟨M, hM⟩
+  have hx : 1/(|M|+1) ∈ Set.Icc (0:ℝ) 2 :=
+    ⟨by positivity, by rw [div_le_iff₀ (by positivity)]; nlinarith [abs_nonneg M]⟩
+  have h2 := hM _ hx
+  simp only [one_div_one_div, abs_of_nonneg (by positivity : (0:ℝ) ≤ |M|+1)] at h2
+  linarith [le_abs_self M]
 
 /-- Example 9.9.1 -/
 example (x : ℝ) :
