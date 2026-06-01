@@ -969,7 +969,20 @@ theorem Sequence.tendsTo_of_shift {a: Sequence} {c:ℝ} (k:ℕ) :
 /-- Exercise 6.1.7 -/
 theorem Sequence.isBounded_of_rat (a: Chapter5.Sequence) :
     a.IsBounded ↔ (a:Sequence).IsBounded := by
-  sorry
+  constructor
+  · rintro ⟨M, hM, hB⟩
+    refine ⟨(M:ℝ), by exact_mod_cast hM, fun n => ?_⟩
+    rw [Chapter5.coe_sequence_eval]
+    have := hB n
+    exact_mod_cast this
+  · rintro ⟨M, hM, hB⟩
+    obtain ⟨M', hM'⟩ := exists_rat_gt M
+    refine ⟨max M' 0, le_max_right _ _, fun n => ?_⟩
+    have hb := hB n
+    rw [Chapter5.coe_sequence_eval] at hb
+    have h1 : |(a n : ℝ)| ≤ (M':ℝ) := le_trans hb (le_of_lt hM')
+    have h2 : |a n| ≤ M' := by exact_mod_cast h1
+    exact le_trans h2 (le_max_left _ _)
 
 /-- Exercise 6.1.9 -/
 theorem Sequence.lim_div_fail :
