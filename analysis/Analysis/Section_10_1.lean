@@ -64,7 +64,9 @@ theorem derivative_unique' (X: Set ℝ) {x₀ : ℝ}
 
 
 /-- Example 10.1.3 -/
-example (x₀:ℝ) : HasDerivWithinAt (fun x ↦ x^2) (2 * x₀) .univ x₀ := by sorry
+example (x₀:ℝ) : HasDerivWithinAt (fun x ↦ x^2) (2 * x₀) .univ x₀ := by
+  have := (hasDerivAt_pow 2 x₀).hasDerivWithinAt (s := Set.univ)
+  convert this using 1; norm_num
 
 example (x₀:ℝ) : DifferentiableWithinAt ℝ (fun x ↦ x^2) .univ x₀ := by
   exact (differentiableAt_pow 2).differentiableWithinAt
@@ -89,10 +91,18 @@ example : ∃ (X: Set ℝ) (x₀ :ℝ) (f g: ℝ → ℝ) (L:ℝ) (hfg: f x₀ =
 abbrev f_10_1_6 : ℝ → ℝ := abs
 
 example : (nhdsWithin 0 (.Ioi 0)).Tendsto (fun x ↦ (f_10_1_6 x - f_10_1_6 0) / (x - 0)) (nhds 1) := by
-  sorry
+  apply tendsto_nhds_of_eventually_eq
+  filter_upwards [self_mem_nhdsWithin] with x hx
+  simp only [Set.mem_Ioi] at hx
+  rw [show f_10_1_6 x = x from abs_of_pos hx, show f_10_1_6 0 = 0 from abs_zero]
+  exact div_self (sub_ne_zero.mpr hx.ne')
 
 example : (nhdsWithin 0 (.Iio 0)).Tendsto (fun x ↦ (f_10_1_6 x - f_10_1_6 0) / (x - 0)) (nhds (-1)) := by
-  sorry
+  apply tendsto_nhds_of_eventually_eq
+  filter_upwards [self_mem_nhdsWithin] with x hx
+  simp only [Set.mem_Iio] at hx
+  rw [show f_10_1_6 x = -x from abs_of_neg hx, show f_10_1_6 0 = 0 from abs_zero,
+      sub_zero, sub_zero, neg_div, div_self (ne_of_lt hx)]
 
 example : ¬ ∃ L, (nhdsWithin 0 (.univ \ {0})).Tendsto (fun x ↦ (f_10_1_6 x - f_10_1_6 0) / (x - 0))
    (nhds L) := by sorry
