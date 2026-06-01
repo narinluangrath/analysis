@@ -316,7 +316,38 @@ example : (0.01:ℝ).EventuallyClose seq_6_1_6 1 := by
     _ = 0.01 := by norm_num
 
 /-- Examples 6.1.6 -/
-example : seq_6_1_6.TendsTo 1 := by sorry
+example : seq_6_1_6.TendsTo 1 := by
+  have heval : ∀ n:ℤ, n ≥ 0 → seq_6_1_6 n = 1 - (10:ℝ)^(-n-1) := by
+    intro n hn
+    rw [seq_6_1_6]; simp only [Sequence.instCoeFun, Sequence.ofNatFun, ge_iff_le]
+    rw [if_pos (by omega), show ((n.toNat:ℕ):ℤ) = n from Int.toNat_of_nonneg hn]
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  obtain ⟨K, hK⟩ := exists_nat_gt (1/ε)
+  refine ⟨max K 1, fun n hn => ?_⟩
+  have hn0 : n ≥ 0 := by have : max (K:ℤ) 1 ≤ n := hn; omega
+  have hnK : (K:ℝ) ≤ (n:ℝ) := by
+    have : (K:ℤ) ≤ n := by have : max (K:ℤ) 1 ≤ n := hn; omega
+    exact_mod_cast this
+  rw [heval n hn0, show (1 - (10:ℝ)^(-n-1)) - 1 = -(10^(-n-1)) by ring, abs_neg,
+    abs_of_nonneg (by positivity)]
+  have h10pos : (0:ℝ) < (10:ℝ)^(n+1) := by positivity
+  have hpow : (n:ℝ) + 1 ≤ (10:ℝ)^(n+1) := by
+    have key : (1:ℝ) + ((n+1).toNat:ℝ) * 9 ≤ (1+9)^((n+1).toNat) :=
+      one_add_mul_le_pow (by norm_num) _
+    have hcast : ((n+1).toNat:ℝ) = (n:ℝ)+1 := by
+      have h := Int.toNat_of_nonneg (show (0:ℤ) ≤ n+1 by omega)
+      exact_mod_cast h
+    rw [hcast] at key
+    norm_num at key
+    have hnn : (0:ℝ) ≤ (n:ℝ) := by exact_mod_cast hn0
+    rw [show (10:ℝ)^(n+1) = (10:ℝ)^((n+1).toNat) from by rw [← zpow_natCast]; congr 1; omega]
+    nlinarith [key, hnn]
+  rw [div_lt_iff₀ hε] at hK
+  rw [show (10:ℝ)^(-n-1) = 1/(10:ℝ)^(n+1) from by rw [one_div, ← zpow_neg]; congr 1; omega,
+    div_le_iff₀ h10pos]
+  nlinarith [hK, mul_le_mul_of_nonneg_right hnK hε.le, mul_le_mul_of_nonneg_right hpow hε.le,
+    mul_le_mul_of_nonneg_right (show (n:ℝ) ≤ (n:ℝ)+1 by linarith) hε.le, hε]
 
 /-- Proposition 6.1.7 (Uniqueness of limits) -/
 theorem Sequence.tendsTo_unique (a:Sequence) {L L':ℝ} (h:L ≠ L') :
