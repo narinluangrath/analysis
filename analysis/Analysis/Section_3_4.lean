@@ -389,11 +389,49 @@ theorem SetTheory.Set.preimage_of_diff {X Y:Set} (f:X → Y) (A B: Set) :
 
 /-- Exercise 3.4.5 -/
 theorem SetTheory.Set.image_preimage_of_surj {X Y:Set} (f:X → Y) :
-    (∀ S, S ⊆ Y → image f (preimage f S) = S) ↔ Function.Surjective f := by sorry
+    (∀ S, S ⊆ Y → image f (preimage f S) = S) ↔ Function.Surjective f := by
+  constructor
+  · intro h y
+    have hS : ({y.val} : Set) ⊆ Y := by
+      intro z hz; rw [mem_singleton] at hz; rw [hz]; exact y.property
+    have hmem : y.val ∈ image f (preimage f {y.val}) := by
+      rw [h {y.val} hS]; exact (mem_singleton _ _).mpr rfl
+    rw [mem_image] at hmem
+    obtain ⟨x, _, hfx⟩ := hmem
+    exact ⟨x, Subtype.val_injective hfx⟩
+  · intro hsurj S hS
+    apply ext; intro z
+    rw [mem_image]
+    constructor
+    · rintro ⟨x, hx, rfl⟩
+      rwa [mem_preimage] at hx
+    · intro hz
+      obtain ⟨x, hfx⟩ := hsurj ⟨z, hS z hz⟩
+      exact ⟨x, by rw [mem_preimage, hfx]; exact hz, by rw [hfx]⟩
 
 /-- Exercise 3.4.5 -/
 theorem SetTheory.Set.preimage_image_of_inj {X Y:Set} (f:X → Y) :
-    (∀ S, S ⊆ X → preimage f (image f S) = S) ↔ Function.Injective f := by sorry
+    (∀ S, S ⊆ X → preimage f (image f S) = S) ↔ Function.Injective f := by
+  constructor
+  · intro h x1 x2 hf
+    have hS : ({x1.val}:Set) ⊆ X := by
+      intro z hz; rw [mem_singleton] at hz; rw [hz]; exact x1.property
+    have hmem : x2.val ∈ preimage f (image f {x1.val}) := by
+      rw [mem_preimage, mem_image]
+      exact ⟨x1, (mem_singleton _ _).mpr rfl, by rw [hf]⟩
+    rw [h {x1.val} hS, mem_singleton] at hmem
+    exact (Subtype.val_injective hmem).symm
+  · intro hinj S hS
+    apply ext; intro z
+    rw [mem_preimage']
+    constructor
+    · rintro ⟨x, rfl, hfx⟩
+      rw [mem_image] at hfx
+      obtain ⟨x', hx'S, hfx'⟩ := hfx
+      have hxx : x' = x := hinj (Subtype.val_injective hfx')
+      rw [← hxx]; exact hx'S
+    · intro hz
+      exact ⟨⟨z, hS z hz⟩, rfl, mem_image_of_eval f S ⟨z, hS z hz⟩ hz⟩
 
 /-- Helper lemma for Exercise 3.4.7. -/
 @[simp]
