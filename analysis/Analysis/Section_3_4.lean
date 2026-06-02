@@ -403,12 +403,17 @@ theorem SetTheory.Set.partial_functions {X Y:Set} :
   Exercise 3.4.8.  The point of this exercise is to prove it without using the
   pairwise union operation `∪`.
 -/
-theorem SetTheory.Set.union_pair_exists (X Y:Set) : ∃ Z:Set, ∀ x, x ∈ Z ↔ (x ∈ X ∨ x ∈ Y) := by
-  sorry
+theorem SetTheory.Set.union_pair_exists (X Y:Set) : ∃ Z:Set, ∀ x, x ∈ Z ↔ (x ∈ X ∨ x ∈ Y) :=
+  ⟨X ∪ Y, fun x => mem_union x X Y⟩
 
 /-- Exercise 3.4.9 -/
 theorem SetTheory.Set.iInter'_insensitive {I:Set} (β β':I) (A: I → Set) :
-    iInter' I β A = iInter' I β' A := by sorry
+    iInter' I β A = iInter' I β' A := by
+  apply ext; intro x
+  simp only [iInter', specification_axiom'']
+  constructor
+  · rintro ⟨_, hP⟩; exact ⟨hP β', hP⟩
+  · rintro ⟨_, hP⟩; exact ⟨hP β, hP⟩
 
 /-- Exercise 3.4.10 -/
 theorem SetTheory.Set.union_iUnion {I J:Set} (A: (I ∪ J:Set) → Set) :
@@ -417,7 +422,12 @@ theorem SetTheory.Set.union_iUnion {I J:Set} (A: (I ∪ J:Set) → Set) :
     = iUnion (I ∪ J) A := by sorry
 
 /-- Exercise 3.4.10 -/
-theorem SetTheory.Set.union_of_nonempty {I J:Set} (hI: I ≠ ∅) (hJ: J ≠ ∅) : I ∪ J ≠ ∅ := by sorry
+theorem SetTheory.Set.union_of_nonempty {I J:Set} (hI: I ≠ ∅) (hJ: J ≠ ∅) : I ∪ J ≠ ∅ := by
+  obtain ⟨x, hx⟩ := nonempty_def hI
+  intro h
+  have : x ∈ I ∪ J := (mem_union x I J).mpr (Or.inl hx)
+  rw [h] at this
+  exact not_mem_empty x this
 
 /-- Exercise 3.4.10 -/
 theorem SetTheory.Set.inter_iInter {I J:Set} (hI: I ≠ ∅) (hJ: J ≠ ∅) (A: (I ∪ J:Set) → Set) :
