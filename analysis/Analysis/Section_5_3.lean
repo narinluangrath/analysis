@@ -241,7 +241,17 @@ theorem Real.ratCast_def (q:ℚ) : (q:Real) = LIM (fun _ ↦ q) := by rw [LIM_de
 /-- Exercise 5.3.3 -/
 @[simp]
 theorem Real.ratCast_inj (q r:ℚ) : (q:Real) = (r:Real) ↔ q = r := by
-  sorry
+  rw [ratCast_def, ratCast_def,
+    Real.LIM_eq_LIM (Sequence.IsCauchy.const q) (Sequence.IsCauchy.const r), Sequence.equiv_iff]
+  constructor
+  · intro h
+    by_contra hne
+    have hpos : |q - r| > 0 := abs_pos.mpr (sub_ne_zero.mpr hne)
+    obtain ⟨N, hN⟩ := h (|q-r|/2) (by linarith)
+    have hc := hN N (le_refl N)
+    simp only at hc
+    linarith
+  · intro h; subst h; intro ε hε; exact ⟨0, fun n _ => by simp; linarith⟩
 
 instance Real.instOfNat {n:ℕ} : OfNat Real n where
   ofNat := ((n:ℚ):Real)
@@ -256,22 +266,42 @@ instance Real.instIntCast : IntCast Real where
   intCast n := ((n:ℚ):Real)
 
 /-- ratCast distributes over addition -/
-theorem Real.ratCast_add (a b:ℚ) : (a:Real) + (b:Real) = (a+b:ℚ) := by sorry
+theorem Real.ratCast_add (a b:ℚ) : (a:Real) + (b:Real) = (a+b:ℚ) := by
+  rw [ratCast_def a, ratCast_def b, ratCast_def (a+b),
+    Real.LIM_add (Sequence.IsCauchy.const a) (Sequence.IsCauchy.const b)]
+  congr 1
 
 /-- ratCast distributes over multiplication -/
-theorem Real.ratCast_mul (a b:ℚ) : (a:Real) * (b:Real) = (a*b:ℚ) := by sorry
+theorem Real.ratCast_mul (a b:ℚ) : (a:Real) * (b:Real) = (a*b:ℚ) := by
+  rw [ratCast_def a, ratCast_def b, ratCast_def (a*b),
+    Real.LIM_mul (Sequence.IsCauchy.const a) (Sequence.IsCauchy.const b)]
+  congr 1
 
 noncomputable instance Real.instNeg : Neg Real where
   neg x := ((-1:ℚ):Real) * x
 
 /-- ratCast commutes with negation -/
-theorem Real.neg_ratCast (a:ℚ) : -(a:Real) = (-a:ℚ) := by sorry
+theorem Real.neg_ratCast (a:ℚ) : -(a:Real) = (-a:ℚ) := by
+  show ((-1:ℚ):Real) * (a:Real) = ((-a:ℚ):Real)
+  rw [ratCast_mul]; congr 1; ring
 
 /-- It may be possible to omit the Cauchy sequence hypothesis here. -/
-theorem Real.neg_LIM (a:ℕ → ℚ) (ha: (a:Sequence).IsCauchy) : -LIM a = LIM (-a) := by sorry
+theorem Real.neg_LIM (a:ℕ → ℚ) (ha: (a:Sequence).IsCauchy) : -LIM a = LIM (-a) := by
+  show ((-1:ℚ):Real) * LIM a = LIM (-a)
+  rw [ratCast_def, Real.LIM_mul (Sequence.IsCauchy.const (-1)) ha]
+  congr 1; ext n; simp only [Pi.mul_apply, Pi.neg_apply]; ring
 
 theorem Sequence.IsCauchy.neg (a:ℕ → ℚ) (ha: (a:Sequence).IsCauchy) :
-    ((-a:ℕ → ℚ):Sequence).IsCauchy := by sorry
+    ((-a:ℕ → ℚ):Sequence).IsCauchy := by
+  rw [Sequence.IsCauchy.coe] at ha ⊢
+  intro ε hε
+  obtain ⟨N, hN⟩ := ha ε hε
+  refine ⟨N, fun j hj k hk => ?_⟩
+  have h := hN j hj k hk
+  rw [Section_4_3.dist_eq] at h ⊢
+  simp only [Pi.neg_apply]
+  rw [show -a j - -a k = -(a j - a k) by ring, abs_neg]
+  exact h
 
 /-- Proposition 5.3.11 (laws of algebra) -/
 noncomputable instance Real.addGroup_inst : AddGroup Real :=
