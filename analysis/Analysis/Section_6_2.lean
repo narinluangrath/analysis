@@ -140,11 +140,25 @@ abbrev Example_6_2_7 : Set EReal := { x | ∃ n:ℕ, x = -((n+1):EReal)} ∪ {�
 
 example : sSup Example_6_2_7 = -1 := by
   rw [EReal.sup_of_neg_infty_mem]
-  sorry
+  apply IsGreatest.csSup_eq
+  constructor
+  · exact ⟨Or.inl ⟨0, by norm_num⟩, by decide⟩
+  · rintro x ⟨hx, hx'⟩
+    rcases hx with ⟨n, rfl⟩ | rfl
+    · have hb : (1:EReal) ≤ (n:EReal) + 1 := by
+        have : (0:EReal) ≤ (n:EReal) := by positivity
+        calc (1:EReal) = 0 + 1 := by norm_num
+          _ ≤ (n:EReal) + 1 := by gcongr
+      rw [show (-1:EReal) = -(1:EReal) from rfl, EReal.neg_le_neg_iff]
+      exact hb
+    · simp at hx'
 
 example : sInf Example_6_2_7 = ⊥ := by
   rw [EReal.inf_eq_neg_sup]
-  sorry
+  have htop : (⊤:EReal) ∈ -Example_6_2_7 := by
+    rw [Set.mem_neg, EReal.neg_top]
+    simp [Example_6_2_7]
+  rw [EReal.sup_of_infty_mem htop, EReal.neg_top]
 
 /-- Example 6.2.8 -/
 abbrev Example_6_2_8 : Set EReal := { x | ∃ n:ℕ, x = (1 - (10:ℝ)^(-(n:ℤ)-1):Real)}
