@@ -577,7 +577,7 @@ theorem Real.max_add (x y z:Real) : max (x + z) (y + z) = max x y + z := _root_.
 
 /-- Exercise 5.4.9 -/
 theorem Real.max_mul (x y :Real) {z:Real} (hz: z.IsPos) : max (x * z) (y * z) = max x y * z := by
-  sorry
+  exact (max_mul_of_nonneg x y ((isPos_iff z).mp hz).le).symm
 /- Additional exercise: What happens if z is negative? -/
 
 /-- Exercise 5.4.9 -/
@@ -591,7 +591,7 @@ theorem Real.min_add (x y z:Real) : min (x + z) (y + z) = min x y + z := _root_.
 
 /-- Exercise 5.4.9 -/
 theorem Real.min_mul (x y :Real) {z:Real} (hz: z.IsPos) : min (x * z) (y * z) = min x y * z := by
-  sorry
+  exact (min_mul_of_nonneg x y ((isPos_iff z).mp hz).le).symm
 
 /-- Exercise 5.4.9 -/
 theorem Real.inv_max {x y :Real} (hx:x.IsPos) (hy:y.IsPos) : (max x y)⁻¹ = min x⁻¹ y⁻¹ := by sorry
