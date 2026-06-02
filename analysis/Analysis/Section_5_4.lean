@@ -86,21 +86,36 @@ theorem Real.isNeg_def (x:Real) :
 theorem Real.trichotomous (x:Real) : x = 0 ∨ x.IsPos ∨ x.IsNeg := by sorry
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
-theorem Real.not_zero_pos (x:Real) : ¬(x = 0 ∧ x.IsPos) := by sorry
+theorem Real.not_zero_pos (x:Real) : ¬(x = 0 ∧ x.IsPos) := by
+  rintro ⟨hx0, a, hpos, hcau, hxeq⟩
+  rw [hxeq] at hx0
+  exact lim_of_boundedAwayZero (BoundedAwayZero.boundedAwayPos hpos) hcau hx0
 
 theorem Real.nonzero_of_pos {x:Real} (hx: x.IsPos) : x ≠ 0 := by
   have := not_zero_pos x
   simpa [hx] using this
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
-theorem Real.not_zero_neg (x:Real) : ¬(x = 0 ∧ x.IsNeg) := by sorry
+theorem Real.not_zero_neg (x:Real) : ¬(x = 0 ∧ x.IsNeg) := by
+  rintro ⟨hx0, a, hneg, hcau, hxeq⟩
+  rw [hxeq] at hx0
+  exact lim_of_boundedAwayZero (BoundedAwayZero.boundedAwayNeg hneg) hcau hx0
 
 theorem Real.nonzero_of_neg {x:Real} (hx: x.IsNeg) : x ≠ 0 := by
   have := not_zero_neg x
   simpa [hx] using this
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
-theorem Real.not_pos_neg (x:Real) : ¬(x.IsPos ∧ x.IsNeg) := by sorry
+theorem Real.not_pos_neg (x:Real) : ¬(x.IsPos ∧ x.IsNeg) := by
+  rintro ⟨⟨a, ⟨ca, hca, ha⟩, hacau, rfl⟩, b, ⟨cb, hcb, hb⟩, hbcau, hxeq⟩
+  have hbaz : BoundedAwayZero (a - b) := by
+    refine ⟨ca+cb, by linarith, fun n => ?_⟩
+    simp only [Pi.sub_apply]
+    rw [abs_of_pos (by linarith [ha n, hb n])]
+    linarith [ha n, hb n]
+  have hlim := lim_of_boundedAwayZero hbaz (Sequence.IsCauchy.sub hacau hbcau)
+  rw [← Real.LIM_sub hacau hbcau, hxeq, sub_self] at hlim
+  exact hlim rfl
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
 @[simp]
