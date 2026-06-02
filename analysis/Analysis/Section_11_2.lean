@@ -240,10 +240,55 @@ noncomputable abbrev P_11_2_12' : Partition (Icc 1 4) :=
   (join_Icc_Ioc (by norm_num) (by norm_num))).add_empty
 
 example : PiecewiseConstantWith f_11_2_12 P_11_2_12' := by
-  sorry
+  intro J hJ
+  replace hJ : J ∈ P_11_2_12'.intervals := hJ
+  simp only [P_11_2_12', Partition.intervals_of_add_empty, Partition.intervals_of_join,
+    Partition.intervals_of_bot, Finset.mem_union, Finset.mem_singleton] at hJ
+  rcases hJ with (((rfl | rfl) | rfl) | rfl) | rfl
+  · apply ConstantOn.of_const (c := 2)
+    intro x hx; simp only [set_Ico, Set.mem_Ico] at hx
+    simp only [f_11_2_12, if_pos (by linarith [hx.2] : x < 3)]
+  · apply ConstantOn.of_const (c := 2)
+    intro x hx; simp only [set_Ico, Set.mem_Ico] at hx
+    simp only [f_11_2_12, if_pos hx.2]
+  · apply ConstantOn.of_const (c := 4)
+    intro x hx; simp only [set_Icc, Set.mem_Icc] at hx
+    have hx3 : x = 3 := le_antisymm hx.2 hx.1
+    simp only [f_11_2_12, hx3]; norm_num
+  · apply ConstantOn.of_const (c := 6)
+    intro x hx; simp only [set_Ioc, Set.mem_Ioc] at hx
+    simp only [f_11_2_12, if_neg (by linarith [hx.1] : ¬ x < 3),
+      if_neg (by linarith [hx.1] : x ≠ 3)]
+  · rw [BoundedInterval.coe_empty]
+    exact ConstantOn.of_subsingleton
 
 example : PiecewiseConstantWith.integ f_11_2_12 P_11_2_12' = 10 := by
-  sorry
+  rw [PiecewiseConstantWith.integ,
+    show P_11_2_12'.intervals = {Ico 1 2, Ico 2 3, Icc 3 3, Ioc 3 4, ∅} from by
+      simp [P_11_2_12', Partition.intervals_of_add_empty, Partition.intervals_of_join,
+        Partition.intervals_of_bot]]
+  rw [Finset.sum_insert (by simp), Finset.sum_insert (by simp),
+    Finset.sum_insert (by simp), Finset.sum_insert (by simp), Finset.sum_singleton]
+  have hv1 : constant_value_on f_11_2_12 ↑(Ico 1 2) = 2 := by
+    apply ConstantOn.const_eq ⟨1, by norm_num [set_Ico]⟩
+    intro x hx; simp only [set_Ico, Set.mem_Ico] at hx
+    simp only [f_11_2_12, if_pos (by linarith [hx.2] : x < 3)]
+  have hv2 : constant_value_on f_11_2_12 ↑(Ico 2 3) = 2 := by
+    apply ConstantOn.const_eq ⟨2, by norm_num [set_Ico]⟩
+    intro x hx; simp only [set_Ico, Set.mem_Ico] at hx
+    simp only [f_11_2_12, if_pos hx.2]
+  have hv3 : constant_value_on f_11_2_12 ↑(Icc 3 3) = 4 := by
+    apply ConstantOn.const_eq ⟨3, by norm_num [set_Icc]⟩
+    intro x hx; simp only [set_Icc, Set.mem_Icc] at hx
+    have hx3 : x = 3 := le_antisymm hx.2 hx.1
+    simp only [f_11_2_12, hx3]; norm_num
+  have hv4 : constant_value_on f_11_2_12 ↑(Ioc 3 4) = 6 := by
+    apply ConstantOn.const_eq ⟨4, by norm_num [set_Ioc]⟩
+    intro x hx; simp only [set_Ioc, Set.mem_Ioc] at hx
+    simp only [f_11_2_12, if_neg (by linarith [hx.1] : ¬ x < 3),
+      if_neg (by linarith [hx.1] : x ≠ 3)]
+  rw [hv1, hv2, hv3, hv4]
+  norm_num [BoundedInterval.length, show (∅:BoundedInterval) = Ioo 0 0 from rfl]
 
 /-- Proposition 11.2.13 (Piecewise constant integral is independent of partition) / Exercise 11.2.3 -/
 theorem PiecewiseConstantWith.integ_eq {f:ℝ → ℝ} {I: BoundedInterval} {P P': Partition I}
