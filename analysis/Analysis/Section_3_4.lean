@@ -80,7 +80,15 @@ theorem SetTheory.Set.mem_image_of_eval {X Y:Set} (f:X → Y) (S: Set) (x:X) :
   exact (mem_image _ _ _).mpr ⟨x, h, rfl⟩
 
 theorem SetTheory.Set.mem_image_of_eval_counter :
-    ∃ (X Y:Set) (f:X → Y) (S: Set) (x:X), ¬((f x).val ∈ image f S → x.val ∈ S) := by sorry
+    ∃ (X Y:Set) (f:X → Y) (S: Set) (x:X), ¬((f x).val ∈ image f S → x.val ∈ S) := by
+  use {0,1}, {0}
+  set f : ({0,1}:Set) → ({0}:Set) := fun _ => ⟨0, by simp⟩ with hf
+  refine ⟨f, {0}, ⟨1, by simp⟩, ?_⟩
+  intro h
+  have himg : (f ⟨1, by simp⟩).val ∈ image f {0} :=
+    mem_image_of_eval f {0} ⟨0, by simp⟩ (by simp)
+  have hbad := h himg
+  simp at hbad
 
 /--
   Definition 3.4.4 (inverse images).
