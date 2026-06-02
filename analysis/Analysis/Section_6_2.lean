@@ -192,7 +192,16 @@ example : sSup Example_6_2_9 = ⊤ := by
 
 example : sInf (∅ : Set EReal) = ⊤ := sInf_empty
 
-example (E: Set EReal) : sSup E < sInf E ↔ E = ∅ := by sorry
+example (E: Set EReal) : sSup E < sInf E ↔ E = ∅ := by
+  constructor
+  · intro h
+    by_contra hne
+    rw [← Set.not_nonempty_iff_eq_empty, not_not] at hne
+    obtain ⟨x, hx⟩ := hne
+    exact absurd (lt_of_le_of_lt (le_sSup hx) (lt_of_lt_of_le h (sInf_le hx))) (lt_irrefl x)
+  · rintro rfl
+    rw [sSup_empty, sInf_empty]
+    exact bot_lt_top
 
 /-- Theorem 6.2.11 (a) / Exercise 6.2.2 -/
 theorem EReal.mem_le_sup (E: Set EReal) {x:EReal} (hx: x ∈ E) : x ≤ sSup E := le_sSup hx
