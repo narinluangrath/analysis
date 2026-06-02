@@ -84,7 +84,11 @@ example (x:ℝ) : ({x}: Set ℝ).OrdConnected := Set.ordConnected_singleton
 
 /-- Lemma 11.1.4 / Exercise 11.1.1 -/
 theorem Bornology.IsBounded.of_boundedInterval (I: BoundedInterval) : Bornology.IsBounded (I:Set ℝ) := by
-  sorry
+  cases I with
+  | Ioo a b => rw [BoundedInterval.set_Ioo]; exact Metric.isBounded_Ioo a b
+  | Icc a b => rw [BoundedInterval.set_Icc]; exact Metric.isBounded_Icc a b
+  | Ioc a b => rw [BoundedInterval.set_Ioc]; exact Metric.isBounded_Ioc a b
+  | Ico a b => rw [BoundedInterval.set_Ico]; exact Metric.isBounded_Ico a b
 
 theorem BoundedInterval.ordConnected_iff (X:Set ℝ) : Bornology.IsBounded X ∧ X.OrdConnected ↔ ∃ I: BoundedInterval, X = I := by
   sorry
