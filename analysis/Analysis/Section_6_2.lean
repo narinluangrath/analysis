@@ -262,9 +262,29 @@ noncomputable abbrev Chapter5.ExtendedReal.toEReal (x:ExtendedReal) : EReal := m
   | infty => ⊤
   | neg_infty => ⊥
 
-theorem Chapter5.ExtendedReal.coe_inj : Function.Injective toEReal := by sorry
+theorem Chapter5.ExtendedReal.coe_inj : Function.Injective toEReal := by
+  intro a b hab
+  cases a <;> cases b <;>
+    simp only [toEReal, EReal.coe_eq_coe_iff] at hab <;>
+    first
+      | rfl
+      | rw [Real.equivR.injective hab]
+      | exact absurd hab bot_ne_top
+      | exact absurd hab top_ne_bot
+      | exact absurd hab (EReal.coe_ne_bot _)
+      | exact absurd hab (EReal.coe_ne_top _)
+      | exact absurd hab.symm (EReal.coe_ne_bot _)
+      | exact absurd hab.symm (EReal.coe_ne_top _)
 
-theorem Chapter5.ExtendedReal.coe_surj : Function.Surjective toEReal := by sorry
+theorem Chapter5.ExtendedReal.coe_surj : Function.Surjective toEReal := by
+  intro x
+  induction x using EReal.rec with
+  | bot => exact ⟨neg_infty, rfl⟩
+  | coe y =>
+      refine ⟨real (Real.equivR.symm y), ?_⟩
+      show ((Real.equivR (Real.equivR.symm y) : ℝ) : EReal) = (y : EReal)
+      rw [Equiv.apply_symm_apply]
+  | top => exact ⟨infty, rfl⟩
 
 noncomputable abbrev Chapter5.ExtendedReal.equivEReal : Chapter5.ExtendedReal ≃ EReal where
   toFun := toEReal
