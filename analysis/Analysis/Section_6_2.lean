@@ -172,23 +172,32 @@ abbrev Example_6_2_9 : Set EReal := { x | ∃ n:ℕ, x = n+1}
 
 example : sInf Example_6_2_9 = 1 := by sorry
 
-example : sSup Example_6_2_9 = ⊤ := by sorry
+example : sSup Example_6_2_9 = ⊤ := by
+  apply sSup_eq_top.mpr
+  intro b hb
+  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+  · obtain ⟨n, hn⟩ := exists_nat_gt y
+    refine ⟨n+1, ⟨n, rfl⟩, ?_⟩
+    push_cast
+    exact_mod_cast lt_trans (by exact_mod_cast hn) (by norm_num)
+  · exact absurd hb (lt_irrefl _)
+  · exact ⟨1, ⟨0, by norm_num⟩, bot_lt_iff_ne_bot.mpr (by decide)⟩
 
-example : sInf (∅ : Set EReal) = ⊤ := by sorry
+example : sInf (∅ : Set EReal) = ⊤ := sInf_empty
 
 example (E: Set EReal) : sSup E < sInf E ↔ E = ∅ := by sorry
 
 /-- Theorem 6.2.11 (a) / Exercise 6.2.2 -/
-theorem EReal.mem_le_sup (E: Set EReal) {x:EReal} (hx: x ∈ E) : x ≤ sSup E := by sorry
+theorem EReal.mem_le_sup (E: Set EReal) {x:EReal} (hx: x ∈ E) : x ≤ sSup E := le_sSup hx
 
 /-- Theorem 6.2.11 (a) / Exercise 6.2.2 -/
-theorem EReal.mem_ge_inf (E: Set EReal) {x:EReal} (hx: x ∈ E) : sInf E ≤ x := by sorry
+theorem EReal.mem_ge_inf (E: Set EReal) {x:EReal} (hx: x ∈ E) : sInf E ≤ x := sInf_le hx
 
 /-- Theorem 6.2.11 (b) / Exercise 6.2.2 -/
-theorem EReal.sup_le_upper (E: Set EReal) {M:EReal} (hM: M ∈ upperBounds E) : sSup E ≤ M := by sorry
+theorem EReal.sup_le_upper (E: Set EReal) {M:EReal} (hM: M ∈ upperBounds E) : sSup E ≤ M := sSup_le hM
 
 /-- Theorem 6.2.11 (c) / Exercise 6.2.2 -/
-theorem EReal.inf_ge_upper (E: Set EReal) {M:EReal} (hM: M ∈ lowerBounds E) : sInf E ≥ M := by sorry
+theorem EReal.inf_ge_upper (E: Set EReal) {M:EReal} (hM: M ∈ lowerBounds E) : sInf E ≥ M := le_sInf hM
 
 #check isLUB_iff_sSup_eq
 #check isGLB_iff_sInf_eq
