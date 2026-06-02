@@ -163,7 +163,29 @@ example : derivWithin f_10_1_6 (.Iio 0) 0 = -1 :=
 theorem _root_.HasDerivWithinAt.iff_approx_linear (X: Set ℝ) (x₀ :ℝ) (f: ℝ → ℝ) (L:ℝ) :
   HasDerivWithinAt f L X x₀ ↔
   ∀ ε > 0, ∃ δ > 0, ∀ x ∈ X, |x - x₀| < δ → |f x - f x₀ - L * (x - x₀)| ≤ ε * |x - x₀| := by
-  sorry
+  rw [hasDerivWithinAt_iff_isLittleO, Asymptotics.isLittleO_iff]
+  have key : ∀ (p:ℝ→Prop), (∀ᶠ x in nhdsWithin x₀ X, p x) ↔
+      ∃ δ > 0, ∀ x ∈ X, dist x x₀ < δ → p x := by
+    intro p
+    rw [eventually_nhdsWithin_iff, Metric.eventually_nhds_iff]
+    constructor
+    · rintro ⟨ε, hε, h⟩; exact ⟨ε, hε, fun x hx hd => h hd hx⟩
+    · rintro ⟨ε, hε, h⟩; exact ⟨ε, hε, fun {x} hd hx => h x hx hd⟩
+  constructor
+  · intro h ε hε
+    obtain ⟨δ, hδ, hd⟩ := (key _).mp (h hε)
+    refine ⟨δ, hδ, fun x hx hlt => ?_⟩
+    have hthis := hd x hx (by rwa [Real.dist_eq])
+    rw [Real.norm_eq_abs, Real.norm_eq_abs, smul_eq_mul, mul_comm (x-x₀) L] at hthis
+    exact hthis
+  · intro h c hc
+    obtain ⟨δ, hδ, hd⟩ := h c hc
+    rw [key]
+    refine ⟨δ, hδ, fun x hx hd' => ?_⟩
+    rw [Real.dist_eq] at hd'
+    have hthis := hd x hx hd'
+    rw [Real.norm_eq_abs, Real.norm_eq_abs, smul_eq_mul, mul_comm (x-x₀) L]
+    exact hthis
 
 /-- Proposition 10.1.10 / Exercise 10.1.3 -/
 theorem _root_.ContinuousWithinAt.of_differentiableWithinAt {X: Set ℝ} {x₀ : ℝ} {f: ℝ → ℝ}
