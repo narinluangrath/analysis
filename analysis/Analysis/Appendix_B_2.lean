@@ -30,7 +30,21 @@ noncomputable instance NNRealDecimal.instCoeNNReal : Coe NNRealDecimal NNReal wh
 /-- Exercise B.2.1 -/
 theorem NNRealDecimal.toNNReal_conv (d:NNRealDecimal) :
   Summable fun i ↦ (d.fracPart i) * (10:NNReal) ^ (-i-1:ℝ) := by
-  sorry
+  rw [← NNReal.summable_coe]
+  have hgeo : Summable (fun i:ℕ ↦ (9/10:ℝ) * (1/10)^i) :=
+    (summable_geometric_of_lt_one (by norm_num) (by norm_num)).mul_left _
+  refine Summable.of_nonneg_of_le (fun i => by positivity) (fun i => ?_) hgeo
+  push_cast [NNReal.coe_rpow]
+  have h9 : ((d.fracPart i : ℕ):ℝ) ≤ 9 := by
+    have hlt := (d.fracPart i).lt
+    have : (d.fracPart i : ℕ) ≤ 9 := by omega
+    exact_mod_cast this
+  have hrw : (10:ℝ)^(-(i:ℝ)-1) = (1/10)^(i+1) := by
+    rw [show -(i:ℝ)-1 = -((i+1:ℕ):ℝ) by push_cast; ring, Real.rpow_neg (by norm_num),
+      Real.rpow_natCast, ← inv_pow, one_div]
+  rw [hrw, pow_succ]
+  have hpos : (0:ℝ) ≤ (1/10)^i := by positivity
+  nlinarith [h9, hpos]
 
 theorem NNRealDecimal.surj (x:NNReal) : ∃ d:NNRealDecimal, x = d := by
   -- This proof is written to follow the structure of the original text.
