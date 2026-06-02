@@ -367,12 +367,6 @@ noncomputable instance Real.instLinearOrder : LinearOrder Real where
     · exact Or.inl (Or.inr h)
   toDecidableLE := Classical.decRel _
 
-/--
-  (Not from textbook) Linear Orders come with a definition of absolute value |.|
-  Show that it agrees with our earlier definition.
--/
-theorem Real.abs_eq_abs (x:Real) : |x| = abs x := by sorry
-
 /-- Proposition 5.4.8 -/
 theorem Real.inv_of_pos {x:Real} (hx: x.IsPos) : x⁻¹.IsPos := by
   observe hnon: x ≠ 0
@@ -433,6 +427,16 @@ instance Real.instIsStrictOrderedRing : IsStrictOrderedRing Real where
     rw [Real.le_iff]; left
     rw [Real.lt_iff, show (0:Real)-1 = ((-1:ℚ):Real) from by push_cast; ring, Real.neg_of_coe]
     norm_num
+
+/--
+  (Not from textbook) Linear Orders come with a definition of absolute value |.|
+  Show that it agrees with our earlier definition.
+-/
+theorem Real.abs_eq_abs (x:Real) : |x| = abs x := by
+  rcases Real.trichotomous x with h | h | h
+  · subst h; rw [abs_zero, Real.abs_of_zero]
+  · rw [_root_.abs_of_pos ((Real.isPos_iff x).mp h), Real.abs_of_pos x h]
+  · rw [_root_.abs_of_neg ((Real.isNeg_iff x).mp h), Real.abs_of_neg x h]
 
 /-- Proposition 5.4.9 (The non-negative reals are closed)-/
 theorem Real.LIM_of_nonneg {a: ℕ → ℚ} (ha: ∀ n, a n ≥ 0) (hcauchy: (a:Sequence).IsCauchy) :
