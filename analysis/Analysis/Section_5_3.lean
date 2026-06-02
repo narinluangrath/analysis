@@ -626,8 +626,13 @@ noncomputable instance Real.instDivInvMonoid : DivInvMonoid Real where
 
 theorem Real.div_eq (x y:Real) : x/y = x * y⁻¹ := rfl
 
+theorem Real.zero_ne_one' : (0:Real) ≠ 1 := by
+  rw [show (0:Real) = ((0:ℚ):Real) from rfl, show (1:Real) = ((1:ℚ):Real) from rfl, Ne,
+    Real.ratCast_inj]
+  norm_num
+
 noncomputable instance Real.instField : Field Real where
-  exists_pair_ne := by sorry
+  exists_pair_ne := ⟨0, 1, Real.zero_ne_one'⟩
   mul_inv_cancel := by sorry
   inv_zero := by sorry
   ratCast_def := by sorry
@@ -637,11 +642,13 @@ noncomputable instance Real.instField : Field Real where
 theorem Real.mul_right_cancel₀ {x y z:Real} (hz: z ≠ 0) (h: x * z = y * z) : x = y := by sorry
 
 theorem Real.mul_right_nocancel : ¬ ∀ (x y z:Real), (hz: z = 0) → (x * z = y * z) → x = y := by
-  sorry
+  push_neg
+  exact ⟨0, 1, 0, rfl, by simp, Real.zero_ne_one'⟩
 
 /-- Exercise 5.3.4 -/
 theorem Real.IsBounded.equiv {a b:ℕ → ℚ} (ha: (a:Sequence).IsBounded) (hab: Sequence.Equiv a b) :
-    (b:Sequence).IsBounded := by sorry
+    (b:Sequence).IsBounded :=
+  (Sequence.isBounded_of_eventuallyClose (hab 1 (by norm_num))).mp ha
 
 /--
   Same as `Sequence.IsCauchy.harmonic` but reindexing the sequence as a₀ = 1, a₁ = 1/2, ...
