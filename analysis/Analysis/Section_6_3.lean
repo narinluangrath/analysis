@@ -59,24 +59,38 @@ theorem Sequence.sup_of_bounded {a:Sequence} (h: a.IsBounded) : a.sup.IsFinite :
 theorem Sequence.inf_of_bounded {a:Sequence} (h: a.IsBounded) : a.inf.IsFinite := by sorry
 
 /-- Proposition 6.3.6 (Least upper bound property) / Exercise 6.3.2 -/
-theorem Sequence.le_sup {a:Sequence} {n:ℤ} (hn: n ≥ a.m) : a n ≤ a.sup := by sorry
+theorem Sequence.le_sup {a:Sequence} {n:ℤ} (hn: n ≥ a.m) : a n ≤ a.sup :=
+  le_sSup ⟨n, hn, rfl⟩
 
 /-- Proposition 6.3.6 (Least upper bound property) / Exercise 6.3.2 -/
-theorem Sequence.sup_le_upper {a:Sequence} {M:EReal} (h: ∀ n ≥ a.m, a n ≤ M) : a.sup ≤ M := by sorry
+theorem Sequence.sup_le_upper {a:Sequence} {M:EReal} (h: ∀ n ≥ a.m, a n ≤ M) : a.sup ≤ M := by
+  apply sSup_le
+  rintro x ⟨n, hn, rfl⟩
+  exact h n hn
 
 /-- Proposition 6.3.6 (Least upper bound property) / Exercise 6.3.2 -/
 theorem Sequence.exists_between_lt_sup {a:Sequence} {y:EReal} (h: y < a.sup ) :
-    ∃ n ≥ a.m, y < a n ∧ a n ≤ a.sup := by sorry
+    ∃ n ≥ a.m, y < a n ∧ a n ≤ a.sup := by
+  rw [lt_sSup_iff] at h
+  obtain ⟨x, ⟨n, hn, rfl⟩, hyx⟩ := h
+  exact ⟨n, hn, hyx, le_sup hn⟩
 
 /-- Remark 6.3.7 -/
-theorem Sequence.ge_inf {a:Sequence} {n:ℤ} (hn: n ≥ a.m) : a n ≥ a.inf := by sorry
+theorem Sequence.ge_inf {a:Sequence} {n:ℤ} (hn: n ≥ a.m) : a n ≥ a.inf :=
+  sInf_le ⟨n, hn, rfl⟩
 
 /-- Remark 6.3.7 -/
-theorem Sequence.inf_ge_lower {a:Sequence} {M:EReal} (h: ∀ n ≥ a.m, a n ≥ M) : a.inf ≥ M := by sorry
+theorem Sequence.inf_ge_lower {a:Sequence} {M:EReal} (h: ∀ n ≥ a.m, a n ≥ M) : a.inf ≥ M := by
+  apply le_sInf
+  rintro x ⟨n, hn, rfl⟩
+  exact h n hn
 
 /-- Remark 6.3.7 -/
 theorem Sequence.exists_between_gt_inf {a:Sequence} {y:EReal} (h: y > a.inf ) :
-    ∃ n ≥ a.m, y > a n ∧ a n ≥ a.inf := by sorry
+    ∃ n ≥ a.m, y > a n ∧ a n ≥ a.inf := by
+  rw [gt_iff_lt, sInf_lt_iff] at h
+  obtain ⟨x, ⟨n, hn, rfl⟩, hyx⟩ := h
+  exact ⟨n, hn, hyx, ge_inf hn⟩
 
 abbrev Sequence.IsMonotone (a:Sequence) : Prop := ∀ n ≥ a.m, a (n+1) ≥ a n
 
