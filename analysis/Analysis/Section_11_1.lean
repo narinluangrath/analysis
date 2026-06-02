@@ -176,7 +176,14 @@ theorem BoundedInterval.empty_of_lt {I: BoundedInterval} (h: I.b < I.a) : (I:Set
   | Ico _ _ => simp [le_of_lt h]
 
 theorem BoundedInterval.length_of_empty {I: BoundedInterval} (hI: (I:Set ℝ) = ∅) : |I|ₗ = 0 := by
-  sorry
+  have hba : I.b ≤ I.a := by
+    cases I with
+    | Ioo a b => rw [set_Ioo, Set.Ioo_eq_empty_iff] at hI; exact not_lt.mp hI
+    | Icc a b => rw [set_Icc, Set.Icc_eq_empty_iff] at hI; exact (not_le.mp hI).le
+    | Ioc a b => rw [set_Ioc, Set.Ioc_eq_empty_iff] at hI; exact not_lt.mp hI
+    | Ico a b => rw [set_Ico, Set.Ico_eq_empty_iff] at hI; exact not_lt.mp hI
+  simp only [BoundedInterval.length]
+  exact max_eq_right (by linarith)
 
 theorem BoundedInterval.length_of_subsingleton {I: BoundedInterval} : Subsingleton (I:Set ℝ) ↔ |I|ₗ = 0 := by
   sorry
