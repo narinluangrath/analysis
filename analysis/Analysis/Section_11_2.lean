@@ -118,12 +118,22 @@ example : PiecewiseConstantOn f_11_2_4 (Icc 1 6) := by
 
 /-- Example 11.2.6 -/
 theorem ConstantOn.piecewiseConstantOn {f:ℝ → ℝ} {I: BoundedInterval} (h: ConstantOn f (I:Set ℝ)) :
-  PiecewiseConstantOn f I := by sorry
+  PiecewiseConstantOn f I := by
+  use ⊥
+  intro J hJ
+  have : J ∈ (⊥:Partition I).intervals := hJ
+  rw [Partition.intervals_of_bot, Finset.mem_singleton] at this
+  subst this
+  exact h
 
 /-- Lemma 11.2.7 / Exercise 11.2.1 -/
 theorem PiecewiseConstantWith.mono {f:ℝ → ℝ} {I: BoundedInterval} {P P': Partition I} (hPP': P ≤ P')
   (hP: PiecewiseConstantWith f P) : PiecewiseConstantWith f P' := by
-  sorry
+  intro J hJ
+  obtain ⟨K, hK, hJK⟩ := hPP' J hJ
+  obtain ⟨c, hc⟩ := hP K hK
+  have hsub : (J:Set ℝ) ⊆ (K:Set ℝ) := (subset_iff J K).mp hJK
+  exact ⟨c, fun y => hc ⟨y.val, hsub y.property⟩⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.add {f g: ℝ → ℝ} {I: BoundedInterval}
