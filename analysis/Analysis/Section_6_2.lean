@@ -170,7 +170,14 @@ example : sSup Example_6_2_8 = 1 := by sorry
 /-- Example 6.2.9 -/
 abbrev Example_6_2_9 : Set EReal := { x | ∃ n:ℕ, x = n+1}
 
-example : sInf Example_6_2_9 = 1 := by sorry
+example : sInf Example_6_2_9 = 1 := by
+  apply IsLeast.csInf_eq
+  constructor
+  · exact ⟨0, by norm_num⟩
+  · rintro x ⟨n, rfl⟩
+    have : (0:EReal) ≤ (n:EReal) := by positivity
+    calc (1:EReal) = 0 + 1 := by norm_num
+      _ ≤ (n:EReal) + 1 := by gcongr
 
 example : sSup Example_6_2_9 = ⊤ := by
   apply sSup_eq_top.mpr
