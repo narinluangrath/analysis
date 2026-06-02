@@ -157,14 +157,38 @@ theorem axiom_of_choice_from_exists_function {I: Type} {X: I → Type} (h : ∀ 
 theorem exists_set_singleton_intersect {I U:Type} {X: I → Set U} (h: Set.PairwiseDisjoint .univ X)
   (hnon: ∀ α, Nonempty (X α)) :
   ∃ Y : Set U, ∀ α, Nat.card (Y ∩ X α : Set U) = 1 := by
-  sorry
+  classical
+  set g : I → U := fun α => ((hnon α).some : U) with hgdef
+  have hgmem : ∀ α, g α ∈ X α := fun α => ((hnon α).some).2
+  refine ⟨Set.range g, fun α => ?_⟩
+  have hset : (Set.range g ∩ X α : Set U) = {g α} := by
+    apply Set.eq_singleton_iff_unique_mem.mpr
+    refine ⟨⟨⟨α, rfl⟩, hgmem α⟩, ?_⟩
+    rintro u ⟨⟨β, rfl⟩, hu⟩
+    rcases eq_or_ne β α with rfl | hβα
+    · rfl
+    · exact (Set.disjoint_left.mp (h (Set.mem_univ β) (Set.mem_univ α) hβα) (hgmem β) hu).elim
+  rw [hset]; simp
 
 /-- Exercise 8.4.2.  The spirit of the question here is to establish this result directly
 from `exists_set_singleton_intersect`, avoiding previous results that relied more explicitly
 on the axiom of choice. -/
 theorem axiom_of_choice_from_exists_set_singleton_intersect {I: Type} {X: I → Type} (h : ∀ i, Nonempty (X i)) :
   Nonempty (∀ i, X i) := by
-  sorry
+  set U := Σ i, X i with hU
+  set X' : I → Set U := fun i => {p : U | p.1 = i} with hX'
+  have hdisj : Set.PairwiseDisjoint (Set.univ : Set I) X' := by
+    intro α _ β _ hαβ
+    apply Set.disjoint_left.mpr
+    intro p hpα hpβ
+    exact hαβ (hpα.symm.trans hpβ)
+  have hnon : ∀ α, Nonempty (X' α) := fun α => ⟨⟨⟨α, (h α).some⟩, rfl⟩⟩
+  obtain ⟨Y, hY⟩ := exists_set_singleton_intersect hdisj hnon
+  refine ⟨fun α => ?_⟩
+  have hpos : 0 < Nat.card (Y ∩ X' α : Set U) := by rw [hY α]; norm_num
+  have pt := (Nat.card_pos_iff.mp hpos).1.some
+  have hp1 : pt.val.1 = α := pt.property.2
+  exact hp1 ▸ pt.val.2
 
 /-- Exercise 8.4.3 -/
 theorem Function.Injective.inv_surjective {A B:Type} {g: B → A} (hg: Function.Surjective g) :
