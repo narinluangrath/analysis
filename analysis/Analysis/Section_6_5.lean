@@ -84,7 +84,18 @@ theorem Sequence.lim_of_power_decay {k:ℕ} :
 
 /-- Lemma 6.5.2 / Exercise 6.5.2 -/
 theorem Sequence.lim_of_geometric {x:ℝ} (hx: |x| < 1) : ((fun (n:ℕ) ↦ x^n):Sequence).TendsTo 0 := by
-  sorry
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  have hmath := tendsto_pow_atTop_nhds_zero_of_abs_lt_one hx
+  rw [Metric.tendsto_atTop] at hmath
+  obtain ⟨N, hN⟩ := hmath ε hε
+  refine ⟨(N:ℤ), fun n hn => ?_⟩
+  have hn0 : 0 ≤ n := le_trans (Int.natCast_nonneg N) hn
+  rw [show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe]
+  have hd := hN n.toNat (by omega)
+  rw [Real.dist_eq, sub_zero] at hd
+  rw [sub_zero]
+  exact le_of_lt hd
 
 /-- Lemma 6.5.2 / Exercise 6.5.2 -/
 theorem Sequence.lim_of_geometric' {x:ℝ} (hx: x = 1) : ((fun (n:ℕ) ↦ x^n):Sequence).TendsTo 1 := by
@@ -95,15 +106,42 @@ theorem Sequence.lim_of_geometric'' {x:ℝ} (hx: x = -1 ∨ |x| > 1) :
     ((fun (n:ℕ) ↦ x^n):Sequence).Divergent := by
   sorry
 
+/-- Bridge from Mathlib's `Filter.atTop` convergence to the book's `Sequence.TendsTo`. -/
+private theorem Sequence.tendsTo_of_filter {f:ℕ→ℝ} {L:ℝ}
+    (h: Filter.Tendsto f Filter.atTop (nhds L)) : ((fun n => f n):Sequence).TendsTo L := by
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  rw [Metric.tendsto_atTop] at h
+  obtain ⟨N, hN⟩ := h ε hε
+  refine ⟨(N:ℤ), fun n hn => ?_⟩
+  have hn0 : 0 ≤ n := le_trans (Int.natCast_nonneg N) hn
+  rw [show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe]
+  have hd := hN n.toNat (by omega)
+  rw [Real.dist_eq] at hd
+  exact le_of_lt hd
+
 /-- Lemma 6.5.3 / Exercise 6.5.3 -/
 theorem Sequence.lim_of_roots {x:ℝ} (hx: x > 0) :
     ((fun (n:ℕ) ↦ x^(1/(n+1:ℝ))):Sequence).TendsTo 1 := by
-  sorry
+  apply Sequence.tendsTo_of_filter
+  have hexp : Filter.Tendsto (fun n:ℕ => 1/((n:ℝ)+1)) Filter.atTop (nhds 0) :=
+    tendsto_one_div_add_atTop_nhds_zero_nat
+  have hcont : ContinuousAt (fun y:ℝ => x^y) 0 := Real.continuousAt_const_rpow (ne_of_gt hx)
+  have hcomp := hcont.tendsto.comp hexp
+  rw [Real.rpow_zero] at hcomp
+  exact hcomp
 
 /-- Exercise 6.5.1 -/
 theorem Sequence.lim_of_rat_power_decay {q:ℚ} (hq: q > 0) :
     (fun (n:ℕ) ↦ 1/((n+1:ℝ)^(q:ℝ)):Sequence).TendsTo 0 := by
-  sorry
+  apply Sequence.tendsTo_of_filter
+  have hbase : Filter.Tendsto (fun n:ℕ => ((n:ℝ)+1)) Filter.atTop Filter.atTop :=
+    Filter.tendsto_atTop_add_const_right _ _ tendsto_natCast_atTop_atTop
+  have hpow : Filter.Tendsto (fun n:ℕ => ((n:ℝ)+1)^(q:ℝ)) Filter.atTop Filter.atTop :=
+    (tendsto_rpow_atTop (by exact_mod_cast hq)).comp hbase
+  have hinv := hpow.inv_tendsto_atTop
+  simp only [← one_div] at hinv
+  exact hinv
 
 /-- Exercise 6.5.1 -/
 theorem Sequence.lim_of_rat_power_growth {q:ℚ} (hq: q > 0) :
