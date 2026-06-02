@@ -473,9 +473,46 @@ theorem Real.LIM_mono_fail :
     ∧ (b:Sequence).IsCauchy
     ∧ (∀ n, a n > b n)
     ∧ ¬LIM a > LIM b := by
-  use (fun n ↦ 1 + 1/((n:ℚ) + 1))
-  use (fun n ↦ 1 - 1/((n:ℚ) + 1))
-  sorry
+  set a : ℕ → ℚ := fun n ↦ 1 + 1/((n:ℚ) + 1) with ha
+  set b : ℕ → ℚ := fun n ↦ 1 - 1/((n:ℚ) + 1) with hb
+  have harm : ∀ ε:ℚ, ε > 0 → ∃ N:ℕ, ∀ n ≥ N, 1/((n:ℚ)+1) ≤ ε := by
+    intro ε hε
+    obtain ⟨N, hN⟩ := exists_nat_gt (1/ε)
+    refine ⟨N, fun n hn => ?_⟩
+    have hn1 : (0:ℚ) < (n:ℚ)+1 := by positivity
+    rw [div_le_iff₀ hn1]
+    have hNn : (N:ℚ) ≤ (n:ℚ) := by exact_mod_cast hn
+    have hlt : (1:ℚ)/ε < (n:ℚ)+1 := lt_of_lt_of_le hN (by linarith)
+    rw [div_lt_iff₀ hε] at hlt
+    nlinarith
+  have hcau_one : ((fun _:ℕ => (1:ℚ)):Sequence).IsCauchy := Sequence.IsCauchy.const 1
+  have eqa : Sequence.Equiv a (fun _ => (1:ℚ)) := by
+    rw [Sequence.equiv_iff]
+    intro ε hε
+    obtain ⟨N, hN⟩ := harm ε hε
+    refine ⟨N, fun n hn => ?_⟩
+    have he : a n - 1 = 1/((n:ℚ)+1) := by rw [ha]; ring
+    rw [he, abs_of_nonneg (by positivity)]
+    exact hN n hn
+  have eqb : Sequence.Equiv b (fun _ => (1:ℚ)) := by
+    rw [Sequence.equiv_iff]
+    intro ε hε
+    obtain ⟨N, hN⟩ := harm ε hε
+    refine ⟨N, fun n hn => ?_⟩
+    have he : b n - 1 = -(1/((n:ℚ)+1)) := by rw [hb]; ring
+    rw [he, abs_neg, abs_of_nonneg (by positivity)]
+    exact hN n hn
+  have hcaua : (a:Sequence).IsCauchy := (Sequence.isCauchy_of_equiv eqa).mpr hcau_one
+  have hcaub : (b:Sequence).IsCauchy := (Sequence.isCauchy_of_equiv eqb).mpr hcau_one
+  refine ⟨a, b, hcaua, hcaub, ?_, ?_⟩
+  · intro n
+    rw [ha, hb]; dsimp
+    have : (0:ℚ) < 1/((n:ℚ)+1) := by positivity
+    linarith
+  · have hla : LIM a = LIM (fun _ => (1:ℚ)) := (LIM_eq_LIM hcaua hcau_one).mpr eqa
+    have hlb : LIM b = LIM (fun _ => (1:ℚ)) := (LIM_eq_LIM hcaub hcau_one).mpr eqb
+    rw [gt_iff_lt, hla, hlb]
+    exact lt_irrefl _
 
 /-- Proposition 5.4.12 (Bounding reals by rationals) -/
 theorem Real.exists_rat_le_and_nat_gt {x:Real} (hx: x.IsPos) :
