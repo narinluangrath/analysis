@@ -94,7 +94,14 @@ theorem Sequence.convergent_of_subseq_of_bounded {a:ℕ→ ℝ} (ha: (a:Sequence
 def Sequence.exist_subseq_of_subseq :
   Decidable (∃ a b : ℕ → ℝ, a ≠ b ∧ Sequence.subseq a b ∧ Sequence.subseq b a) := by
     -- The first line of this construction should be `apply isTrue` or `apply isFalse`.
-    sorry
+    apply isTrue
+    refine ⟨fun n => (-1:ℝ)^n, fun n => (-1:ℝ)^(n+1), ?_, ?_, ?_⟩
+    · intro h
+      have := congrFun h 0
+      norm_num at this
+    · exact ⟨fun n => n+1, fun x y hxy => by show x+1 < y+1; omega, fun n => rfl⟩
+    · exact ⟨fun n => n+1, fun x y hxy => by show x+1 < y+1; omega,
+        fun n => by show (-1:ℝ)^n = (-1:ℝ)^(n+1+1); rw [pow_add]; ring⟩
 
 /--
   Exercise 6.6.3.  You may find the API around Mathlib's `Nat.find` to be useful
