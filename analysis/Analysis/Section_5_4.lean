@@ -516,10 +516,41 @@ theorem Real.le_mul {ε:Real} (hε: ε.IsPos) (x:Real) : ∃ M:ℕ, M > 0 ∧ M 
 theorem Real.rat_between {x y:Real} (hxy: x < y) : ∃ q:ℚ, x < (q:Real) ∧ (q:Real) < y := by sorry
 
 /-- Exercise 5.4.3 -/
-theorem Real.floor_exist (x:Real) : ∃! n:ℤ, (n:Real) ≤ x ∧ x < (n:Real)+1 := by sorry
+theorem Real.floor_exist (x:Real) : ∃! n:ℤ, (n:Real) ≤ x ∧ x < (n:Real)+1 := by
+  classical
+  have hgt : ∀ y:Real, ∃ N:ℤ, y < (N:Real) := by
+    intro y
+    obtain rfl | hy | hy := trichotomous y
+    · exact ⟨1, by norm_num⟩
+    · obtain ⟨N, hN⟩ := (exists_rat_le_and_nat_gt hy).2
+      exact ⟨(N:ℤ), by exact_mod_cast hN⟩
+    · exact ⟨1, by have := (isNeg_iff y).mp hy; push_cast; linarith⟩
+  obtain ⟨N, hN⟩ := hgt x
+  obtain ⟨M, hM⟩ := hgt (-x)
+  have hMx : ((-M:ℤ):Real) ≤ x := by push_cast; push_cast at hM; linarith
+  obtain ⟨n, hn_le, hn_max⟩ := Int.exists_greatest_of_bdd (P := fun z => (z:Real) ≤ x)
+    ⟨N, fun z hz => by have : (z:Real) < (N:Real) := lt_of_le_of_lt hz hN; exact_mod_cast this.le⟩
+    ⟨-M, hMx⟩
+  refine ⟨n, ⟨hn_le, ?_⟩, ?_⟩
+  · by_contra h
+    push_neg at h
+    have : (n+1:ℤ) ≤ n := hn_max (n+1) (by push_cast; linarith)
+    omega
+  · rintro m ⟨hm1, hm2⟩
+    have hmn : m ≤ n := hn_max m hm1
+    have h2 : (n:Real) < ((m+1:ℤ):Real) := by push_cast; linarith
+    have hnm : n < m+1 := by exact_mod_cast h2
+    omega
 
 /-- Exercise 5.4.4 -/
-theorem Real.exist_inv_nat_le {x:Real} (hx: x.IsPos) : ∃ N:ℤ, N>0 ∧ (N:Real)⁻¹ < x := by sorry
+theorem Real.exist_inv_nat_le {x:Real} (hx: x.IsPos) : ∃ N:ℤ, N>0 ∧ (N:Real)⁻¹ < x := by
+  obtain ⟨M, hM, hMx⟩ := le_mul hx 1
+  refine ⟨(M:ℤ), by exact_mod_cast hM, ?_⟩
+  have hMpos : (0:Real) < ((M:ℤ):Real) := by exact_mod_cast hM
+  have key : ((M:ℤ):Real) * x > 1 := by push_cast; push_cast at hMx; linarith
+  calc ((M:ℤ):Real)⁻¹ = ((M:ℤ):Real)⁻¹ * 1 := (mul_one _).symm
+    _ < ((M:ℤ):Real)⁻¹ * (((M:ℤ):Real) * x) := mul_lt_mul_of_pos_left key (inv_pos.mpr hMpos)
+    _ = x := by rw [← mul_assoc, inv_mul_cancel₀ (ne_of_gt hMpos), one_mul]
 
 /-- Exercise 5.4.6 -/
 theorem Real.dist_lt_iff (ε x y:Real) : |x-y| < ε ↔ y-ε < x ∧ x < y+ε := by
