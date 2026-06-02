@@ -545,7 +545,15 @@ theorem Real.boundedAwayZero_of_nonzero {x:Real} (hx: x ≠ 0) :
 -/
 theorem Real.lim_of_boundedAwayZero {a:ℕ → ℚ} (ha: BoundedAwayZero a)
   (ha_cauchy: (a:Sequence).IsCauchy) :
-    LIM a ≠ 0 := by sorry
+    LIM a ≠ 0 := by
+  obtain ⟨c, hc, hca⟩ := ha
+  rw [← Real.LIM.zero, Ne, Real.LIM_eq_LIM ha_cauchy (Sequence.IsCauchy.const 0),
+    Sequence.equiv_iff]
+  push_neg
+  refine ⟨c/2, by linarith, fun N => ⟨N, le_refl N, ?_⟩⟩
+  simp only [sub_zero]
+  have := hca N
+  linarith
 
 theorem Real.nonzero_of_boundedAwayZero {a:ℕ → ℚ} (ha: BoundedAwayZero a) (n: ℕ) : a n ≠ 0 := by
    choose c hc ha using ha; specialize ha n; contrapose! ha; simp [ha, hc]
@@ -634,7 +642,7 @@ theorem Real.zero_ne_one' : (0:Real) ≠ 1 := by
 noncomputable instance Real.instField : Field Real where
   exists_pair_ne := ⟨0, 1, Real.zero_ne_one'⟩
   mul_inv_cancel := by sorry
-  inv_zero := by sorry
+  inv_zero := Real.inv_zero
   ratCast_def := by sorry
   qsmul := _
   nnqsmul := _
