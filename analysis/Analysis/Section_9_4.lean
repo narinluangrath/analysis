@@ -1,6 +1,7 @@
 import Mathlib.Tactic
 import Mathlib.Data.Real.Sign
 import Mathlib.Topology.ContinuousOn
+import Mathlib.Topology.Instances.Irrational
 import Analysis.Section_9_3
 
 /-!
@@ -60,7 +61,25 @@ example  :¬ ContinuousAt Real.sign 0 := by
   norm_num at this
 
 /-- Example 9.4.5 --/
-example (x₀:ℝ) : ¬ ContinuousAt f_9_3_21 x₀ := by sorry
+example (x₀:ℝ) : ¬ ContinuousAt f_9_3_21 x₀ := by
+  intro hcont
+  obtain ⟨a, ha_mem, ha_lim⟩ := mem_closure_iff_seq_limit.mp (Rat.denseRange_cast x₀)
+  obtain ⟨b, hb_mem, hb_lim⟩ := mem_closure_iff_seq_limit.mp (dense_irrational x₀)
+  have hfa : Filter.Tendsto (fun n => f_9_3_21 (a n)) Filter.atTop (nhds (f_9_3_21 x₀)) :=
+    hcont.tendsto.comp ha_lim
+  have hfb : Filter.Tendsto (fun n => f_9_3_21 (b n)) Filter.atTop (nhds (f_9_3_21 x₀)) :=
+    hcont.tendsto.comp hb_lim
+  have ha1 : ∀ n, f_9_3_21 (a n) = 1 := fun n => by
+    obtain ⟨q, hq⟩ := ha_mem n
+    simp only [f_9_3_21]; rw [if_pos ⟨q, Set.mem_univ q, hq⟩]
+  have hb0 : ∀ n, f_9_3_21 (b n) = 0 := fun n => by
+    simp only [f_9_3_21]; rw [if_neg]
+    rintro ⟨q, -, hq⟩; exact hb_mem n ⟨q, hq⟩
+  rw [Filter.tendsto_congr ha1] at hfa
+  rw [Filter.tendsto_congr hb0] at hfb
+  have e1 : f_9_3_21 x₀ = 1 := tendsto_nhds_unique hfa tendsto_const_nhds
+  have e0 : f_9_3_21 x₀ = 0 := tendsto_nhds_unique hfb tendsto_const_nhds
+  rw [e1] at e0; norm_num at e0
 
 /-- Example 9.4.6 --/
 noncomputable abbrev f_9_4_6 (x:ℝ) : ℝ := if x ≥ 0 then 1 else 0
