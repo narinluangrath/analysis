@@ -38,13 +38,23 @@ lemma Rat.closeSeq_def (ε: ℚ) (a b: Sequence) :
 
 /-- Example 5.2.2 -/
 example : (0.1:ℚ).CloseSeq ((fun n:ℕ ↦ ((-1)^n:ℚ)):Sequence)
-((fun n:ℕ ↦ ((1.1:ℚ) * (-1)^n)):Sequence) := by sorry
+((fun n:ℕ ↦ ((1.1:ℚ) * (-1)^n)):Sequence) := by
+  rw [Rat.closeSeq_def]
+  intro n h1 _
+  rw [Sequence.n0_coe] at h1
+  rw [Sequence.eval_coe_at_int, Sequence.eval_coe_at_int, if_pos h1, if_pos h1]
+  unfold Rat.Close
+  rw [show ((-1:ℚ)^n.toNat - 1.1*(-1)^n.toNat) = (-1)^n.toNat * (-0.1) by ring,
+    abs_mul, abs_pow, abs_neg, abs_one, one_pow]
+  norm_num
 
 /-- Example 5.2.2 -/
-example : ¬ (0.1:ℚ).Steady ((fun n:ℕ ↦ ((-1)^n:ℚ)):Sequence) := by sorry
+example : ¬ (0.1:ℚ).Steady ((fun n:ℕ ↦ ((-1)^n:ℚ)):Sequence) := by
+  rw [Rat.Steady.coe]; push_neg; exact ⟨0, 1, by unfold Rat.Close; norm_num⟩
 
 /-- Example 5.2.2 -/
-example : ¬ (0.1:ℚ).Steady ((fun n:ℕ ↦ ((1.1:ℚ) * (-1)^n)):Sequence) := by sorry
+example : ¬ (0.1:ℚ).Steady ((fun n:ℕ ↦ ((1.1:ℚ) * (-1)^n)):Sequence) := by
+  rw [Rat.Steady.coe]; push_neg; exact ⟨0, 1, by unfold Rat.Close; norm_num⟩
 
 /-- Definition 5.2.3 (Eventually ε-close sequences) -/
 lemma Rat.eventuallyClose_def (ε: ℚ) (a b: Sequence) :
