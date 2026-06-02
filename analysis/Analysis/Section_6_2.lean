@@ -75,25 +75,28 @@ example : ¬ (3:EReal) ≤ ⊥ := by
 #check instCompleteLinearOrderEReal
 
 /-- Proposition 6.2.5(a) / Exercise 6.2.1 -/
-theorem EReal.refl (x:EReal) : x ≤ x := by sorry
+theorem EReal.refl (x:EReal) : x ≤ x := le_refl x
 
 /-- Proposition 6.2.5(b) / Exercise 6.2.1 -/
-theorem EReal.trichotomy (x y:EReal) : x < y ∨ x = y ∨ x > y := by sorry
+theorem EReal.trichotomy (x y:EReal) : x < y ∨ x = y ∨ x > y := lt_trichotomy x y
 
 /-- Proposition 6.2.5(b) / Exercise 6.2.1 -/
-theorem EReal.not_lt_and_eq (x y:EReal) : ¬ (x < y ∧ x = y) := by sorry
+theorem EReal.not_lt_and_eq (x y:EReal) : ¬ (x < y ∧ x = y) := by
+  rintro ⟨h1, rfl⟩; exact lt_irrefl _ h1
 
 /-- Proposition 6.2.5(b) / Exercise 6.2.1 -/
-theorem EReal.not_gt_and_eq (x y:EReal) : ¬ (x > y ∧ x = y) := by sorry
+theorem EReal.not_gt_and_eq (x y:EReal) : ¬ (x > y ∧ x = y) := by
+  rintro ⟨h1, rfl⟩; exact lt_irrefl _ h1
 
 /-- Proposition 6.2.5(b) / Exercise 6.2.1 -/
-theorem EReal.not_lt_and_gt (x y:EReal) : ¬ (x < y ∧ x > y) := by sorry
+theorem EReal.not_lt_and_gt (x y:EReal) : ¬ (x < y ∧ x > y) := fun ⟨h1, h2⟩ => lt_asymm h1 h2
 
 /-- Proposition 6.2.5(c) / Exercise 6.2.1 -/
-theorem EReal.trans {x y z:EReal} (hxy : x ≤ y) (hyz: y ≤ z) : x ≤ z := by sorry
+theorem EReal.trans {x y z:EReal} (hxy : x ≤ y) (hyz: y ≤ z) : x ≤ z := le_trans hxy hyz
 
 /-- Proposition 6.2.5(d) / Exercise 6.2.1 -/
-theorem EReal.neg_of_lt {x y:EReal} (hxy : x ≤ y): -y ≤ -x := by sorry
+theorem EReal.neg_of_lt {x y:EReal} (hxy : x ≤ y): -y ≤ -x := by
+  rw [EReal.neg_le_neg_iff]; exact hxy
 
 /-- Definition 6.2.6 -/
 theorem EReal.sup_of_bounded_nonempty {E: Set ℝ} (hbound: BddAbove E) (hnon: E.Nonempty) :
