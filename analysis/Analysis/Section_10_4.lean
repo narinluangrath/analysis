@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 import Analysis.Section_9_3
 import Analysis.Section_9_4
 import Analysis.Section_10_1
@@ -108,11 +109,25 @@ example (q:ℚ) {x:ℝ} (hx: x ∈ Set.Ici 0) :
 
 /-- Exercise 10.4.2(b) -/
 example (q:ℚ) : (nhdsWithin 1 (.Ici 0 \ {1})).Tendsto (fun x:ℝ ↦ (x^(q:ℝ)-1)/(x-1)) (nhds q) := by
-  sorry
+  have hd : HasDerivAt (fun x:ℝ ↦ x^(q:ℝ)) (q:ℝ) 1 := by
+    have := Real.hasDerivAt_rpow_const (x := (1:ℝ)) (p := (q:ℝ)) (Or.inl one_ne_zero)
+    rwa [Real.one_rpow, mul_one] at this
+  rw [hasDerivAt_iff_tendsto_slope] at hd
+  have heq : (fun x:ℝ ↦ (x^(q:ℝ) - 1)/(x-1)) = slope (fun x:ℝ ↦ x^(q:ℝ)) 1 := by
+    funext x; rw [slope_def_field, Real.one_rpow]
+  rw [heq]
+  exact hd.mono_left (nhdsWithin_mono 1 (fun x hx => hx.2))
 
 /-- Exercise 10.4.3(a) -/
 example (α:ℝ) : (nhdsWithin 1 (.Ici 0 \ {1})).Tendsto (fun x:ℝ ↦ (x^α-1^α)/(x-1)) (nhds α) := by
-  sorry
+  have hd : HasDerivAt (fun x:ℝ ↦ x^α) α 1 := by
+    have := Real.hasDerivAt_rpow_const (x := (1:ℝ)) (p := α) (Or.inl one_ne_zero)
+    rwa [Real.one_rpow, mul_one] at this
+  rw [hasDerivAt_iff_tendsto_slope] at hd
+  have heq : (fun x:ℝ ↦ (x^α - 1^α)/(x-1)) = slope (fun x:ℝ ↦ x^α) 1 := by
+    funext x; rw [slope_def_field]
+  rw [heq]
+  exact hd.mono_left (nhdsWithin_mono 1 (fun x hx => hx.2))
 
 /-- Exercise 10.4.2(b) -/
 example (α:ℝ) {x:ℝ} (hx: x ∈ Set.Ici 0) : HasDerivWithinAt (fun x:ℝ ↦ x^α) (α * x^(α-1)) (.Ici 0) x := by
