@@ -118,7 +118,13 @@ example : (fun n:ℤ ↦ n^2) ⁻¹' {0,1,4} = {-2,-1,0,1,2} := by
   on_goal 3 => have : 2 ^ 2 = (4:ℤ) := (by norm_num); rw [←h, sq_eq_sq_iff_eq_or_eq_neg] at this
   all_goals aesop
 
-example : (fun n:ℤ ↦ n^2) ⁻¹' ((fun n:ℤ ↦ n^2) '' {-1,0,1,2}) ≠ {-1,0,1,2} := by sorry
+example : (fun n:ℤ ↦ n^2) ⁻¹' ((fun n:ℤ ↦ n^2) '' {-1,0,1,2}) ≠ {-1,0,1,2} := by
+  intro h
+  have h2 : (-2:ℤ) ∈ (fun n:ℤ ↦ n^2) ⁻¹' ((fun n:ℤ ↦ n^2) '' {-1,0,1,2}) := by
+    simp only [Set.mem_preimage, Set.mem_image]
+    exact ⟨2, by simp, by norm_num⟩
+  rw [h] at h2
+  norm_num [Set.mem_insert_iff, Set.mem_singleton_iff] at h2
 
 instance SetTheory.Set.inst_pow : Pow Set Set where
   pow := pow
@@ -301,13 +307,42 @@ def SetTheory.Set.image_of_diff' : Decidable (∀ X Y:Set, ∀ f:X → Y, ∀ A 
 
 /-- Exercise 3.4.4 -/
 theorem SetTheory.Set.preimage_of_inter {X Y:Set} (f:X → Y) (A B: Set) :
-    preimage f (A ∩ B) = (preimage f A) ∩ (preimage f B) := by sorry
+    preimage f (A ∩ B) = (preimage f A) ∩ (preimage f B) := by
+  apply ext; intro x
+  simp only [mem_inter, mem_preimage']
+  constructor
+  · rintro ⟨x', rfl, hfx'⟩
+    exact ⟨⟨x', rfl, hfx'.1⟩, ⟨x', rfl, hfx'.2⟩⟩
+  · rintro ⟨⟨x', rfl, hA⟩, ⟨x'', hx'', hB⟩⟩
+    rw [show x'' = x' from Subtype.val_injective hx''] at hB
+    exact ⟨x', rfl, hA, hB⟩
 
 theorem SetTheory.Set.preimage_of_union {X Y:Set} (f:X → Y) (A B: Set) :
-    preimage f (A ∪ B) = (preimage f A) ∪ (preimage f B) := by sorry
+    preimage f (A ∪ B) = (preimage f A) ∪ (preimage f B) := by
+  apply ext; intro x
+  simp only [mem_union, mem_preimage']
+  constructor
+  · rintro ⟨x', rfl, h⟩
+    rcases h with h | h
+    · exact Or.inl ⟨x', rfl, h⟩
+    · exact Or.inr ⟨x', rfl, h⟩
+  · rintro (⟨x', rfl, h⟩ | ⟨x', rfl, h⟩)
+    · exact ⟨x', rfl, Or.inl h⟩
+    · exact ⟨x', rfl, Or.inr h⟩
 
 theorem SetTheory.Set.preimage_of_diff {X Y:Set} (f:X → Y) (A B: Set) :
-    preimage f (A \ B) = (preimage f A) \ (preimage f B)  := by sorry
+    preimage f (A \ B) = (preimage f A) \ (preimage f B)  := by
+  apply ext; intro x
+  simp only [mem_sdiff, mem_preimage']
+  constructor
+  · rintro ⟨x', rfl, hfx'⟩
+    refine ⟨⟨x', rfl, hfx'.1⟩, ?_⟩
+    rintro ⟨x'', hx'', hB⟩
+    rw [show x'' = x' from Subtype.val_injective hx''] at hB
+    exact hfx'.2 hB
+  · rintro ⟨⟨x', rfl, hA⟩, hB⟩
+    refine ⟨x', rfl, hA, ?_⟩
+    intro hxB; exact hB ⟨x', rfl, hxB⟩
 
 /-- Exercise 3.4.5 -/
 theorem SetTheory.Set.image_preimage_of_surj {X Y:Set} (f:X → Y) :
