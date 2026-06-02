@@ -54,9 +54,25 @@ theorem left_limit.eq' {X: Set ℝ} {f: ℝ → ℝ} {x₀:ℝ} (h: LeftLimitExi
   simp [left_limit, h]; exact h.choose_spec
 
 /-- Example 9.5.2.  The second part of this example is no longer operative as we assign "junk" values to our functions instead of leaving them undefined. -/
-example : right_limit .univ Real.sign 0 = 1 := by sorry
+example : right_limit .univ Real.sign 0 = 1 := by
+  have hAdh : AdherentPt 0 (Set.univ ∩ Set.Ioi (0:ℝ)) := by
+    rw [Set.univ_inter, ← closure_def', closure_Ioi]; exact Set.left_mem_Ici
+  have htend : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Ioi 0)).Tendsto Real.sign (nhds 1) := by
+    rw [Set.univ_inter]
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    exact Real.sign_of_pos hx
+  exact (right_limit.eq hAdh htend).2
 
-example : left_limit .univ Real.sign 0 = -1 := by sorry
+example : left_limit .univ Real.sign 0 = -1 := by
+  have hAdh : AdherentPt 0 (Set.univ ∩ Set.Iio (0:ℝ)) := by
+    rw [Set.univ_inter, ← closure_def', closure_Iio]; exact Set.right_mem_Iic
+  have htend : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Iio 0)).Tendsto Real.sign (nhds (-1)) := by
+    rw [Set.univ_inter]
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    exact Real.sign_of_neg hx
+  exact (left_limit.eq hAdh htend).2
 
 theorem right_limit.conv {X: Set ℝ} {f: ℝ → ℝ} {x₀:ℝ} (had: AdherentPt x₀ (X ∩ .Ioi x₀))
   (h: RightLimitExists X f x₀)
