@@ -776,7 +776,22 @@ example : ({1, 2, 3, 4}:Set) \ {2,4,6} = {1, 3} := by
 
 /-- Example 3.1.30 -/
 example : ({3,5,9}:Set).replace (P := fun x y ↦ ∃ (n:ℕ), x.val = n ∧ y = (n+1:ℕ)) (by aesop)
-  = {4,6,10} := by sorry
+  = {4,6,10} := by
+  ext y; simp only [replacement_axiom]
+  constructor
+  · rintro ⟨x, n, hx, rfl⟩
+    have hxm := x.property
+    simp only [mem_triple] at hxm
+    rcases hxm with h | h | h <;> rw [h] at hx
+    · have : n = 3 := nat_coe_eq_iff.mp hx.symm; subst this; simp [mem_triple]
+    · have : n = 5 := nat_coe_eq_iff.mp hx.symm; subst this; simp [mem_triple]
+    · have : n = 9 := nat_coe_eq_iff.mp hx.symm; subst this; simp [mem_triple]
+  · intro hy
+    simp only [mem_triple] at hy
+    rcases hy with rfl | rfl | rfl
+    · exact ⟨⟨(3:ℕ), by simp [mem_triple]⟩, 3, by simp, by norm_num⟩
+    · exact ⟨⟨(5:ℕ), by simp [mem_triple]⟩, 5, by simp, by norm_num⟩
+    · exact ⟨⟨(9:ℕ), by simp [mem_triple]⟩, 9, by simp, by norm_num⟩
 
 /-- Example 3.1.31 -/
 example : ({3,5,9}:Set).replace (P := fun _ y ↦ y=1) (by aesop) = {1} := by
