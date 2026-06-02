@@ -657,14 +657,24 @@ theorem Real.min_mul (x y :Real) {z:Real} (hz: z.IsPos) : min (x * z) (y * z) = 
   exact (min_mul_of_nonneg x y ((isPos_iff z).mp hz).le).symm
 
 /-- Exercise 5.4.9 -/
-theorem Real.inv_max {x y :Real} (hx:x.IsPos) (hy:y.IsPos) : (max x y)⁻¹ = min x⁻¹ y⁻¹ := by sorry
+theorem Real.inv_max {x y :Real} (hx:x.IsPos) (hy:y.IsPos) : (max x y)⁻¹ = min x⁻¹ y⁻¹ := by
+  have hxr : (0:Real) < x := (isPos_iff x).mp hx
+  have hyr : (0:Real) < y := (isPos_iff y).mp hy
+  rcases le_total x y with h | h
+  · rw [max_eq_right h, min_eq_right ((inv_le_inv₀ hyr hxr).mpr h)]
+  · rw [max_eq_left h, min_eq_left ((inv_le_inv₀ hxr hyr).mpr h)]
 
 /-- Exercise 5.4.9 -/
-theorem Real.inv_min {x y :Real} (hx:x.IsPos) (hy:y.IsPos) : (min x y)⁻¹ = max x⁻¹ y⁻¹ := by sorry
+theorem Real.inv_min {x y :Real} (hx:x.IsPos) (hy:y.IsPos) : (min x y)⁻¹ = max x⁻¹ y⁻¹ := by
+  have hxr : (0:Real) < x := (isPos_iff x).mp hx
+  have hyr : (0:Real) < y := (isPos_iff y).mp hy
+  rcases le_total x y with h | h
+  · rw [min_eq_left h, max_eq_left ((inv_le_inv₀ hyr hxr).mpr h)]
+  · rw [min_eq_right h, max_eq_right ((inv_le_inv₀ hxr hyr).mpr h)]
 
 /-- Not from textbook: the rationals map as an ordered ring homomorphism into the reals. -/
 abbrev Real.ratCast_ordered_hom : ℚ →+*o Real where
   toRingHom := ratCast_hom
-  monotone' := by sorry
+  monotone' := by intro a b h; dsimp; exact_mod_cast h
 
 end Chapter5
