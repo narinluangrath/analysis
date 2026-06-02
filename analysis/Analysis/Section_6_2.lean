@@ -163,7 +163,20 @@ example : sInf Example_6_2_7 = ⊥ := by
 /-- Example 6.2.8 -/
 abbrev Example_6_2_8 : Set EReal := { x | ∃ n:ℕ, x = (1 - (10:ℝ)^(-(n:ℤ)-1):Real)}
 
-example : sInf Example_6_2_8 = (0.9:ℝ) := by sorry
+example : sInf Example_6_2_8 = (0.9:ℝ) := by
+  apply IsLeast.csInf_eq
+  constructor
+  · refine ⟨0, ?_⟩
+    norm_num
+  · rintro x ⟨n, rfl⟩
+    rw [EReal.coe_le_coe_iff]
+    have h1 : (10:ℝ)^(-(n:ℤ)-1) ≤ (10:ℝ)^(-1:ℤ) := by
+      apply zpow_le_zpow_right₀ (by norm_num)
+      omega
+    have : (10:ℝ)^(-1:ℤ) = 0.1 := by norm_num
+    rw [this] at h1
+    norm_num
+    linarith
 
 example : sSup Example_6_2_8 = 1 := by sorry
 
