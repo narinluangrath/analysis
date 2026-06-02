@@ -50,7 +50,18 @@ theorem _root_.HasDerivWithinAt.of_inverse_of_zero_deriv {X Y: Set ℝ} {f: ℝ 
   by_contra this; rw [DifferentiableWithinAt.iff] at this; choose _ hg using this
   apply hf.of_inverse at hg <;> grind
 
-example : ¬ DifferentiableWithinAt ℝ (fun x:ℝ ↦ x^(1/3:ℝ)) (.Ici 0) 0 := by sorry
+example : ¬ DifferentiableWithinAt ℝ (fun x:ℝ ↦ x^(1/3:ℝ)) (.Ici 0) 0 := by
+  have hf : HasDerivWithinAt (fun x:ℝ ↦ x^(3:ℕ)) 0 (Set.Ici 0) 0 := by
+    simpa using (hasDerivAt_pow 3 (0:ℝ)).hasDerivWithinAt
+  have hcluster : ClusterPt (0:ℝ) (Filter.principal (Set.Ici 0 \ {0})) := by
+    rw [Set.Ici_diff_left]
+    exact mem_closure_iff_clusterPt.mp (by rw [closure_Ioi]; exact Set.self_mem_Ici)
+  exact HasDerivWithinAt.of_inverse_of_zero_deriv
+    (f := fun x ↦ x^(3:ℕ)) (X := Set.Ici 0) (Y := Set.Ici 0) (x₀ := 0) (y₀ := 0)
+    (fun x hx => Set.mem_Ici.mpr (pow_nonneg hx 3))
+    (fun x hx => by show ((x:ℝ)^(3:ℕ))^(1/3:ℝ) = x
+                    rw [← Real.rpow_natCast x 3, ← Real.rpow_mul hx]; norm_num)
+    (Set.self_mem_Ici) (by norm_num) hcluster hf
 
 /-- Theorem 10.4.2 (Inverse function theorem) -/
 theorem inverse_function_theorem {X Y: Set ℝ} {f: ℝ → ℝ} {g:ℝ → ℝ}
