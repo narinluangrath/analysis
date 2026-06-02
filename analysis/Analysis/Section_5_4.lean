@@ -104,13 +104,34 @@ theorem Real.not_pos_neg (x:Real) : ¬(x.IsPos ∧ x.IsNeg) := by sorry
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
 @[simp]
-theorem Real.neg_iff_pos_of_neg (x:Real) : x.IsNeg ↔ (-x).IsPos := by sorry
+theorem Real.neg_iff_pos_of_neg (x:Real) : x.IsNeg ↔ (-x).IsPos := by
+  constructor
+  · rintro ⟨a, ⟨c, hc, ha⟩, hcau, rfl⟩
+    refine ⟨-a, ⟨c, hc, fun n => ?_⟩, Sequence.IsCauchy.neg a hcau, ?_⟩
+    · simp only [Pi.neg_apply]; linarith [ha n]
+    · rw [Real.neg_LIM a hcau]
+  · rintro ⟨a, ⟨c, hc, ha⟩, hcau, hx⟩
+    refine ⟨-a, ⟨c, hc, fun n => ?_⟩, Sequence.IsCauchy.neg a hcau, ?_⟩
+    · simp only [Pi.neg_apply]; linarith [ha n]
+    · have hxe : x = -LIM a := by rw [← hx]; ring
+      rw [hxe, Real.neg_LIM a hcau]
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1-/
-theorem Real.pos_add {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x+y).IsPos := by sorry
+theorem Real.pos_add {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x+y).IsPos := by
+  obtain ⟨a, ⟨ca, hca, ha⟩, hacau, rfl⟩ := hx
+  obtain ⟨b, ⟨cb, hcb, hb⟩, hbcau, rfl⟩ := hy
+  refine ⟨a+b, ⟨ca+cb, by linarith, fun n => ?_⟩, Sequence.IsCauchy.add hacau hbcau, ?_⟩
+  · simp only [Pi.add_apply]; linarith [ha n, hb n]
+  · rw [Real.LIM_add hacau hbcau]
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
-theorem Real.pos_mul {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x*y).IsPos := by sorry
+theorem Real.pos_mul {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x*y).IsPos := by
+  obtain ⟨a, ⟨ca, hca, ha⟩, hacau, rfl⟩ := hx
+  obtain ⟨b, ⟨cb, hcb, hb⟩, hbcau, rfl⟩ := hy
+  refine ⟨a*b, ⟨ca*cb, by positivity, fun n => ?_⟩, Sequence.IsCauchy.mul hacau hbcau, ?_⟩
+  · simp only [Pi.mul_apply]
+    exact mul_le_mul (ha n) (hb n) hcb.le (le_trans hca.le (ha n))
+  · rw [Real.LIM_mul hacau hbcau]
 
 theorem Real.pos_of_coe (q:ℚ) : (q:Real).IsPos ↔ q > 0 := by sorry
 
