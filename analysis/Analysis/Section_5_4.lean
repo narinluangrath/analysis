@@ -593,11 +593,31 @@ theorem Real.dist_le_eps_iff (x y:Real) : (∀ ε > 0, |x-y| ≤ ε) ↔ x = y :
 
 /-- Exercise 5.4.8 -/
 theorem Real.LIM_of_le {x:Real} {a:ℕ → ℚ} (hcauchy: (a:Sequence).IsCauchy) (h: ∀ n, a n ≤ x) :
-    LIM a ≤ x := by sorry
+    LIM a ≤ x := by
+  by_contra hc
+  push_neg at hc
+  obtain ⟨q, hq1, hq2⟩ := rat_between hc
+  have haq : ∀ n, a n ≤ q := by
+    intro n
+    have : (a n:Real) < (q:Real) := lt_of_le_of_lt (h n) hq1
+    exact_mod_cast this.le
+  have hle := LIM_mono hcauchy (Sequence.IsCauchy.const q) haq
+  rw [← ratCast_def] at hle
+  linarith
 
 /-- Exercise 5.4.8 -/
 theorem Real.LIM_of_ge {x:Real} {a:ℕ → ℚ} (hcauchy: (a:Sequence).IsCauchy) (h: ∀ n, a n ≥ x) :
-    LIM a ≥ x := by sorry
+    LIM a ≥ x := by
+  by_contra hc
+  push_neg at hc
+  obtain ⟨q, hq1, hq2⟩ := rat_between hc
+  have hqa : ∀ n, q ≤ a n := by
+    intro n
+    have : (q:Real) < (a n:Real) := lt_of_lt_of_le hq2 (h n)
+    exact_mod_cast this.le
+  have hge := LIM_mono (Sequence.IsCauchy.const q) hcauchy hqa
+  rw [← ratCast_def] at hge
+  linarith
 
 theorem Real.max_eq (x y:Real) : max x y = if x ≥ y then x else y := max_def' x y
 
