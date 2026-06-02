@@ -139,7 +139,22 @@ abbrev HasRemovableDiscontinuity (X: Set ℝ) (f: ℝ → ℝ) (x₀:ℝ) : Prop
   RightLimitExists X f x₀ ∧ LeftLimitExists X f x₀ ∧ right_limit X f x₀ = left_limit X f x₀
   ∧ right_limit X f x₀ ≠ f x₀
 
-example : HasRemovableDiscontinuity .univ f_9_3_17 0 := by sorry
+example : HasRemovableDiscontinuity .univ f_9_3_17 0 := by
+  have hAdhR : AdherentPt 0 (Set.univ ∩ Set.Ioi (0:ℝ)) := by
+    rw [Set.univ_inter, ← closure_def', closure_Ioi]; exact Set.self_mem_Ici
+  have hAdhL : AdherentPt 0 (Set.univ ∩ Set.Iio (0:ℝ)) := by
+    rw [Set.univ_inter, ← closure_def', closure_Iio]; exact Set.self_mem_Iic
+  have htendR : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Ioi 0)).Tendsto f_9_3_17 (nhds 0) := by
+    rw [Set.univ_inter]; apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    simp only [f_9_3_17, if_neg (Set.mem_Ioi.mp hx).ne']
+  have htendL : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Iio 0)).Tendsto f_9_3_17 (nhds 0) := by
+    rw [Set.univ_inter]; apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    simp only [f_9_3_17, if_neg (Set.mem_Iio.mp hx).ne]
+  refine ⟨⟨0, htendR⟩, ⟨0, htendL⟩, ?_, ?_⟩
+  · rw [(right_limit.eq hAdhR htendR).2, (left_limit.eq hAdhL htendL).2]
+  · rw [(right_limit.eq hAdhR htendR).2]; simp [f_9_3_17]
 
 example : ¬ HasRemovableDiscontinuity .univ (fun x ↦ 1/x) 0 := by
   rintro ⟨⟨L, hL⟩, _⟩
