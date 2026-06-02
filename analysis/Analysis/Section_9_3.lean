@@ -86,7 +86,8 @@ theorem Convergesto.iff (X:Set ℝ) (f: ℝ → ℝ) (L:ℝ) (x₀:ℝ) :
 
 /-- Example 9.3.8 -/
 example: Convergesto (.Icc 1 3) (fun x ↦ x^2) 4 2 := by
-  sorry
+  rw [Convergesto.iff, show (4:ℝ) = 2^2 by norm_num]
+  exact (continuous_pow 2).continuousWithinAt
 
 /-- Proposition 9.3.9 / Exercise 9.3.1 -/
 theorem Convergesto.iff_conv {E:Set ℝ} (f: ℝ → ℝ) (L:ℝ) {x₀:ℝ} (h: AdherentPt x₀ E) :
@@ -159,7 +160,7 @@ theorem Convergesto.const {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) (c:ℝ)
 
 theorem Convergesto.id {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   : Convergesto E (fun x ↦ x) x₀ x₀ := by
-  rw [Convergesto.iff]; exact Filter.Tendsto.mono_left (continuous_id.tendsto _) inf_le_left
+  rw [Convergesto.iff]; exact Filter.Tendsto.mono_left (continuous_id.tendsto x₀) inf_le_left
 
 theorem Convergesto.sq {E:Set ℝ} {x₀:ℝ} (h: AdherentPt x₀ E)
   : Convergesto E (fun x ↦ x^2) x₀ (x₀^2) := by
