@@ -172,7 +172,30 @@ lemma Sequence.equiv_example :
 
 /-- Exercise 5.2.1 -/
 theorem Sequence.isCauchy_of_equiv {a b: ℕ → ℚ} (hab: Equiv a b) :
-    (a:Sequence).IsCauchy ↔ (b:Sequence).IsCauchy := by sorry
+    (a:Sequence).IsCauchy ↔ (b:Sequence).IsCauchy := by
+  have key : ∀ a b : ℕ → ℚ, Equiv a b → (a:Sequence).IsCauchy → (b:Sequence).IsCauchy := by
+    intro a b hab hca
+    rw [Sequence.IsCauchy.coe] at hca ⊢
+    intro ε hε
+    obtain ⟨N1, hN1⟩ := (equiv_iff a b).mp hab (ε/3) (by linarith)
+    obtain ⟨N2, hN2⟩ := hca (ε/3) (by linarith)
+    refine ⟨max N1 N2, fun j hj k hk => ?_⟩
+    have e1 := hN1 j (le_trans (le_max_left _ _) hj)
+    have e2 := hN1 k (le_trans (le_max_left _ _) hk)
+    have e3 := hN2 j (le_trans (le_max_right _ _) hj) k (le_trans (le_max_right _ _) hk)
+    rw [Section_4_3.dist_eq] at e3 ⊢
+    have t1 : |b j - b k| ≤ |b j - a j| + |a j - a k| + |a k - b k| := by
+      calc |b j - b k| ≤ |b j - a k| + |a k - b k| := abs_sub_le _ _ _
+        _ ≤ |b j - a j| + |a j - a k| + |a k - b k| := by
+            have := abs_sub_le (b j) (a j) (a k); linarith
+    rw [abs_sub_comm (b j) (a j)] at t1
+    linarith [e1, e2, e3, t1]
+  have hba : Equiv b a := by
+    have h := (equiv_iff a b).mp hab
+    rw [equiv_iff]
+    intro ε hε; obtain ⟨N, hN⟩ := h ε hε
+    exact ⟨N, fun n hn => by rw [abs_sub_comm]; exact hN n hn⟩
+  exact ⟨key a b hab, key b a hba⟩
 
 /-- Exercise 5.2.2 -/
 theorem Sequence.isBounded_of_eventuallyClose {ε:ℚ} {a b: ℕ → ℚ} (hab: ε.EventuallyClose a b) :
