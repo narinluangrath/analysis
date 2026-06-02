@@ -201,15 +201,24 @@ instance Real.instLE : LE Real where
 theorem Real.lt_iff (x y:Real) : x < y ↔ (x-y).IsNeg := by rfl
 theorem Real.le_iff (x y:Real) : x ≤ y ↔ (x < y) ∨ (x = y) := by rfl
 
-theorem Real.gt_iff (x y:Real) : x > y ↔ (x-y).IsPos := by sorry
-theorem Real.ge_iff (x y:Real) : x ≥ y ↔ (x > y) ∨ (x = y) := by sorry
+theorem Real.gt_iff (x y:Real) : x > y ↔ (x-y).IsPos := by
+  rw [gt_iff_lt, Real.lt_iff, Real.neg_iff_pos_of_neg, show -(y-x) = x-y from by ring]
+theorem Real.ge_iff (x y:Real) : x ≥ y ↔ (x > y) ∨ (x = y) := by
+  rw [ge_iff_le, Real.le_iff, gt_iff_lt]
+  constructor <;> rintro (h | h)
+  · exact Or.inl h
+  · exact Or.inr h.symm
+  · exact Or.inl h
+  · exact Or.inr h.symm
 
-theorem Real.lt_of_coe (q q':ℚ): q < q' ↔ (q:Real) < (q':Real) := by sorry
+theorem Real.lt_of_coe (q q':ℚ): q < q' ↔ (q:Real) < (q':Real) := by
+  rw [Real.lt_iff, Real.ratCast_sub, Real.neg_of_coe]
+  constructor <;> intro h <;> linarith
 
 theorem Real.gt_of_coe (q q':ℚ): q > q' ↔ (q:Real) > (q':Real) := Real.lt_of_coe _ _
 
-theorem Real.isPos_iff (x:Real) : x.IsPos ↔ x > 0 := by sorry
-theorem Real.isNeg_iff (x:Real) : x.IsNeg ↔ x < 0 := by sorry
+theorem Real.isPos_iff (x:Real) : x.IsPos ↔ x > 0 := by rw [Real.gt_iff, sub_zero]
+theorem Real.isNeg_iff (x:Real) : x.IsNeg ↔ x < 0 := by rw [Real.lt_iff, sub_zero]
 
 /-- Proposition 5.4.7(a) (order trichotomy) / Exercise 5.4.2 -/
 theorem Real.trichotomous' (x y:Real) : x > y ∨ x < y ∨ x = y := by sorry
