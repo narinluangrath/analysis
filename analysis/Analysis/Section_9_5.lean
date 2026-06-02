@@ -56,7 +56,7 @@ theorem left_limit.eq' {X: Set ℝ} {f: ℝ → ℝ} {x₀:ℝ} (h: LeftLimitExi
 /-- Example 9.5.2.  The second part of this example is no longer operative as we assign "junk" values to our functions instead of leaving them undefined. -/
 example : right_limit .univ Real.sign 0 = 1 := by
   have hAdh : AdherentPt 0 (Set.univ ∩ Set.Ioi (0:ℝ)) := by
-    rw [Set.univ_inter, ← closure_def', closure_Ioi]; exact Set.left_mem_Ici
+    rw [Set.univ_inter, ← closure_def', closure_Ioi]; exact Set.self_mem_Ici
   have htend : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Ioi 0)).Tendsto Real.sign (nhds 1) := by
     rw [Set.univ_inter]
     apply tendsto_nhds_of_eventually_eq
@@ -66,7 +66,7 @@ example : right_limit .univ Real.sign 0 = 1 := by
 
 example : left_limit .univ Real.sign 0 = -1 := by
   have hAdh : AdherentPt 0 (Set.univ ∩ Set.Iio (0:ℝ)) := by
-    rw [Set.univ_inter, ← closure_def', closure_Iio]; exact Set.right_mem_Iic
+    rw [Set.univ_inter, ← closure_def', closure_Iio]; exact Set.self_mem_Iic
   have htend : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Iio 0)).Tendsto Real.sign (nhds (-1)) := by
     rw [Set.univ_inter]
     apply tendsto_nhds_of_eventually_eq
@@ -121,7 +121,19 @@ theorem ContinuousAt.iff_eq_left_right_limit {X: Set ℝ} {f: ℝ → ℝ} {x₀
 abbrev HasJumpDiscontinuity (X: Set ℝ) (f: ℝ → ℝ) (x₀:ℝ) : Prop :=
   RightLimitExists X f x₀ ∧ LeftLimitExists X f x₀ ∧ right_limit X f x₀ ≠ left_limit X f x₀
 
-example : HasJumpDiscontinuity .univ Real.sign 0 := by sorry
+example : HasJumpDiscontinuity .univ Real.sign 0 := by
+  have hAdhR : AdherentPt 0 (Set.univ ∩ Set.Ioi (0:ℝ)) := by
+    rw [Set.univ_inter, ← closure_def', closure_Ioi]; exact Set.self_mem_Ici
+  have hAdhL : AdherentPt 0 (Set.univ ∩ Set.Iio (0:ℝ)) := by
+    rw [Set.univ_inter, ← closure_def', closure_Iio]; exact Set.self_mem_Iic
+  have htendR : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Ioi 0)).Tendsto Real.sign (nhds 1) := by
+    rw [Set.univ_inter]; apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx; exact Real.sign_of_pos hx
+  have htendL : (nhdsWithin (0:ℝ) (Set.univ ∩ Set.Iio 0)).Tendsto Real.sign (nhds (-1)) := by
+    rw [Set.univ_inter]; apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx; exact Real.sign_of_neg hx
+  refine ⟨⟨1, htendR⟩, ⟨-1, htendL⟩, ?_⟩
+  rw [(right_limit.eq hAdhR htendR).2, (left_limit.eq hAdhL htendL).2]; norm_num
 
 abbrev HasRemovableDiscontinuity (X: Set ℝ) (f: ℝ → ℝ) (x₀:ℝ) : Prop :=
   RightLimitExists X f x₀ ∧ LeftLimitExists X f x₀ ∧ right_limit X f x₀ = left_limit X f x₀
@@ -129,9 +141,19 @@ abbrev HasRemovableDiscontinuity (X: Set ℝ) (f: ℝ → ℝ) (x₀:ℝ) : Prop
 
 example : HasRemovableDiscontinuity .univ f_9_3_17 0 := by sorry
 
-example : ¬ HasRemovableDiscontinuity .univ (fun x ↦ 1/x) 0 := by sorry
+example : ¬ HasRemovableDiscontinuity .univ (fun x ↦ 1/x) 0 := by
+  rintro ⟨⟨L, hL⟩, _⟩
+  rw [Set.univ_inter] at hL
+  have hatTop : Filter.Tendsto (fun x:ℝ ↦ 1/x) (nhdsWithin 0 (Set.Ioi 0)) Filter.atTop := by
+    simp_rw [one_div]; exact tendsto_inv_nhdsGT_zero
+  exact not_tendsto_nhds_of_tendsto_atTop hatTop L hL
 
-example : ¬ HasJumpDiscontinuity .univ (fun x ↦ 1/x) 0 := by sorry
+example : ¬ HasJumpDiscontinuity .univ (fun x ↦ 1/x) 0 := by
+  rintro ⟨⟨L, hL⟩, _⟩
+  rw [Set.univ_inter] at hL
+  have hatTop : Filter.Tendsto (fun x:ℝ ↦ 1/x) (nhdsWithin 0 (Set.Ioi 0)) Filter.atTop := by
+    simp_rw [one_div]; exact tendsto_inv_nhdsGT_zero
+  exact not_tendsto_nhds_of_tendsto_atTop hatTop L hL
 
 /- Exercise 9.5.1: Write down a definition of what it would mean for a limit of a function to be `+∞` or `-∞`, apply to `fun x ↦ 1/x`, and state and prove a version of Proposition 9.3.9. -/
 
