@@ -102,11 +102,19 @@ theorem CountablyInfinite.iff_image_inj {A:Type} (X: Set A) : CountablyInfinite 
   intro n; use ⟨ f n, by aesop ⟩; grind
 
 /-- Examples 8.1.3 -/
-example : CountablyInfinite ℕ := by sorry
+example : CountablyInfinite ℕ := ⟨id, Function.bijective_id⟩
 
-example : CountablyInfinite (.univ \ {0}: Set ℕ) := by sorry
+example : CountablyInfinite (.univ \ {0}: Set ℕ) := by
+  rw [CountablyInfinite.iff']
+  refine ⟨inferInstance, ?_⟩
+  rw [Set.infinite_coe_iff, show (Set.univ \ {0} : Set ℕ) = {(0:ℕ)}ᶜ from (Set.compl_eq_univ_diff _).symm]
+  exact Set.Finite.infinite_compl (Set.finite_singleton 0)
 
-example : CountablyInfinite ((fun n:ℕ ↦ 2*n) '' .univ) := by sorry
+example : CountablyInfinite ((fun n:ℕ ↦ 2*n) '' .univ) := by
+  rw [CountablyInfinite.iff']
+  refine ⟨inferInstance, ?_⟩
+  rw [Set.infinite_coe_iff, Set.image_univ]
+  exact Set.infinite_range_of_injective (fun a b h => by omega)
 
 
 /-- Proposition 8.1.4 (Well ordering principle / Exercise 8.1.2 -/
