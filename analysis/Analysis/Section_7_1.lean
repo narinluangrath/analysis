@@ -322,7 +322,21 @@ theorem binomial_theorem (x y:ℝ) (n:ℕ) :
     (x + y)^n
     = ∑ j ∈ Icc (0:ℤ) n,
     n.factorial / (j.toNat.factorial * (n-j).toNat.factorial) * x^j * y^(n - j) := by
-  sorry
+  rw [add_pow]
+  apply Finset.sum_bij' (fun k (_ : k ∈ Finset.range (n+1)) => (k:ℤ))
+    (fun j (_ : j ∈ Finset.Icc (0:ℤ) n) => j.toNat)
+  · intro k hk; simp only [Finset.mem_range] at hk; simp only [Finset.mem_Icc]; omega
+  · intro j hj; simp only [Finset.mem_Icc] at hj; simp only [Finset.mem_range]; omega
+  · intro k hk; simp
+  · intro j hj; simp only [Finset.mem_Icc] at hj; omega
+  · intro k hk
+    simp only [Finset.mem_range] at hk
+    have hkn : k ≤ n := by omega
+    rw [Nat.cast_choose ℝ hkn, Int.toNat_natCast,
+      show ((n:ℤ) - (k:ℤ)).toNat = n - k from by omega, zpow_natCast,
+      show ((n:ℤ) - (k:ℤ)) = ((n - k:ℕ):ℤ) from by omega, zpow_natCast]
+    push_cast
+    ring
 
 /-- Exercise 7.1.5 -/
 theorem lim_of_finite_series {X:Type*} [Fintype X] (a: X → ℕ → ℝ) (L : X → ℝ)
