@@ -483,7 +483,20 @@ example : BoundedAwayZero (fun n ↦ 10^(n+1)) := by
   gcongr <;> grind
 
 /-- Examples 5.3.13 -/
-example : ¬ ((fun (n:ℕ) ↦ (10:ℚ)^(n+1)):Sequence).IsBounded := by sorry
+example : ¬ ((fun (n:ℕ) ↦ (10:ℚ)^(n+1)):Sequence).IsBounded := by
+  rw [Sequence.isBounded_def]
+  rintro ⟨M, hM, hB⟩
+  obtain ⟨m, hm⟩ := exists_nat_gt M
+  have hb := hB (m:ℤ)
+  rw [Sequence.eval_coe_at_int, if_pos (by positivity), Int.toNat_natCast,
+    abs_of_pos (by positivity)] at hb
+  have hpow : (m:ℚ) + 1 ≤ (10:ℚ)^(m+1) := by
+    have key := one_add_mul_le_pow (show (-2:ℚ) ≤ 9 by norm_num) (m+1)
+    norm_num at key
+    have hmnn : (0:ℚ) ≤ (m:ℚ) := by positivity
+    push_cast at key
+    nlinarith [key, hmnn]
+  linarith
 
 /-- Lemma 5.3.14 -/
 theorem Real.boundedAwayZero_of_nonzero {x:Real} (hx: x ≠ 0) :
