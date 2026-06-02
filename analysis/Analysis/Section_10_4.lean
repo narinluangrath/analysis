@@ -86,7 +86,15 @@ theorem inverse_function_theorem {X Y: Set ℝ} {f: ℝ → ℝ} {g:ℝ → ℝ}
     have hy' : ∀ n, y n ∈ Y := by aesop
     have hy₀: y₀ ∈ Y := by aesop
     have hx : ∀ n, x n ∈ X \ {x₀}:= by
-      sorry
+      intro n
+      refine ⟨hgYX _ (hy' n), ?_⟩
+      rw [Set.mem_singleton_iff]
+      intro he
+      have hyn : y n = y₀ := by
+        have hb := hfg (y n) (hy' n)
+        rw [show g (y n) = x₀ from he, hfx₀] at hb
+        exact hb.symm
+      exact (hy n).2 (Set.mem_singleton_iff.mpr hyn)
     replace hconv := hconv.comp_of_continuous hy₀ hg hy'
     have had' : AdherentPt x₀ (X \ {x₀}) := by rwa [AdherentPt_def]
     have hgy₀ : g y₀ = x₀ := by aesop
