@@ -146,9 +146,33 @@ theorem Sequence.bounded_iff (a:Sequence) : a.IsBounded ↔ a.BddAbove ∧ a.Bdd
       exact ⟨by linarith [neg_abs_le M2, le_max_right (|M1|) (|M2|), hM2 n hn],
         by linarith [le_abs_self M1, le_max_left (|M1|) (|M2|), hM1 n hn]⟩
 
-theorem Sequence.sup_of_bounded {a:Sequence} (h: a.IsBounded) : a.sup.IsFinite := by sorry
+theorem Sequence.sup_of_bounded {a:Sequence} (h: a.IsBounded) : a.sup.IsFinite := by
+  rw [bounded_iff] at h
+  obtain ⟨⟨M1, hM1⟩, _⟩ := h
+  by_contra hcon
+  replace hcon := (EReal.infinite_iff_not_finite _).mpr hcon
+  rcases hcon with htop | hbot
+  · have hle : a.sup ≤ (M1:EReal) := by
+      apply sSup_le; rintro x ⟨n, hn, rfl⟩; exact_mod_cast hM1 n hn
+    rw [htop] at hle
+    exact absurd hle (not_le.mpr (EReal.coe_lt_top M1))
+  · have hge : (a a.m : EReal) ≤ a.sup := le_sSup ⟨a.m, le_refl _, rfl⟩
+    rw [hbot] at hge
+    exact absurd hge (not_le.mpr (EReal.bot_lt_coe _))
 
-theorem Sequence.inf_of_bounded {a:Sequence} (h: a.IsBounded) : a.inf.IsFinite := by sorry
+theorem Sequence.inf_of_bounded {a:Sequence} (h: a.IsBounded) : a.inf.IsFinite := by
+  rw [bounded_iff] at h
+  obtain ⟨_, ⟨M2, hM2⟩⟩ := h
+  by_contra hcon
+  replace hcon := (EReal.infinite_iff_not_finite _).mpr hcon
+  rcases hcon with htop | hbot
+  · have hle : a.inf ≤ (a a.m : EReal) := sInf_le ⟨a.m, le_refl _, rfl⟩
+    rw [htop] at hle
+    exact absurd hle (not_le.mpr (EReal.coe_lt_top _))
+  · have hge : (M2:EReal) ≤ a.inf := by
+      apply le_sInf; rintro x ⟨n, hn, rfl⟩; exact_mod_cast hM2 n hn
+    rw [hbot] at hge
+    exact absurd hge (not_le.mpr (EReal.bot_lt_coe M2))
 
 /-- Proposition 6.3.6 (Least upper bound property) / Exercise 6.3.2 -/
 theorem Sequence.le_sup {a:Sequence} {n:ℤ} (hn: n ≥ a.m) : a n ≤ a.sup :=
