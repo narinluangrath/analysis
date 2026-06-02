@@ -365,18 +365,71 @@ noncomputable instance Real.instAddCommGroup : AddCommGroup Real where
 
 /-- Proposition 5.3.11 (laws of algebra) -/
 noncomputable instance Real.instCommMonoid : CommMonoid Real where
-  mul_comm := by sorry
-  mul_assoc := by sorry
-  one_mul := by sorry
-  mul_one := by sorry
+  mul_comm := by
+    intro x y
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+    rw [Real.LIM_mul ha hb, Real.LIM_mul hb ha]
+    congr 1; ext n; simp [Pi.mul_apply]; ring
+  mul_assoc := by
+    intro x y z
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+    obtain ⟨c, hc, rfl⟩ := Real.eq_lim z
+    rw [Real.LIM_mul ha hb, Real.LIM_mul (Sequence.IsCauchy.mul ha hb) hc,
+      Real.LIM_mul hb hc, Real.LIM_mul ha (Sequence.IsCauchy.mul hb hc)]
+    congr 1; ext n; simp [Pi.mul_apply]; ring
+  one_mul := by
+    intro x
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    show ((1:ℚ):Real) * LIM a = LIM a
+    rw [ratCast_def, Real.LIM_mul (Sequence.IsCauchy.const 1) ha]
+    congr 1; ext n; simp [Pi.mul_apply]
+  mul_one := by
+    intro x
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    show LIM a * ((1:ℚ):Real) = LIM a
+    rw [ratCast_def, Real.LIM_mul ha (Sequence.IsCauchy.const 1)]
+    congr 1; ext n; simp [Pi.mul_apply]
 
 /-- Proposition 5.3.11 (laws of algebra) -/
 noncomputable instance Real.instCommRing : CommRing Real where
-  left_distrib := by sorry
-  right_distrib := by sorry
-  zero_mul := by sorry
-  mul_zero := by sorry
-  mul_assoc := by sorry
+  left_distrib := by
+    intro x y z
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+    obtain ⟨c, hc, rfl⟩ := Real.eq_lim z
+    rw [Real.LIM_add hb hc, Real.LIM_mul ha (Sequence.IsCauchy.add hb hc),
+      Real.LIM_mul ha hb, Real.LIM_mul ha hc,
+      Real.LIM_add (Sequence.IsCauchy.mul ha hb) (Sequence.IsCauchy.mul ha hc)]
+    congr 1; ext n; simp [Pi.mul_apply, Pi.add_apply]; ring
+  right_distrib := by
+    intro x y z
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+    obtain ⟨c, hc, rfl⟩ := Real.eq_lim z
+    rw [Real.LIM_add ha hb, Real.LIM_mul (Sequence.IsCauchy.add ha hb) hc,
+      Real.LIM_mul ha hc, Real.LIM_mul hb hc,
+      Real.LIM_add (Sequence.IsCauchy.mul ha hc) (Sequence.IsCauchy.mul hb hc)]
+    congr 1; ext n; simp [Pi.mul_apply, Pi.add_apply]; ring
+  zero_mul := by
+    intro x
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    rw [← Real.LIM.zero, Real.LIM_mul (Sequence.IsCauchy.const 0) ha]
+    congr 1; ext n; simp [Pi.mul_apply]
+  mul_zero := by
+    intro x
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    rw [← Real.LIM.zero, Real.LIM_mul ha (Sequence.IsCauchy.const 0)]
+    congr 1; ext n; simp [Pi.mul_apply]
+  mul_assoc := by
+    intro x y z
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+    obtain ⟨c, hc, rfl⟩ := Real.eq_lim z
+    rw [Real.LIM_mul ha hb, Real.LIM_mul (Sequence.IsCauchy.mul ha hb) hc,
+      Real.LIM_mul hb hc, Real.LIM_mul ha (Sequence.IsCauchy.mul hb hc)]
+    congr 1; ext n; simp [Pi.mul_apply]; ring
   natCast_succ := by sorry
   intCast_negSucc := by sorry
 
