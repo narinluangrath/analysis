@@ -120,15 +120,28 @@ example : CountablyInfinite ((fun n:ℕ ↦ 2*n) '' .univ) := by
 /-- Proposition 8.1.4 (Well ordering principle / Exercise 8.1.2 -/
 theorem Nat.exists_unique_min {X : Set ℕ} (hX : X.Nonempty) :
   ∃! m ∈ X, ∀ n ∈ X, m ≤ n := by
-  sorry
+  refine ⟨sInf X, ⟨Nat.sInf_mem hX, fun n hn => Nat.sInf_le hn⟩, ?_⟩
+  rintro y ⟨hyX, hymin⟩
+  exact le_antisymm (hymin _ (Nat.sInf_mem hX)) (Nat.sInf_le hyX)
 
 def Int.exists_unique_min : Decidable (∀ (X : Set ℤ) (hX : X.Nonempty), ∃! m ∈ X, ∀ n ∈ X, m ≤ n) := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro h
+  obtain ⟨m, ⟨_, hmin⟩, _⟩ := h Set.univ ⟨0, trivial⟩
+  have := hmin (m - 1) trivial
+  omega
 
 def NNRat.exists_unique_min : Decidable (∀ (X : Set NNRat) (hX : X.Nonempty), ∃! m ∈ X, ∀ n ∈ X, m ≤ n) := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro h
+  obtain ⟨m, ⟨hm, hmin⟩, _⟩ := h {q : NNRat | 0 < q} ⟨1, by norm_num⟩
+  simp only [Set.mem_setOf_eq] at hm
+  have hm2 : m/2 ∈ {q : NNRat | 0 < q} := by simp only [Set.mem_setOf_eq]; positivity
+  have := hmin (m/2) hm2
+  have := div_two_lt_of_pos hm
+  exact absurd ‹m ≤ m/2› (by simp only [not_le]; assumption)
 
 
 open Classical in
