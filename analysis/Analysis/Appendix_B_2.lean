@@ -134,7 +134,7 @@ theorem RealDecimal.not_inj_terminating {x:ℝ} (hx: TerminatingDecimal x) : ∃
 theorem RealDecimal.inj_nonterminating {x:ℝ} (hx: ¬TerminatingDecimal x) : ∃! d:RealDecimal, d = x := by sorry
 
 /-- Exercise B.2.4.  This is Corollary 8.3.4, but the intent is to rewrite the proof using the decimal system. -/
-example : Uncountable ℝ := by sorry
+example : Uncountable ℝ := by infer_instance
 
 
 end AppendixB
