@@ -95,10 +95,34 @@ theorem Chapter6.Sequence.isBounded_iff_isBounded_range (a:ℕ → ℝ):
   positivity
 
 theorem Chapter6.Sequence.sup_eq_sSup (a:ℕ → ℝ):
-    (a:Sequence).sup = sSup (Set.range (fun n ↦ (a n:EReal))) := by sorry
+    (a:Sequence).sup = sSup (Set.range (fun n ↦ (a n:EReal))) := by
+  unfold Sequence.sup
+  congr 1
+  ext x
+  simp only [Set.mem_setOf_eq, Set.mem_range, ge_iff_le, Sequence.eval_coe]
+  constructor
+  · rintro ⟨n, hn, rfl⟩
+    have hn0 : (0:ℤ) ≤ n := hn
+    refine ⟨n.toNat, ?_⟩
+    rw [if_pos hn0]
+  · rintro ⟨k, rfl⟩
+    refine ⟨(k:ℤ), by positivity, ?_⟩
+    rw [if_pos (by positivity), Int.toNat_natCast]
 
 theorem Chapter6.Sequence.inf_eq_sInf (a:ℕ → ℝ):
-    (a:Sequence).inf = sInf (Set.range (fun n ↦ (a n:EReal))) := by sorry
+    (a:Sequence).inf = sInf (Set.range (fun n ↦ (a n:EReal))) := by
+  unfold Sequence.inf
+  congr 1
+  ext x
+  simp only [Set.mem_setOf_eq, Set.mem_range, ge_iff_le, Sequence.eval_coe]
+  constructor
+  · rintro ⟨n, hn, rfl⟩
+    have hn0 : (0:ℤ) ≤ n := hn
+    refine ⟨n.toNat, ?_⟩
+    rw [if_pos hn0]
+  · rintro ⟨k, rfl⟩
+    refine ⟨(k:ℤ), by positivity, ?_⟩
+    rw [if_pos (by positivity), Int.toNat_natCast]
 
 theorem Chapter6.Sequence.bddAbove_iff (a:ℕ → ℝ):
     (a:Sequence).BddAbove ↔ _root_.BddAbove (Set.range a) := by
