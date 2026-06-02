@@ -346,7 +346,25 @@ theorem Sequence.IsCauchy.neg (a:ℕ → ℚ) (ha: (a:Sequence).IsCauchy) :
 
 /-- Proposition 5.3.11 (laws of algebra) -/
 noncomputable instance Real.addGroup_inst : AddGroup Real :=
-  AddGroup.ofLeftAxioms (by sorry) (by sorry) (by sorry)
+  AddGroup.ofLeftAxioms
+    (by
+      intro x y z
+      obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+      obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+      obtain ⟨c, hc, rfl⟩ := Real.eq_lim z
+      rw [Real.LIM_add ha hb, Real.LIM_add (Sequence.IsCauchy.add ha hb) hc,
+        Real.LIM_add hb hc, Real.LIM_add ha (Sequence.IsCauchy.add hb hc)]
+      congr 1; ext n; simp [Pi.add_apply]; ring)
+    (by
+      intro x
+      obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+      rw [← Real.LIM.zero, Real.LIM_add (Sequence.IsCauchy.const 0) ha]
+      congr 1; ext n; simp [Pi.add_apply])
+    (by
+      intro x
+      obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+      rw [Real.neg_LIM a ha, Real.LIM_add (Sequence.IsCauchy.neg a ha) ha, ← Real.LIM.zero]
+      congr 1; ext n; simp [Pi.add_apply, Pi.neg_apply])
 
 theorem Real.sub_eq_add_neg (x y:Real) : x - y = x + (-y) := rfl
 
@@ -627,10 +645,17 @@ theorem Real.inv_def {a:ℕ → ℚ} (h: BoundedAwayZero a) (hc: (a:Sequence).Is
 theorem Real.inv_zero : (0:Real)⁻¹ = 0 := by simp [Inv.inv]
 
 theorem Real.self_mul_inv {x:Real} (hx: x ≠ 0) : x * x⁻¹ = 1 := by
-  sorry
+  obtain ⟨a, hcau, hbaz, rfl⟩ := boundedAwayZero_of_nonzero hx
+  rw [Real.inv_def hbaz hcau,
+    Real.LIM_mul hcau (Real.inv_isCauchy_of_boundedAwayZero hbaz hcau),
+    show (1:Real) = ((1:ℚ):Real) from rfl, ratCast_def]
+  congr 1
+  ext n
+  simp only [Pi.mul_apply, Pi.inv_apply]
+  rw [mul_inv_cancel₀ (Real.nonzero_of_boundedAwayZero hbaz n)]
 
 theorem Real.inv_mul_self {x:Real} (hx: x ≠ 0) : x⁻¹ * x = 1 := by
-  sorry
+  rw [mul_comm]; exact Real.self_mul_inv hx
 
 lemma BoundedAwayZero.const {q : ℚ} (hq : q ≠ 0) : BoundedAwayZero fun _ ↦ q := by
   use |q|; simp [hq]
@@ -652,13 +677,23 @@ theorem Real.zero_ne_one' : (0:Real) ≠ 1 := by
 
 noncomputable instance Real.instField : Field Real where
   exists_pair_ne := ⟨0, 1, Real.zero_ne_one'⟩
-  mul_inv_cancel := by sorry
+  mul_inv_cancel := fun a ha => Real.self_mul_inv ha
   inv_zero := Real.inv_zero
-  ratCast_def := by sorry
+  ratCast_def := fun q => by
+    show ((q:ℚ):Real) = ((q.num:ℤ):Real) / ((q.den:ℕ):Real)
+    rw [div_eq_mul_inv,
+      show ((q.num:ℤ):Real) = ((q.num:ℚ):Real) from rfl,
+      show ((q.den:ℕ):Real) = ((q.den:ℚ):Real) from rfl,
+      Real.inv_ratCast, Real.ratCast_mul]
+    congr 1
+    rw [← div_eq_mul_inv, Rat.num_div_den]
   qsmul := _
   nnqsmul := _
 
-theorem Real.mul_right_cancel₀ {x y z:Real} (hz: z ≠ 0) (h: x * z = y * z) : x = y := by sorry
+theorem Real.mul_right_cancel₀ {x y z:Real} (hz: z ≠ 0) (h: x * z = y * z) : x = y := by
+  have h2 := congrArg (· * z⁻¹) h
+  simp only [mul_assoc, Real.self_mul_inv hz, mul_one] at h2
+  exact h2
 
 theorem Real.mul_right_nocancel : ¬ ∀ (x y z:Real), (hz: z = 0) → (x * z = y * z) → x = y := by
   push_neg
