@@ -84,6 +84,8 @@ Working notes for solving `sorry`s in `analysis/Analysis/*.lean`.
 - **Custom `Function` (Chapter 3, SetTheory.Set)**: `Function.eq_iff f g : f = g ↔ ∀ x, f x = g x` (use `rw [eq_iff]; intro x`). `comp_eval` unfolds `(g ○ f) x = g (f x)`. `inverse_eval h y x : x = (f.inverse h) y ↔ f x = y`. Inverse facts: `inverse_comp_self h x : (f.inverse h)(f x)=x`, `self_comp_inverse h y : f ((f.inverse h) y)=y`. one_to_one via `rw [one_to_one_iff]` then push hyp through `f` with `by rw [hyp]` + `rwa [self_comp_inverse, self_comp_inverse]`.
 - Defeq `if h:P then ... else ...` with a known proof: `rw [dif_pos hex]` substitutes your `hex` for the chooser; then `congr 1` + `Nat.cast_injective hex.choose_spec` to pin the witness.
 
+- **NNReal/decimal series summability (Appendix_B_2)**: `Uncountable ℝ` is just `by infer_instance`. For `Summable (fun i => digit_i * (10:NNReal)^(-i-1:ℝ))`: `rw [← NNReal.summable_coe]` to drop into ℝ, then `Summable.of_nonneg_of_le (fun i => by positivity) (fun i => ?_) hgeo` comparing to geometric `hgeo : Summable (fun i => (9/10)*(1/10)^i) := (summable_geometric_of_lt_one (by norm_num) (by norm_num)).mul_left _`. Per-term: `push_cast [NNReal.coe_rpow]`; bound the `Fin 10` digit via `(d.fracPart i).lt : (↑·:ℕ) < 10` → `omega` → `exact_mod_cast` (NOT `push_cast; omega` — omega is ℕ/ℤ-only, won't touch the ℝ goal); convert the rpow `(10:ℝ)^(-(i:ℝ)-1) = (1/10)^(i+1)` by `rw [show -(i:ℝ)-1 = -((i+1:ℕ):ℝ) by push_cast;ring, Real.rpow_neg (by norm_num), Real.rpow_natCast, ← inv_pow, one_div]`, then `pow_succ` + `nlinarith [h9, hpos]`.
+
 ## Conventions
 - Proofs intentionally follow the textbook structure (comments say so); prefer faithful over golfed.
 - Chapter namespaces: `Chapter9`, `Chapter10`, etc. Custom `Nat` lives in Section 2.
