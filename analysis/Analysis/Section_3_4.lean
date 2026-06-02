@@ -41,7 +41,14 @@ theorem SetTheory.Set.mem_image {X Y:Set} (f:X → Y) (S: Set) (y:Object) :
 
 /-- Alternate definition of image using axiom of specification -/
 theorem SetTheory.Set.image_eq_specify {X Y:Set} (f:X → Y) (S: Set) :
-    image f S = Y.specify (fun y ↦ ∃ x:X, x.val ∈ S ∧ f x = y) := by sorry
+    image f S = Y.specify (fun y ↦ ∃ x:X, x.val ∈ S ∧ f x = y) := by
+  apply ext; intro y
+  rw [mem_image, specification_axiom'']
+  constructor
+  · rintro ⟨x, hxS, rfl⟩
+    exact ⟨(f x).property, x, hxS, rfl⟩
+  · rintro ⟨h, x, hxS, hfx⟩
+    exact ⟨x, hxS, by rw [hfx]⟩
 
 /--
   Connection with Mathlib's notion of image.  Note the need to utilize the `Subtype.val` coercion
