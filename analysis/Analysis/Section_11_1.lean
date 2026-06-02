@@ -64,15 +64,23 @@ theorem BoundedInterval.set_Ico (a b:ℝ) : (Ico a b : Set ℝ) = .Ico a b := by
 #check Set.ordConnected_def
 
 /-- Examples 11.1.3 -/
-example : (Set.Icc 1 2 : Set ℝ).OrdConnected := by sorry
+example : (Set.Icc 1 2 : Set ℝ).OrdConnected := Set.ordConnected_Icc
 
-example : (Set.Ioo 1 2 : Set ℝ).OrdConnected := by sorry
+example : (Set.Ioo 1 2 : Set ℝ).OrdConnected := Set.ordConnected_Ioo
 
-example : ¬(Set.Icc 1 2 ∪ Set.Icc 3 4 : Set ℝ).OrdConnected := by sorry
+example : ¬(Set.Icc 1 2 ∪ Set.Icc 3 4 : Set ℝ).OrdConnected := by
+  rw [Set.ordConnected_def]
+  push_neg
+  refine ⟨2, by norm_num [Set.mem_union, Set.mem_Icc], 3,
+    by norm_num [Set.mem_union, Set.mem_Icc], ?_⟩
+  intro hsub
+  have h25 : (2.5:ℝ) ∈ Set.Icc (2:ℝ) 3 := by norm_num [Set.mem_Icc]
+  have := hsub h25
+  norm_num [Set.mem_union, Set.mem_Icc] at this
 
-example : (∅:Set ℝ).OrdConnected := by sorry
+example : (∅:Set ℝ).OrdConnected := Set.ordConnected_empty
 
-example (x:ℝ) : ({x}: Set ℝ).OrdConnected := by sorry
+example (x:ℝ) : ({x}: Set ℝ).OrdConnected := Set.ordConnected_singleton
 
 /-- Lemma 11.1.4 / Exercise 11.1.1 -/
 theorem Bornology.IsBounded.of_boundedInterval (I: BoundedInterval) : Bornology.IsBounded (I:Set ℝ) := by
