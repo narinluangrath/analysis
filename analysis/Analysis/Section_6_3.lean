@@ -38,11 +38,49 @@ example : ((fun (n:ℕ) ↦ 1/((n:ℝ)+1)):Sequence).sup = 1 := by sorry
 /-- Example 6.3.4 / Exercise 6.3.1 -/
 example : ((fun (n:ℕ) ↦ 1/((n:ℝ)+1)):Sequence).inf = 0 := by sorry
 
-/-- Example 6.3.5 -/
-example : ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).sup = ⊤ := by sorry
+/-- Value set of the sequence `n ↦ n+1` as a subset of `EReal`. -/
+private theorem seq_succ_value_set :
+    {x : EReal | ∃ n ≥ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).m,
+      x = (((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence)) n} = {x | ∃ k:ℕ, x = (((k:ℝ)+1):EReal)} := by
+  ext x
+  constructor
+  · rintro ⟨n, hn, rfl⟩
+    refine ⟨n.toNat, ?_⟩
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun] at hn ⊢
+    rw [if_pos hn]
+    push_cast [Int.toNat_of_nonneg hn]
+    norm_num
+  · rintro ⟨k, rfl⟩
+    refine ⟨(k:ℤ), by simp [Sequence.ofNatFun], ?_⟩
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos (by positivity)]
+    norm_num
 
 /-- Example 6.3.5 -/
-example : ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).inf = 1 := by sorry
+example : ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).sup = ⊤ := by
+  show sSup _ = _
+  rw [seq_succ_value_set]
+  apply sSup_eq_top.mpr
+  intro b hb
+  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+  · obtain ⟨n, hn⟩ := exists_nat_gt y
+    refine ⟨n+1, ⟨n, rfl⟩, ?_⟩
+    push_cast
+    exact_mod_cast lt_trans (by exact_mod_cast hn) (by norm_num)
+  · exact absurd hb (lt_irrefl _)
+  · exact ⟨1, ⟨0, by norm_num⟩, bot_lt_iff_ne_bot.mpr (by decide)⟩
+
+/-- Example 6.3.5 -/
+example : ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).inf = 1 := by
+  show sInf _ = _
+  rw [seq_succ_value_set]
+  apply IsLeast.csInf_eq
+  constructor
+  · exact ⟨0, by norm_num⟩
+  · rintro x ⟨k, rfl⟩
+    have : (0:EReal) ≤ (k:EReal) := by positivity
+    calc (1:EReal) = 0 + 1 := by norm_num
+      _ ≤ (k:EReal) + 1 := by gcongr
 
 abbrev Sequence.BddAboveBy (a:Sequence) (M:ℝ) : Prop := ∀ n ≥ a.m, a n ≤ M
 
