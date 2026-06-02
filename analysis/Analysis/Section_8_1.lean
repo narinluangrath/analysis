@@ -36,14 +36,17 @@ theorem EqualCard.iff {X Y : Type} : EqualCard X Y ↔ Nonempty (X ≃ Y) := by
 theorem EqualCard.iff' {X Y : Type} : EqualCard X Y ↔ Cardinal.mk X = Cardinal.mk Y := by
   simp [Cardinal.eq, iff]
 
-theorem EqualCard.refl (X : Type) : EqualCard X X := sorry
+theorem EqualCard.refl (X : Type) : EqualCard X X := ⟨id, Function.bijective_id⟩
 
 theorem EqualCard.symm {X Y : Type} (hXY : EqualCard X Y) : EqualCard Y X := by
-  sorry
+  obtain ⟨f, hf⟩ := hXY
+  exact ⟨(Equiv.ofBijective f hf).symm, (Equiv.ofBijective f hf).symm.bijective⟩
 
 theorem EqualCard.trans {X Y Z : Type} (hXY : EqualCard X Y) (hYZ : EqualCard Y Z) :
   EqualCard X Z := by
-  sorry
+  obtain ⟨f, hf⟩ := hXY
+  obtain ⟨g, hg⟩ := hYZ
+  exact ⟨g ∘ f, hg.comp hf⟩
 
 instance EqualCard.instSetoid : Setoid Type := ⟨ EqualCard, ⟨ refl, symm, trans ⟩ ⟩
 
@@ -156,10 +159,16 @@ theorem Nat.min_eq {X : Set ℕ} (hX : X.Nonempty) {a:ℕ} (ha : a ∈ X ∧ ∀
 @[simp]
 theorem Nat.min_empty : min ∅ = 0 := by simp [Nat.min]
 
-example : Nat.min ((fun n ↦ 2*n) '' (.Ici 1)) = 2 := by sorry
+example : Nat.min ((fun n ↦ 2*n) '' (.Ici 1)) = 2 := by
+  have hmem : (2:ℕ) ∈ (fun n ↦ 2*n) '' (Set.Ici 1) := ⟨1, by simp, rfl⟩
+  refine Nat.min_eq ⟨2, hmem⟩ ⟨hmem, ?_⟩
+  rintro n ⟨k, hk, rfl⟩
+  simp only [Set.mem_Ici] at hk
+  show 2 ≤ 2 * k
+  omega
 
-theorem Nat.min_eq_sInf {X : Set ℕ} (hX : X.Nonempty) : min X = sInf X := by
-  sorry
+theorem Nat.min_eq_sInf {X : Set ℕ} (hX : X.Nonempty) : min X = sInf X :=
+  Nat.min_eq hX ⟨Nat.sInf_mem hX, fun n hn => Nat.sInf_le hn⟩
 
 open Classical in
 /-- Equivalence with Mathlib's `Nat.find` method -/
