@@ -133,7 +133,18 @@ abbrev Sequence.BddBelowBy (a:Sequence) (M:ℝ) : Prop := ∀ n ≥ a.m, a n ≥
 
 abbrev Sequence.BddBelow (a:Sequence) : Prop := ∃ M, a.BddBelowBy M
 
-theorem Sequence.bounded_iff (a:Sequence) : a.IsBounded ↔ a.BddAbove ∧ a.BddBelow := by sorry
+theorem Sequence.bounded_iff (a:Sequence) : a.IsBounded ↔ a.BddAbove ∧ a.BddBelow := by
+  constructor
+  · rintro ⟨M, _, hM⟩
+    exact ⟨⟨M, fun n _ => (abs_le.mp (hM n)).2⟩, ⟨-M, fun n _ => (abs_le.mp (hM n)).1⟩⟩
+  · rintro ⟨⟨M1, hM1⟩, ⟨M2, hM2⟩⟩
+    refine ⟨max (|M1|) (|M2|), le_trans (abs_nonneg _) (le_max_left _ _), fun n => ?_⟩
+    rcases lt_or_ge n a.m with hn | hn
+    · rw [a.vanish n hn, abs_zero]
+      exact le_trans (abs_nonneg _) (le_max_left _ _)
+    · rw [abs_le]
+      exact ⟨by linarith [neg_abs_le M2, le_max_right (|M1|) (|M2|), hM2 n hn],
+        by linarith [le_abs_self M1, le_max_left (|M1|) (|M2|), hM1 n hn]⟩
 
 theorem Sequence.sup_of_bounded {a:Sequence} (h: a.IsBounded) : a.sup.IsFinite := by sorry
 
