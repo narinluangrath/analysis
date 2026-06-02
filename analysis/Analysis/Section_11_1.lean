@@ -186,7 +186,22 @@ theorem BoundedInterval.length_of_empty {I: BoundedInterval} (hI: (I:Set ℝ) = 
   exact max_eq_right (by linarith)
 
 theorem BoundedInterval.length_of_subsingleton {I: BoundedInterval} : Subsingleton (I:Set ℝ) ↔ |I|ₗ = 0 := by
-  sorry
+  rw [Set.subsingleton_coe]
+  have hlen : |I|ₗ = 0 ↔ I.b ≤ I.a := by
+    simp only [BoundedInterval.length]
+    constructor
+    · intro h; by_contra hc; push_neg at hc; rw [max_eq_left (by linarith)] at h; linarith
+    · intro h; exact max_eq_right (by linarith)
+  rw [hlen]
+  constructor
+  · intro hsub
+    by_contra hc; push_neg at hc
+    have hnt : (Set.Ioo I.a I.b).Nontrivial :=
+      ⟨(2*I.a+I.b)/3, ⟨by linarith, by linarith⟩,
+       (I.a+2*I.b)/3, ⟨by linarith, by linarith⟩, by intro he; nlinarith⟩
+    exact Set.Nontrivial.not_subsingleton (Set.Nontrivial.mono hnt (Ioo_subset I)) hsub
+  · intro hba
+    exact Set.Subsingleton.anti (Set.subsingleton_Icc_iff.mpr hba) (subset_Icc I)
 
 theorem BoundedInterval.dist_le_length {I:BoundedInterval} {x y:ℝ} (hx: x ∈ I) (hy: y ∈ I) : |x - y| ≤ |I|ₗ := by
   apply subset_Icc I at hx; apply subset_Icc I at hy; simp_all [mem_iff, abs_le']; grind
