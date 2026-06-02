@@ -133,9 +133,25 @@ theorem Real.pos_mul {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x*y).IsPos := by
     exact mul_le_mul (ha n) (hb n) hcb.le (le_trans hca.le (ha n))
   · rw [Real.LIM_mul hacau hbcau]
 
-theorem Real.pos_of_coe (q:ℚ) : (q:Real).IsPos ↔ q > 0 := by sorry
+theorem Real.pos_of_coe (q:ℚ) : (q:Real).IsPos ↔ q > 0 := by
+  constructor
+  · rintro ⟨a, ⟨c, hc, ha⟩, hcau, heq⟩
+    rw [Real.ratCast_def, Real.LIM_eq_LIM (Sequence.IsCauchy.const q) hcau,
+      Sequence.equiv_iff] at heq
+    by_contra hq; push_neg at hq
+    obtain ⟨N, hN⟩ := heq (c/2) (by linarith)
+    have h1 := hN N (le_refl N)
+    have h2 := ha N
+    simp only at h1
+    rw [abs_le] at h1
+    linarith [h1.1, h1.2, h2, hq]
+  · intro hq
+    exact ⟨fun _ => q, ⟨q, hq, fun _ => le_refl q⟩, Sequence.IsCauchy.const q, by
+      rw [Real.ratCast_def]⟩
 
-theorem Real.neg_of_coe (q:ℚ) : (q:Real).IsNeg ↔ q < 0 := by sorry
+theorem Real.neg_of_coe (q:ℚ) : (q:Real).IsNeg ↔ q < 0 := by
+  rw [Real.neg_iff_pos_of_neg, Real.neg_ratCast, Real.pos_of_coe]
+  constructor <;> intro h <;> linarith
 
 open Classical in
 /-- Need to use classical logic here because isPos and isNeg are not decidable -/
