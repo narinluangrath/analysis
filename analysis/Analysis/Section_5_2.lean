@@ -199,6 +199,35 @@ theorem Sequence.isCauchy_of_equiv {a b: ℕ → ℚ} (hab: Equiv a b) :
 
 /-- Exercise 5.2.2 -/
 theorem Sequence.isBounded_of_eventuallyClose {ε:ℚ} {a b: ℕ → ℚ} (hab: ε.EventuallyClose a b) :
-    (a:Sequence).IsBounded ↔ (b:Sequence).IsBounded := by sorry
+    (a:Sequence).IsBounded ↔ (b:Sequence).IsBounded := by
+  have key : ∀ a b : ℕ → ℚ, ε.EventuallyClose (a:Sequence) (b:Sequence) →
+      (a:Sequence).IsBounded → (b:Sequence).IsBounded := by
+    intro a b hab hba
+    obtain ⟨M, hM, hBM⟩ := hba
+    obtain ⟨N, hN⟩ := (Rat.eventuallyClose_iff ε a b).mp hab
+    obtain ⟨M0, hM0, hB0⟩ := IsBounded.finite (fun i:Fin N => b i)
+    have hε0 : (0:ℚ) ≤ ε := le_trans (abs_nonneg _) (hN N (le_refl N))
+    refine ⟨max (M + ε) M0, le_max_of_le_left (by linarith), fun n => ?_⟩
+    rw [Sequence.eval_coe_at_int]
+    by_cases hn0 : n ≥ 0
+    · rw [if_pos hn0]
+      by_cases hnN : n.toNat ≥ N
+      · have ha := hBM n
+        rw [Sequence.eval_coe_at_int, if_pos hn0] at ha
+        have hc := hN n.toNat hnN
+        have htri : |b n.toNat| ≤ |a n.toNat| + ε := by
+          calc |b n.toNat| = |a n.toNat + (b n.toNat - a n.toNat)| := by congr 1; ring
+            _ ≤ |a n.toNat| + |b n.toNat - a n.toNat| := abs_add_le _ _
+            _ ≤ |a n.toNat| + ε := by rw [abs_sub_comm]; linarith
+        exact le_trans (by linarith) (le_max_left _ _)
+      · have hh := hB0 ⟨n.toNat, by omega⟩
+        exact le_trans (by simpa using hh) (le_max_right _ _)
+    · rw [if_neg hn0, abs_zero]
+      exact le_trans hM0 (le_max_right _ _)
+  have hba : ε.EventuallyClose (b:Sequence) (a:Sequence) := by
+    rw [Rat.eventuallyClose_iff] at hab ⊢
+    obtain ⟨N, hN⟩ := hab
+    exact ⟨N, fun n hn => by rw [abs_sub_comm]; exact hN n hn⟩
+  exact ⟨key a b hab, key b a hba⟩
 
 end Chapter5
