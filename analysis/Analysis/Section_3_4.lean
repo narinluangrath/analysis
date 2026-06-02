@@ -289,13 +289,37 @@ Interestingly, it is not needed for U to be a subset of Y.-/
   Exercise 3.4.3.
 -/
 theorem SetTheory.Set.image_of_inter {X Y:Set} (f:X → Y) (A B: Set) :
-    image f (A ∩ B) ⊆ (image f A) ∩ (image f B) := by sorry
+    image f (A ∩ B) ⊆ (image f A) ∩ (image f B) := by
+  intro y hy
+  rw [mem_image] at hy
+  obtain ⟨x, hx, rfl⟩ := hy
+  rw [mem_inter] at hx
+  exact (mem_inter _ _ _).mpr ⟨(mem_image _ _ _).mpr ⟨x, hx.1, rfl⟩,
+    (mem_image _ _ _).mpr ⟨x, hx.2, rfl⟩⟩
 
 theorem SetTheory.Set.image_of_diff {X Y:Set} (f:X → Y) (A B: Set) :
-    (image f A) \ (image f B) ⊆ image f (A \ B) := by sorry
+    (image f A) \ (image f B) ⊆ image f (A \ B) := by
+  intro y hy
+  rw [mem_sdiff] at hy
+  obtain ⟨hyA, hyB⟩ := hy
+  rw [mem_image] at hyA
+  obtain ⟨x, hxA, rfl⟩ := hyA
+  refine (mem_image _ _ _).mpr ⟨x, (mem_sdiff _ _ _).mpr ⟨hxA, ?_⟩, rfl⟩
+  intro hxB
+  exact hyB ((mem_image _ _ _).mpr ⟨x, hxB, rfl⟩)
 
 theorem SetTheory.Set.image_of_union {X Y:Set} (f:X → Y) (A B: Set) :
-    image f (A ∪ B) = (image f A) ∪ (image f B) := by sorry
+    image f (A ∪ B) = (image f A) ∪ (image f B) := by
+  apply ext; intro y
+  simp only [mem_union, mem_image]
+  constructor
+  · rintro ⟨x, h, rfl⟩
+    rcases h with h | h
+    · exact Or.inl ⟨x, h, rfl⟩
+    · exact Or.inr ⟨x, h, rfl⟩
+  · rintro (⟨x, h, rfl⟩ | ⟨x, h, rfl⟩)
+    · exact ⟨x, Or.inl h, rfl⟩
+    · exact ⟨x, Or.inr h, rfl⟩
 
 def SetTheory.Set.image_of_inter' : Decidable (∀ X Y:Set, ∀ f:X → Y, ∀ A B: Set, image f (A ∩ B) = (image f A) ∩ (image f B)) := by
   -- The first line of this construction should be either `apply isTrue` or `apply isFalse`
