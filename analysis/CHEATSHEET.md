@@ -93,6 +93,8 @@ Working notes for solving `sorry`s in `analysis/Analysis/*.lean`.
 
 - **`EqualCard` as a Setoid + omega beta gotcha (Section_8_1)**: `EqualCard.refl := ⟨id, Function.bijective_id⟩`; `.symm` via `(Equiv.ofBijective f hf).symm.bijective`; `.trans` via `⟨g∘f, hg.comp hf⟩`. GOTCHA: after `rintro n ⟨k, hk, rfl⟩` on an image membership, the goal is `2 ≤ (fun n => 2*n) k` (an un-beta-reduced redex) and `omega` reports a bogus `↑k` counterexample — insert `show 2 ≤ 2 * k` to force beta reduction first, then `omega`. `Nat.min X = a` via `Nat.min_eq hX ⟨a∈X, ∀n∈X, a≤n⟩`; `min = sInf` from `Nat.sInf_mem`/`Nat.sInf_le`.
 
+- **Chapter 11 intervals (Section_11_1)**: `Set.OrdConnected` examples are direct Mathlib: `Set.ordConnected_Icc`/`_Ioo`/`_empty`/`_singleton`. Disconnected (`¬(Icc 1 2 ∪ Icc 3 4).OrdConnected`): `rw [Set.ordConnected_def]; push_neg; refine ⟨2, _, 3, _, ?_⟩` then exhibit `2.5 ∈ Icc 2 3` but `∉ union` via `norm_num [Set.mem_union, Set.mem_Icc]`. `BoundedInterval` is an inductive (Ioo/Icc/Ioc/Ico) with `@[simp] set_Ioo`/`set_Icc`/… rewriting the coercion to the Mathlib interval; `IsBounded.of_boundedInterval`: `cases I with | Ioo a b => rw [set_Ioo]; exact Metric.isBounded_Ioo a b | …`. CAUTION: the `(Ioo 2 4 ∩ Icc 4 6) = Icc 4 4` example is bugged (true intersection is ∅, not {4}).
+
 ## Conventions
 - Proofs intentionally follow the textbook structure (comments say so); prefer faithful over golfed.
 - Chapter namespaces: `Chapter9`, `Chapter10`, etc. Custom `Nat` lives in Section 2.
