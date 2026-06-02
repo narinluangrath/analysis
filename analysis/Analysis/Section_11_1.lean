@@ -157,13 +157,13 @@ abbrev BoundedInterval.length (I: BoundedInterval) : ℝ := max (I.b - I.a) 0
 macro:max atomic("|" noWs) a:term noWs "|ₗ" : term => `(BoundedInterval.length $a)
 
 example : |Icc 3 5|ₗ = 2 := by
-  sorry
+  norm_num [BoundedInterval.length]
 
 example : |Ioo 3 5|ₗ = 2 := by
-  sorry
+  norm_num [BoundedInterval.length]
 
 example : |Icc 5 5|ₗ = 0 := by
-  sorry
+  norm_num [BoundedInterval.length]
 
 theorem BoundedInterval.length_nonneg (I: BoundedInterval) : 0 ≤ |I|ₗ := by
   simp
