@@ -310,18 +310,29 @@ noncomputable instance Real.addGroup_inst : AddGroup Real :=
 theorem Real.sub_eq_add_neg (x y:Real) : x - y = x + (-y) := rfl
 
 theorem Sequence.IsCauchy.sub {a b:ℕ → ℚ} (ha: (a:Sequence).IsCauchy) (hb: (b:Sequence).IsCauchy) :
-    ((a-b:ℕ → ℚ):Sequence).IsCauchy := by sorry
+    ((a-b:ℕ → ℚ):Sequence).IsCauchy := by
+  have h : (a - b) = a + (-b) := by ext n; simp [Pi.sub_apply, Pi.add_apply, Pi.neg_apply]; ring
+  rw [h]
+  exact Sequence.IsCauchy.add ha (Sequence.IsCauchy.neg b hb)
 
 /-- LIM distributes over subtraction -/
 theorem Real.LIM_sub {a b:ℕ → ℚ} (ha: (a:Sequence).IsCauchy) (hb: (b:Sequence).IsCauchy) :
-  LIM a - LIM b = LIM (a - b) := by sorry
+  LIM a - LIM b = LIM (a - b) := by
+  rw [Real.sub_eq_add_neg, Real.neg_LIM b hb, Real.LIM_add ha (Sequence.IsCauchy.neg b hb)]
+  congr 1; ext n; simp [Pi.sub_apply, Pi.add_apply, Pi.neg_apply]; ring
 
 /-- ratCast distributes over subtraction -/
-theorem Real.ratCast_sub (a b:ℚ) : (a:Real) - (b:Real) = (a-b:ℚ) := by sorry
+theorem Real.ratCast_sub (a b:ℚ) : (a:Real) - (b:Real) = (a-b:ℚ) := by
+  rw [Real.sub_eq_add_neg, neg_ratCast, ratCast_add]; congr 1; ring
 
 /-- Proposition 5.3.11 (laws of algebra) -/
 noncomputable instance Real.instAddCommGroup : AddCommGroup Real where
-  add_comm := by sorry
+  add_comm := by
+    intro x y
+    obtain ⟨a, ha, rfl⟩ := Real.eq_lim x
+    obtain ⟨b, hb, rfl⟩ := Real.eq_lim y
+    rw [Real.LIM_add ha hb, Real.LIM_add hb ha]
+    congr 1; ext n; simp [Pi.add_apply]; ring
 
 /-- Proposition 5.3.11 (laws of algebra) -/
 noncomputable instance Real.instCommMonoid : CommMonoid Real where
@@ -342,10 +353,10 @@ noncomputable instance Real.instCommRing : CommRing Real where
 
 abbrev Real.ratCast_hom : ℚ →+* Real where
   toFun := RatCast.ratCast
-  map_zero' := by sorry
-  map_one' := by sorry
-  map_add' := by sorry
-  map_mul' := by sorry
+  map_zero' := by show ((0:ℚ):Real) = 0; rw [ratCast_def]; exact Real.LIM.zero
+  map_one' := by show ((1:ℚ):Real) = 1; rfl
+  map_add' := fun a b => (Real.ratCast_add a b).symm
+  map_mul' := fun a b => (Real.ratCast_mul a b).symm
 
 /--
   Definition 5.3.12 (sequences bounded away from zero). Sequences are indexed to start from zero
