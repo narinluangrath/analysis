@@ -223,6 +223,16 @@ abbrev CardOrder : Preorder Type := {
 
 /-- Exercise 8.3.5 -/
 example (X:Type) : ¬ CountablyInfinite (Set X) := by
-  sorry
+  intro h
+  haveI hcount : Countable (Set X) := h.toCountable
+  have hinj : Function.Injective (fun x:X => ({x}:Set X)) := fun a b hab => by simpa using hab
+  haveI hX_count : Countable X := hinj.countable
+  by_cases hfin : Finite X
+  · haveI := hfin
+    haveI := h.toInfinite
+    exact not_finite (Set X)
+  · haveI : Infinite X := not_finite_iff_infinite.mp hfin
+    have hXci : CountablyInfinite X := (CountablyInfinite.iff' X).mpr ⟨hX_count, ‹Infinite X›⟩
+    exact EqualCard.power_set_false X (hXci.trans h.symm)
 
 end Chapter8
