@@ -26,61 +26,104 @@ noncomputable abbrev Sequence.sup (a:Sequence) : EReal := sSup { x | ∃ n ≥ a
 /-- Definition 6.3.1 -/
 noncomputable abbrev Sequence.inf (a:Sequence) : EReal := sInf { x | ∃ n ≥ a.m, x = a n }
 
-/-- Example 6.3.3 -/
-example : ((fun (n:ℕ) ↦ (-1:ℝ)^(n+1)):Sequence).sup = 1 := by sorry
-
-/-- Example 6.3.3 -/
-example : ((fun (n:ℕ) ↦ (-1:ℝ)^(n+1)):Sequence).inf = -1 := by sorry
-
-/-- Example 6.3.4 / Exercise 6.3.1 -/
-example : ((fun (n:ℕ) ↦ 1/((n:ℝ)+1)):Sequence).sup = 1 := by sorry
-
-/-- Example 6.3.4 / Exercise 6.3.1 -/
-example : ((fun (n:ℕ) ↦ 1/((n:ℝ)+1)):Sequence).inf = 0 := by sorry
-
-/-- Value set of the sequence `n ↦ n+1` as a subset of `EReal`. -/
-private theorem seq_succ_value_set :
-    {x : EReal | ∃ n ≥ ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).m,
-      x = (((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence)) n} = {x | ∃ k:ℕ, x = (((k:ℝ)+1):EReal)} := by
+/-- Value set of a coerced `ℕ → ℝ` sequence as a subset of `EReal`. -/
+private theorem coe_value_set (f:ℕ→ℝ) :
+    {x : EReal | ∃ n ≥ ((f:Sequence)).m, x = ((f:Sequence)) n} = {x | ∃ k:ℕ, x = ((f k:ℝ):EReal)} := by
   ext x
   constructor
   · rintro ⟨n, hn, rfl⟩
     refine ⟨n.toNat, ?_⟩
     simp only [Sequence.instCoeFun, Sequence.ofNatFun] at hn ⊢
     rw [if_pos hn]
-    push_cast [Int.toNat_of_nonneg hn]
-    norm_num
   · rintro ⟨k, rfl⟩
     refine ⟨(k:ℤ), by simp [Sequence.ofNatFun], ?_⟩
     simp only [Sequence.instCoeFun, Sequence.ofNatFun]
     rw [if_pos (by positivity)]
     norm_num
 
+/-- Example 6.3.3 -/
+example : ((fun (n:ℕ) ↦ (-1:ℝ)^(n+1)):Sequence).sup = 1 := by
+  show sSup _ = _
+  rw [coe_value_set]
+  apply IsGreatest.csSup_eq
+  refine ⟨⟨1, by norm_num⟩, ?_⟩
+  rintro x ⟨k, rfl⟩
+  rw [show (1:EReal) = ((1:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+  rcases Nat.even_or_odd (k+1) with h | h
+  · rw [Even.neg_one_pow h]
+  · rw [Odd.neg_one_pow h]; norm_num
+
+/-- Example 6.3.3 -/
+example : ((fun (n:ℕ) ↦ (-1:ℝ)^(n+1)):Sequence).inf = -1 := by
+  show sInf _ = _
+  rw [coe_value_set]
+  apply IsLeast.csInf_eq
+  refine ⟨⟨0, by norm_num⟩, ?_⟩
+  rintro x ⟨k, rfl⟩
+  rw [show (-1:EReal) = ((-1:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+  rcases Nat.even_or_odd (k+1) with h | h
+  · rw [Even.neg_one_pow h]; norm_num
+  · rw [Odd.neg_one_pow h]
+
+/-- Example 6.3.4 / Exercise 6.3.1 -/
+example : ((fun (n:ℕ) ↦ 1/((n:ℝ)+1)):Sequence).sup = 1 := by
+  show sSup _ = _
+  rw [coe_value_set]
+  apply IsGreatest.csSup_eq
+  refine ⟨⟨0, by norm_num⟩, ?_⟩
+  rintro x ⟨k, rfl⟩
+  rw [show (1:EReal) = ((1:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+  rw [div_le_one (by positivity)]
+  have : (0:ℝ) ≤ (k:ℝ) := by positivity
+  linarith
+
+/-- Example 6.3.4 / Exercise 6.3.1 -/
+example : ((fun (n:ℕ) ↦ 1/((n:ℝ)+1)):Sequence).inf = 0 := by
+  show sInf _ = _
+  rw [coe_value_set]
+  refine IsGLB.csInf_eq ⟨?_, ?_⟩ ⟨_, 0, rfl⟩
+  · rintro x ⟨k, rfl⟩
+    rw [show (0:EReal) = ((0:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+    positivity
+  · intro b hb
+    by_contra hlt
+    push_neg at hlt
+    obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+    · rw [show (0:EReal) = ((0:ℝ):EReal) from rfl, EReal.coe_lt_coe_iff] at hlt
+      obtain ⟨k, hk⟩ := exists_nat_gt (1/y)
+      have hmem := hb ⟨k, rfl⟩
+      rw [EReal.coe_le_coe_iff] at hmem
+      rw [div_lt_iff₀ hlt] at hk
+      rw [le_div_iff₀ (by positivity)] at hmem
+      nlinarith
+    · exact absurd (hb ⟨0, rfl⟩) (not_le.mpr (EReal.coe_lt_top _))
+    · exact absurd bot_le (not_le.mpr hlt)
+
 /-- Example 6.3.5 -/
 example : ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).sup = ⊤ := by
   show sSup _ = _
-  rw [seq_succ_value_set]
+  rw [coe_value_set]
   apply sSup_eq_top.mpr
   intro b hb
   obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
   · obtain ⟨n, hn⟩ := exists_nat_gt y
-    refine ⟨n+1, ⟨n, rfl⟩, ?_⟩
+    refine ⟨(((n:ℝ)+1:ℝ):EReal), ⟨n, rfl⟩, ?_⟩
     push_cast
     exact_mod_cast lt_trans (by exact_mod_cast hn) (by norm_num)
   · exact absurd hb (lt_irrefl _)
-  · exact ⟨1, ⟨0, by norm_num⟩, bot_lt_iff_ne_bot.mpr (by decide)⟩
+  · exact ⟨((((0:ℕ):ℝ)+1:ℝ):EReal), ⟨0, rfl⟩, bot_lt_iff_ne_bot.mpr (by decide)⟩
 
 /-- Example 6.3.5 -/
 example : ((fun (n:ℕ) ↦ (n+1:ℝ)):Sequence).inf = 1 := by
   show sInf _ = _
-  rw [seq_succ_value_set]
+  rw [coe_value_set]
   apply IsLeast.csInf_eq
-  constructor
-  · exact ⟨0, by norm_num⟩
-  · rintro x ⟨k, rfl⟩
-    have : (0:EReal) ≤ (k:EReal) := by positivity
-    calc (1:EReal) = 0 + 1 := by norm_num
-      _ ≤ (k:EReal) + 1 := by gcongr
+  refine ⟨⟨0, by norm_num⟩, ?_⟩
+  rintro x ⟨k, rfl⟩
+  show ((1:ℝ):EReal) ≤ (((k:ℝ)+1:ℝ):EReal)
+  rw [EReal.coe_le_coe_iff]
+  have : (0:ℝ) ≤ (k:ℝ) := by positivity
+  linarith
 
 abbrev Sequence.BddAboveBy (a:Sequence) (M:ℝ) : Prop := ∀ n ≥ a.m, a n ≤ M
 
