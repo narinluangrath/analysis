@@ -332,11 +332,39 @@ open Classical in
   and so classical logic is required to impose decidability.
 -/
 noncomputable instance Real.instLinearOrder : LinearOrder Real where
-  le_refl := sorry
-  le_trans := sorry
-  lt_iff_le_not_ge := sorry
-  le_antisymm := sorry
-  le_total := sorry
+  le_refl := fun x => Or.inr rfl
+  le_trans := by
+    intro x y z hxy hyz
+    rcases hxy with h1 | h1 <;> rcases hyz with h2 | h2
+    · exact Or.inl (Real.lt_trans h1 h2)
+    · subst h2; exact Or.inl h1
+    · subst h1; exact Or.inl h2
+    · subst h1; exact Or.inr h2
+  lt_iff_le_not_ge := by
+    intro x y
+    constructor
+    · intro h
+      refine ⟨Or.inl h, ?_⟩
+      rintro (h2 | h2)
+      · exact Real.not_gt_and_lt y x ⟨h, h2⟩
+      · exact Real.not_lt_and_eq x y ⟨h, h2.symm⟩
+    · rintro ⟨h1, h2⟩
+      rcases h1 with h | h
+      · exact h
+      · exact absurd (Or.inr h.symm) h2
+  le_antisymm := by
+    intro x y hxy hyx
+    rcases hxy with h1 | h1
+    · rcases hyx with h2 | h2
+      · exact absurd ⟨h1, h2⟩ (Real.not_gt_and_lt y x)
+      · exact h2.symm
+    · exact h1
+  le_total := by
+    intro x y
+    rcases Real.trichotomous' x y with h | h | h
+    · exact Or.inr (Or.inl h)
+    · exact Or.inl (Or.inl h)
+    · exact Or.inl (Or.inr h)
   toDecidableLE := Classical.decRel _
 
 /--
