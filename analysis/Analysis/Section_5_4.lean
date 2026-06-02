@@ -83,7 +83,61 @@ theorem Real.isNeg_def (x:Real) :
     IsNeg x ↔ ∃ a:ℕ → ℚ, BoundedAwayNeg a ∧ (a:Sequence).IsCauchy ∧ x = LIM a := by rfl
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
-theorem Real.trichotomous (x:Real) : x = 0 ∨ x.IsPos ∨ x.IsNeg := by sorry
+theorem Real.trichotomous (x:Real) : x = 0 ∨ x.IsPos ∨ x.IsNeg := by
+  by_cases hx : x = 0
+  · exact Or.inl hx
+  right
+  obtain ⟨a, hcau, hbaz, rfl⟩ := boundedAwayZero_of_nonzero hx
+  obtain ⟨c, hc, hac⟩ := hbaz
+  obtain ⟨N, hN⟩ := (Sequence.IsCauchy.coe _).mp hcau c hc
+  by_cases hsign : a N ≥ c
+  · left
+    set a' : ℕ → ℚ := fun n => if n < N then c else a n with ha'def
+    have key : ∀ n, a' n ≥ c := by
+      intro n
+      simp only [ha'def]
+      by_cases hn : n < N
+      · rw [if_pos hn]
+      · rw [if_neg hn]
+        have hd := hN n (by omega) N (le_refl N)
+        rw [Section_4_3.dist_eq, abs_le] at hd
+        have hn0 : a n ≥ 0 := by linarith [hd.1, hsign]
+        have habs := hac n
+        rwa [abs_of_nonneg hn0] at habs
+    have ha'a : Sequence.Equiv a' a := by
+      rw [Sequence.equiv_iff]
+      intro δ hδ
+      refine ⟨N, fun n hn => ?_⟩
+      simp only [ha'def, if_neg (by omega : ¬ n < N), sub_self, abs_zero]
+      linarith
+    have ha'cau := (Sequence.isCauchy_of_equiv ha'a).mpr hcau
+    exact ⟨a', ⟨c, hc, key⟩, ha'cau, ((Real.LIM_eq_LIM ha'cau hcau).mpr ha'a).symm⟩
+  · right
+    push_neg at hsign
+    have haN : a N ≤ -c := by
+      have habs := hac N
+      rcases abs_cases (a N) with ⟨h1, _⟩ | ⟨h1, _⟩ <;> [linarith [habs, h1]; linarith [habs, h1]]
+    set a' : ℕ → ℚ := fun n => if n < N then -c else a n with ha'def
+    have key : ∀ n, a' n ≤ -c := by
+      intro n
+      simp only [ha'def]
+      by_cases hn : n < N
+      · rw [if_pos hn]
+      · rw [if_neg hn]
+        have hd := hN n (by omega) N (le_refl N)
+        rw [Section_4_3.dist_eq, abs_le] at hd
+        have hn0 : a n ≤ 0 := by linarith [hd.2, haN]
+        have habs := hac n
+        rw [abs_of_nonpos hn0] at habs
+        linarith
+    have ha'a : Sequence.Equiv a' a := by
+      rw [Sequence.equiv_iff]
+      intro δ hδ
+      refine ⟨N, fun n hn => ?_⟩
+      simp only [ha'def, if_neg (by omega : ¬ n < N), sub_self, abs_zero]
+      linarith
+    have ha'cau := (Sequence.isCauchy_of_equiv ha'a).mpr hcau
+    exact ⟨a', ⟨c, hc, key⟩, ha'cau, ((Real.LIM_eq_LIM ha'cau hcau).mpr ha'a).symm⟩
 
 /-- Proposition 5.4.4 (basic properties of positive reals) / Exercise 5.4.1 -/
 theorem Real.not_zero_pos (x:Real) : ¬(x = 0 ∧ x.IsPos) := by
@@ -221,7 +275,11 @@ theorem Real.isPos_iff (x:Real) : x.IsPos ↔ x > 0 := by rw [Real.gt_iff, sub_z
 theorem Real.isNeg_iff (x:Real) : x.IsNeg ↔ x < 0 := by rw [Real.lt_iff, sub_zero]
 
 /-- Proposition 5.4.7(a) (order trichotomy) / Exercise 5.4.2 -/
-theorem Real.trichotomous' (x y:Real) : x > y ∨ x < y ∨ x = y := by sorry
+theorem Real.trichotomous' (x y:Real) : x > y ∨ x < y ∨ x = y := by
+  rcases Real.trichotomous (x-y) with h | h | h
+  · exact Or.inr (Or.inr (sub_eq_zero.mp h))
+  · exact Or.inl ((Real.gt_iff x y).mpr h)
+  · exact Or.inr (Or.inl ((Real.lt_iff x y).mpr h))
 
 /-- Proposition 5.4.7(a) (order trichotomy) / Exercise 5.4.2 -/
 theorem Real.not_gt_and_lt (x y:Real) : ¬ (x > y ∧ x < y):= by
@@ -258,10 +316,15 @@ theorem Real.mul_lt_mul_right {x y z:Real} (hxy: x < y) (hz: z.IsPos) : x * z < 
   rw [antisymm, gt_iff] at hxy ⊢; convert pos_mul hxy hz using 1; ring
 
 /-- Proposition 5.4.7(e) (positive multiplication preserves order) / Exercise 5.4.2 -/
-theorem Real.mul_le_mul_left {x y z:Real} (hxy: x ≤ y) (hz: z.IsPos) : z * x ≤ z * y := by sorry
+theorem Real.mul_le_mul_left {x y z:Real} (hxy: x ≤ y) (hz: z.IsPos) : z * x ≤ z * y := by
+  rw [Real.le_iff] at hxy ⊢
+  rcases hxy with h | h
+  · left; rw [mul_comm z x, mul_comm z y]; exact Real.mul_lt_mul_right h hz
+  · right; rw [h]
 
 theorem Real.mul_pos_neg {x y:Real} (hx: x.IsPos) (hy: y.IsNeg) : (x * y).IsNeg := by
-  sorry
+  rw [Real.neg_iff_pos_of_neg, show -(x*y) = x*(-y) from by ring]
+  exact Real.pos_mul hx ((Real.neg_iff_pos_of_neg y).mp hy)
 
 open Classical in
 /--
