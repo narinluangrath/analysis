@@ -286,10 +286,5 @@ theorem Chapter5.ExtendedReal.coe_surj : Function.Surjective toEReal := by
       rw [Equiv.apply_symm_apply]
   | top => exact ⟨infty, rfl⟩
 
-noncomputable abbrev Chapter5.ExtendedReal.equivEReal : Chapter5.ExtendedReal ≃ EReal where
-  toFun := toEReal
-  invFun := sorry
-  left_inv x := by
-    sorry
-  right_inv x := by
-    sorry
+noncomputable abbrev Chapter5.ExtendedReal.equivEReal : Chapter5.ExtendedReal ≃ EReal :=
+  Equiv.ofBijective toEReal ⟨coe_inj, coe_surj⟩
