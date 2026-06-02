@@ -188,4 +188,11 @@ theorem Chapter6.Sequence.liminf_eq (a:ℕ → ℝ) :
 
 /-- Identification of `rpow` and Mathlib exponentiation -/
 theorem Chapter6.Real.rpow_eq_rpow {x:ℝ} (hx: x > 0) (α:ℝ) : rpow x α = x^α := by
-  sorry
+  obtain ⟨q, hq⟩ := eq_lim_of_rat α
+  rw [rpow_eq_lim_ratPow hx hq]
+  have htends : ((fun n ↦ x^(q n:ℝ)):Sequence).TendsTo (x^α) := by
+    rw [Chapter6.Sequence.tendsto_iff_Tendsto]
+    have hqα : atTop.Tendsto (fun n ↦ (q n:ℝ)) (nhds α) :=
+      (Chapter6.Sequence.tendsto_iff_Tendsto _ _).mp hq
+    exact (Real.continuousAt_const_rpow (ne_of_gt hx)).tendsto.comp hqα
+  exact (Sequence.lim_eq.mp htends).2
