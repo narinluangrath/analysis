@@ -541,19 +541,19 @@ theorem Real.max_eq (x y:Real) : max x y = if x ≥ y then x else y := max_def' 
 theorem Real.min_eq (x y:Real) : min x y = if x ≤ y then x else y := rfl
 
 /-- Exercise 5.4.9 -/
-theorem Real.neg_max (x y:Real) : max x y = - min (-x) (-y) := by sorry
+theorem Real.neg_max (x y:Real) : max x y = - min (-x) (-y) := by rw [min_neg_neg, neg_neg]
 
 /-- Exercise 5.4.9 -/
-theorem Real.neg_min (x y:Real) : min x y = - max (-x) (-y) := by sorry
+theorem Real.neg_min (x y:Real) : min x y = - max (-x) (-y) := by rw [max_neg_neg, neg_neg]
 
 /-- Exercise 5.4.9 -/
-theorem Real.max_comm (x y:Real) : max x y = max y x := by sorry
+theorem Real.max_comm (x y:Real) : max x y = max y x := _root_.max_comm x y
 
 /-- Exercise 5.4.9 -/
-theorem Real.max_self (x:Real) : max x x = x := by sorry
+theorem Real.max_self (x:Real) : max x x = x := _root_.max_self x
 
 /-- Exercise 5.4.9 -/
-theorem Real.max_add (x y z:Real) : max (x + z) (y + z) = max x y + z := by sorry
+theorem Real.max_add (x y z:Real) : max (x + z) (y + z) = max x y + z := _root_.max_add_add_right x y z
 
 /-- Exercise 5.4.9 -/
 theorem Real.max_mul (x y :Real) {z:Real} (hz: z.IsPos) : max (x * z) (y * z) = max x y * z := by
@@ -561,13 +561,13 @@ theorem Real.max_mul (x y :Real) {z:Real} (hz: z.IsPos) : max (x * z) (y * z) = 
 /- Additional exercise: What happens if z is negative? -/
 
 /-- Exercise 5.4.9 -/
-theorem Real.min_comm (x y:Real) : min x y = min y x := by sorry
+theorem Real.min_comm (x y:Real) : min x y = min y x := _root_.min_comm x y
 
 /-- Exercise 5.4.9 -/
-theorem Real.min_self (x:Real) : min x x = x := by sorry
+theorem Real.min_self (x:Real) : min x x = x := _root_.min_self x
 
 /-- Exercise 5.4.9 -/
-theorem Real.min_add (x y z:Real) : min (x + z) (y + z) = min x y + z := by sorry
+theorem Real.min_add (x y z:Real) : min (x + z) (y + z) = min x y + z := _root_.min_add_add_right x y z
 
 /-- Exercise 5.4.9 -/
 theorem Real.min_mul (x y :Real) {z:Real} (hz: z.IsPos) : min (x * z) (y * z) = min x y * z := by
