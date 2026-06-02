@@ -653,6 +653,33 @@ theorem Sequence.IsCauchy.harmonic' : ((fun n ↦ 1/((n:ℚ)+1): ℕ → ℚ):Se
   simp_all
 
 /-- Exercise 5.3.5 -/
-theorem Real.LIM.harmonic : LIM (fun n ↦ 1/((n:ℚ)+1)) = 0 := by sorry
+theorem Real.LIM.harmonic : LIM (fun n ↦ 1/((n:ℚ)+1)) = 0 := by
+  have hcau : ((fun n:ℕ ↦ 1/((n:ℚ)+1)):Sequence).IsCauchy := by
+    rw [Sequence.IsCauchy.coe]
+    intro ε hε
+    obtain ⟨m, hm⟩ := exists_nat_gt (1/ε)
+    refine ⟨m, fun j hj k hk => ?_⟩
+    rw [Section_4_3.dist_eq]
+    have h1m : 1/((m:ℚ)+1) ≤ ε := by
+      rw [div_le_iff₀ (by positivity)]; rw [div_lt_iff₀ hε] at hm; nlinarith [hm, hε]
+    have hbjm : 1/((j:ℚ)+1) ≤ 1/((m:ℚ)+1) := by
+      apply one_div_le_one_div_of_le (by positivity); have : (m:ℚ) ≤ j := by exact_mod_cast hj
+      linarith
+    have hbkm : 1/((k:ℚ)+1) ≤ 1/((m:ℚ)+1) := by
+      apply one_div_le_one_div_of_le (by positivity); have : (m:ℚ) ≤ k := by exact_mod_cast hk
+      linarith
+    have hbj : (0:ℚ) < 1/((j:ℚ)+1) := by positivity
+    have hbk : (0:ℚ) < 1/((k:ℚ)+1) := by positivity
+    rw [abs_le]
+    constructor <;> linarith
+  rw [← Real.LIM.zero, Real.LIM_eq_LIM hcau (Sequence.IsCauchy.const 0), Sequence.equiv_iff]
+  intro ε hε
+  obtain ⟨m, hm⟩ := exists_nat_gt (1/ε)
+  refine ⟨m, fun n hn => ?_⟩
+  simp only [sub_zero]
+  rw [abs_of_pos (by positivity), div_le_iff₀ (by positivity)]
+  rw [div_lt_iff₀ hε] at hm
+  have hnm : (m:ℚ) ≤ (n:ℚ) := by exact_mod_cast hn
+  nlinarith [hm, hnm, hε]
 
 end Chapter5
