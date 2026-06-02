@@ -178,7 +178,31 @@ example : sInf Example_6_2_8 = (0.9:ℝ) := by
     norm_num
     linarith
 
-example : sSup Example_6_2_8 = 1 := by sorry
+example : sSup Example_6_2_8 = 1 := by
+  refine IsLUB.csSup_eq ⟨?_, ?_⟩ ⟨_, 0, rfl⟩
+  · rintro x ⟨n, rfl⟩
+    rw [show (1:EReal) = ((1:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+    have : (0:ℝ) < (10:ℝ)^(-(n:ℤ)-1) := by positivity
+    linarith
+  · intro b hb
+    by_contra hlt
+    push_neg at hlt
+    have h09 : ((0.9:ℝ):EReal) ≤ b := hb ⟨0, by norm_num⟩
+    obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+    · rw [show (1:EReal) = ((1:ℝ):EReal) from rfl, EReal.coe_lt_coe_iff] at hlt
+      have hpos : (0:ℝ) < 1 - y := by linarith
+      obtain ⟨n, hn⟩ := exists_pow_lt_of_lt_one hpos (by norm_num : (1:ℝ)/10 < 1)
+      have hub : (1 - (10:ℝ)^(-(n:ℤ)-1)) ≤ y := by
+        have := hb ⟨n, rfl⟩; rwa [EReal.coe_le_coe_iff] at this
+      have hz : (10:ℝ)^(-(n:ℤ)-1) ≤ (1/10:ℝ)^n := by
+        have e : (1/10:ℝ)^n = (10:ℝ)^(-(n:ℤ)) := by
+          rw [div_pow, one_pow, one_div, ← zpow_natCast (10:ℝ) n, ← zpow_neg]
+        rw [e]
+        apply zpow_le_zpow_right₀ (by norm_num)
+        omega
+      linarith
+    · exact not_top_lt hlt
+    · simp at h09
 
 /-- Example 6.2.9 -/
 abbrev Example_6_2_9 : Set EReal := { x | ∃ n:ℕ, x = n+1}
