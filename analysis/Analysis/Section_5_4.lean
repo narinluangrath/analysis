@@ -224,22 +224,34 @@ theorem Real.isNeg_iff (x:Real) : x.IsNeg ↔ x < 0 := by rw [Real.lt_iff, sub_z
 theorem Real.trichotomous' (x y:Real) : x > y ∨ x < y ∨ x = y := by sorry
 
 /-- Proposition 5.4.7(a) (order trichotomy) / Exercise 5.4.2 -/
-theorem Real.not_gt_and_lt (x y:Real) : ¬ (x > y ∧ x < y):= by sorry
+theorem Real.not_gt_and_lt (x y:Real) : ¬ (x > y ∧ x < y):= by
+  rw [Real.gt_iff, Real.lt_iff]; exact Real.not_pos_neg (x-y)
 
 /-- Proposition 5.4.7(a) (order trichotomy) / Exercise 5.4.2 -/
-theorem Real.not_gt_and_eq (x y:Real) : ¬ (x > y ∧ x = y):= by sorry
+theorem Real.not_gt_and_eq (x y:Real) : ¬ (x > y ∧ x = y):= by
+  rintro ⟨hgt, heq⟩
+  rw [Real.gt_iff, heq, sub_self] at hgt
+  exact Real.not_zero_pos 0 ⟨rfl, hgt⟩
 
 /-- Proposition 5.4.7(a) (order trichotomy) / Exercise 5.4.2 -/
-theorem Real.not_lt_and_eq (x y:Real) : ¬ (x < y ∧ x = y):= by sorry
+theorem Real.not_lt_and_eq (x y:Real) : ¬ (x < y ∧ x = y):= by
+  rintro ⟨hlt, heq⟩
+  rw [Real.lt_iff, heq, sub_self] at hlt
+  exact Real.not_zero_neg 0 ⟨rfl, hlt⟩
 
 /-- Proposition 5.4.7(b) (order is anti-symmetric) / Exercise 5.4.2 -/
-theorem Real.antisymm (x y:Real) : x < y ↔ y > x := by sorry
+theorem Real.antisymm (x y:Real) : x < y ↔ y > x := Iff.rfl
 
 /-- Proposition 5.4.7(c) (order is transitive) / Exercise 5.4.2 -/
-theorem Real.lt_trans {x y z:Real} (hxy: x < y) (hyz: y < z) : x < z := by sorry
+theorem Real.lt_trans {x y z:Real} (hxy: x < y) (hyz: y < z) : x < z := by
+  rw [Real.lt_iff, Real.neg_iff_pos_of_neg] at hxy hyz ⊢
+  have h := Real.pos_add hyz hxy
+  rw [show -(y-z) + -(x-y) = -(x-z) from by ring] at h
+  exact h
 
 /-- Proposition 5.4.7(d) (addition preserves order) / Exercise 5.4.2 -/
-theorem Real.add_lt_add_right {x y:Real} (z:Real) (hxy: x < y) : x + z < y + z := by sorry
+theorem Real.add_lt_add_right {x y:Real} (z:Real) (hxy: x < y) : x + z < y + z := by
+  rw [Real.lt_iff, show (x+z)-(y+z) = x-y from by ring, ← Real.lt_iff]; exact hxy
 
 /-- Proposition 5.4.7(e) (positive multiplication preserves order) / Exercise 5.4.2 -/
 theorem Real.mul_lt_mul_right {x y z:Real} (hxy: x < y) (hz: z.IsPos) : x * z < y * z := by
