@@ -387,7 +387,8 @@ theorem Real.inv_of_pos {x:Real} (hx: x.IsPos) : x⁻¹.IsPos := by
   have trich := trichotomous x⁻¹
   simpa [hinv_non, hnonneg] using trich
 
-theorem Real.div_of_pos {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x/y).IsPos := by sorry
+theorem Real.div_of_pos {x y:Real} (hx: x.IsPos) (hy: y.IsPos) : (x/y).IsPos := by
+  rw [div_eq_mul_inv]; exact Real.pos_mul hx (Real.inv_of_pos hy)
 
 theorem Real.inv_of_gt {x y:Real} (hx: x.IsPos) (hy: y.IsPos) (hxy: x > y) : x⁻¹ < y⁻¹ := by
   observe hxnon: x ≠ 0
@@ -517,16 +518,31 @@ theorem Real.floor_exist (x:Real) : ∃! n:ℤ, (n:Real) ≤ x ∧ x < (n:Real)+
 theorem Real.exist_inv_nat_le {x:Real} (hx: x.IsPos) : ∃ N:ℤ, N>0 ∧ (N:Real)⁻¹ < x := by sorry
 
 /-- Exercise 5.4.6 -/
-theorem Real.dist_lt_iff (ε x y:Real) : |x-y| < ε ↔ y-ε < x ∧ x < y+ε := by sorry
+theorem Real.dist_lt_iff (ε x y:Real) : |x-y| < ε ↔ y-ε < x ∧ x < y+ε := by
+  rw [abs_lt]; constructor <;> rintro ⟨h1, h2⟩ <;> exact ⟨by linarith, by linarith⟩
 
 /-- Exercise 5.4.6 -/
-theorem Real.dist_le_iff (ε x y:Real) : |x-y| ≤ ε ↔ y-ε ≤ x ∧ x ≤ y+ε := by sorry
+theorem Real.dist_le_iff (ε x y:Real) : |x-y| ≤ ε ↔ y-ε ≤ x ∧ x ≤ y+ε := by
+  rw [abs_le]; constructor <;> rintro ⟨h1, h2⟩ <;> exact ⟨by linarith, by linarith⟩
 
 /-- Exercise 5.4.7 -/
-theorem Real.le_add_eps_iff (x y:Real) : (∀ ε > 0, x ≤ y+ε) ↔ x ≤ y := by sorry
+theorem Real.le_add_eps_iff (x y:Real) : (∀ ε > 0, x ≤ y+ε) ↔ x ≤ y := by
+  constructor
+  · intro h
+    by_contra hc; push_neg at hc
+    have := h ((x-y)/2) (by linarith)
+    linarith
+  · intro h ε hε; linarith
 
 /-- Exercise 5.4.7 -/
-theorem Real.dist_le_eps_iff (x y:Real) : (∀ ε > 0, |x-y| ≤ ε) ↔ x = y := by sorry
+theorem Real.dist_le_eps_iff (x y:Real) : (∀ ε > 0, |x-y| ≤ ε) ↔ x = y := by
+  constructor
+  · intro h
+    by_contra hc
+    have hpos : 0 < |x-y| := by rw [abs_pos]; exact sub_ne_zero.mpr hc
+    have := h (|x-y|/2) (by linarith)
+    linarith
+  · intro h ε hε; rw [h, sub_self, abs_zero]; linarith
 
 /-- Exercise 5.4.8 -/
 theorem Real.LIM_of_le {x:Real} {a:ℕ → ℚ} (hcauchy: (a:Sequence).IsCauchy) (h: ∀ n, a n ≤ x) :
