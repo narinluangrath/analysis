@@ -65,21 +65,38 @@ theorem CauchySequence.coe_coe {a:ℕ → ℚ} (ha: (a:Sequence).IsCauchy) : mk'
 
 /-- Proposition 5.3.3 / Exercise 5.3.1 -/
 theorem Sequence.equiv_trans {a b c:ℕ → ℚ} (hab: Equiv a b) (hbc: Equiv b c) :
-  Equiv a c := by sorry
+  Equiv a c := by
+  rw [Sequence.equiv_iff] at *
+  intro ε hε
+  obtain ⟨N1, hN1⟩ := hab (ε/2) (by linarith)
+  obtain ⟨N2, hN2⟩ := hbc (ε/2) (by linarith)
+  refine ⟨max N1 N2, fun n hn => ?_⟩
+  have e1 := hN1 n (le_trans (le_max_left _ _) hn)
+  have e2 := hN2 n (le_trans (le_max_right _ _) hn)
+  calc |a n - c n| ≤ |a n - b n| + |b n - c n| := abs_sub_le _ _ _
+    _ ≤ ε := by linarith
 
 /-- Proposition 5.3.3 / Exercise 5.3.1 -/
 instance CauchySequence.instSetoid : Setoid CauchySequence where
   r := fun a b ↦ Sequence.Equiv a b
   iseqv := {
-     refl := sorry
-     symm := sorry
-     trans := sorry
+     refl := fun a => by
+       rw [Sequence.equiv_iff]; intro ε hε
+       exact ⟨0, fun n _ => by rw [sub_self, abs_zero]; linarith⟩
+     symm := fun {a b} hab => by
+       rw [Sequence.equiv_iff] at *; intro ε hε
+       obtain ⟨N, hN⟩ := hab ε hε
+       exact ⟨N, fun n hn => by rw [abs_sub_comm]; exact hN n hn⟩
+     trans := fun {a b c} hab hbc => Sequence.equiv_trans hab hbc
   }
 
 theorem CauchySequence.equiv_iff (a b: CauchySequence) : a ≈ b ↔ Sequence.Equiv a b := by rfl
 
 /-- Every constant sequence is Cauchy -/
-theorem Sequence.IsCauchy.const (a:ℚ) : ((fun _:ℕ ↦ a):Sequence).IsCauchy := by sorry
+theorem Sequence.IsCauchy.const (a:ℚ) : ((fun _:ℕ ↦ a):Sequence).IsCauchy := by
+  rw [Sequence.IsCauchy.coe]
+  intro ε hε
+  exact ⟨0, fun j _ k _ => by rw [Section_4_3.dist_eq, sub_self, abs_zero]; linarith⟩
 
 instance CauchySequence.instZero : Zero CauchySequence where
   zero := CauchySequence.mk' (a := fun _: ℕ ↦ 0) (Sequence.IsCauchy.const (0:ℚ))
