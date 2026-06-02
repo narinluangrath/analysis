@@ -990,7 +990,40 @@ theorem Sequence.lim_div_fail :
     ∧ b.Convergent
     ∧ lim b = 0
     ∧ ¬ ((a / b).Convergent ∧ lim (a / b) = lim a / lim b) := by
-  sorry
+  set s : Sequence := ((fun n:ℕ => 1/(n+1:ℝ)):Sequence) with hs
+  have hseval : ∀ n:ℤ, n ≥ 0 → s n = 1/((n:ℝ)+1) := by
+    intro n hn
+    rw [hs]; simp only [Sequence.instCoeFun, Sequence.ofNatFun, ge_iff_le]
+    rw [if_pos (by omega)]
+    have hc : (n.toNat:ℝ) = (n:ℝ) := by have := Int.toNat_of_nonneg hn; exact_mod_cast this
+    rw [hc]
+  have hs0 : s.TendsTo 0 := by
+    rw [Sequence.tendsTo_iff]
+    intro ε hε
+    obtain ⟨K, hK⟩ := exists_nat_gt (1/ε)
+    refine ⟨max K 0, fun n hn => ?_⟩
+    have hn0 : n ≥ 0 := by have : max (K:ℤ) 0 ≤ n := hn; omega
+    rw [hseval n hn0, sub_zero, abs_of_pos (by positivity), div_le_iff₀ (by positivity)]
+    have hnK : (K:ℝ) ≤ (n:ℝ) := by
+      have : (K:ℤ) ≤ n := by have : max (K:ℤ) 0 ≤ n := hn; omega
+      exact_mod_cast this
+    rw [div_lt_iff₀ hε] at hK
+    nlinarith [hK, mul_le_mul_of_nonneg_right hnK hε.le, hε]
+  have hconvs : s.Convergent := ⟨0, hs0⟩
+  have hlims : lim s = 0 := by
+    by_contra hne; exact tendsTo_unique s hne ⟨lim_def hconvs, hs0⟩
+  have hss : (s/s).TendsTo 1 := by
+    rw [Sequence.tendsTo_iff]
+    intro ε hε
+    refine ⟨0, fun n hn => ?_⟩
+    rw [Sequence.div_eval, hseval n hn, div_self (ne_of_gt (by positivity)), sub_self, abs_zero]
+    exact le_of_lt hε
+  refine ⟨s, s, hconvs, hconvs, hlims, ?_⟩
+  rintro ⟨hconvss, heq⟩
+  have hone : lim (s/s) = 1 := by
+    by_contra hne; exact tendsTo_unique (s/s) hne ⟨lim_def hconvss, hss⟩
+  rw [hlims, hone] at heq
+  norm_num at heq
 
 theorem Chapter5.Sequence.IsCauchy_iff (a:Chapter5.Sequence) :
     a.IsCauchy ↔ ∀ ε > (0:ℝ), ∃ N ≥ a.n₀, ∀ n ≥ N, ∀ m ≥ N, |a n - a m| ≤ ε := by
