@@ -195,7 +195,36 @@ theorem Real.LIM_add {a b:ℕ → ℚ} (ha: (a:Sequence).IsCauchy) (hb: (b:Seque
 /-- Proposition 5.3.10 (Product of Cauchy sequences is Cauchy) -/
 theorem Sequence.IsCauchy.mul {a b:ℕ → ℚ}  (ha: (a:Sequence).IsCauchy) (hb: (b:Sequence).IsCauchy) :
     (a * b:Sequence).IsCauchy := by
-  sorry
+  obtain ⟨Ma, hMa, hBa⟩ := Sequence.isBounded_of_isCauchy ha
+  obtain ⟨Mb, hMb, hBb⟩ := Sequence.isBounded_of_isCauchy hb
+  have hba : ∀ j:ℕ, |a j| ≤ Ma := fun j => by
+    have h := hBa (j:ℤ)
+    rwa [Sequence.eval_coe_at_int, if_pos (by positivity), Int.toNat_natCast] at h
+  have hbb : ∀ j:ℕ, |b j| ≤ Mb := fun j => by
+    have h := hBb (j:ℤ)
+    rwa [Sequence.eval_coe_at_int, if_pos (by positivity), Int.toNat_natCast] at h
+  rw [Sequence.IsCauchy.coe] at ha hb ⊢
+  intro ε hε
+  obtain ⟨N1, hN1⟩ := ha (ε/(2*(Mb+1))) (by positivity)
+  obtain ⟨N2, hN2⟩ := hb (ε/(2*(Ma+1))) (by positivity)
+  refine ⟨max N1 N2, fun j hj k hk => ?_⟩
+  have ea := hN1 j (le_trans (le_max_left _ _) hj) k (le_trans (le_max_left _ _) hk)
+  have eb := hN2 j (le_trans (le_max_right _ _) hj) k (le_trans (le_max_right _ _) hk)
+  rw [Section_4_3.dist_eq] at ea eb ⊢
+  simp only [Pi.mul_apply]
+  have t1 : |a j * b j - a k * b k| ≤ |a j| * |b j - b k| + |b k| * |a j - a k| := by
+    calc |a j * b j - a k * b k| = |a j * (b j - b k) + (a j - a k) * b k| := by congr 1; ring
+      _ ≤ |a j * (b j - b k)| + |(a j - a k) * b k| := abs_add_le _ _
+      _ = |a j| * |b j - b k| + |b k| * |a j - a k| := by rw [abs_mul, abs_mul]; ring
+  have h1 : |a j| * |b j - b k| ≤ Ma * (ε/(2*(Ma+1))) := mul_le_mul (hba j) eb (abs_nonneg _) hMa
+  have h2 : |b k| * |a j - a k| ≤ Mb * (ε/(2*(Mb+1))) := mul_le_mul (hbb k) ea (abs_nonneg _) hMb
+  have h3 : Ma * (ε/(2*(Ma+1))) ≤ ε/2 := by
+    rw [mul_div_assoc', div_le_iff₀ (by positivity)]
+    nlinarith [hMa, hε]
+  have h4 : Mb * (ε/(2*(Mb+1))) ≤ ε/2 := by
+    rw [mul_div_assoc', div_le_iff₀ (by positivity)]
+    nlinarith [hMb, hε]
+  linarith [t1, h1, h2, h3, h4]
 
 /-- Proposition 5.3.10 (Product of equivalent sequences is equivalent) / Exercise 5.3.2 -/
 theorem Sequence.mul_equiv_left {a a':ℕ → ℚ} (b:ℕ → ℚ) (hb : (b:Sequence).IsCauchy) (haa': Equiv a a') :
