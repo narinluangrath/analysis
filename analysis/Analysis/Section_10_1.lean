@@ -108,7 +108,31 @@ example : (nhdsWithin 0 (.Iio 0)).Tendsto (fun x ↦ (f_10_1_6 x - f_10_1_6 0) /
       sub_zero, sub_zero, neg_div, div_self (ne_of_lt hx)]
 
 example : ¬ ∃ L, (nhdsWithin 0 (.univ \ {0})).Tendsto (fun x ↦ (f_10_1_6 x - f_10_1_6 0) / (x - 0))
-   (nhds L) := by sorry
+   (nhds L) := by
+  rintro ⟨L, hL⟩
+  have e1 : (nhdsWithin (0:ℝ) (Set.Ioi 0)).Tendsto
+      (fun x ↦ (f_10_1_6 x - f_10_1_6 0) / (x - 0)) (nhds 1) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    simp only [Set.mem_Ioi] at hx
+    rw [show f_10_1_6 x = x from abs_of_pos hx, show f_10_1_6 0 = 0 from abs_zero]
+    simp only [sub_zero]
+    exact div_self hx.ne'
+  have e2 : (nhdsWithin (0:ℝ) (Set.Iio 0)).Tendsto
+      (fun x ↦ (f_10_1_6 x - f_10_1_6 0) / (x - 0)) (nhds (-1)) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    simp only [Set.mem_Iio] at hx
+    rw [show f_10_1_6 x = -x from abs_of_neg hx, show f_10_1_6 0 = 0 from abs_zero]
+    simp only [sub_zero]
+    rw [neg_div, div_self hx.ne]
+  have hsub1 : Set.Ioi (0:ℝ) ⊆ .univ \ {0} := fun x hx => ⟨Set.mem_univ x, hx.ne'⟩
+  have hsub2 : Set.Iio (0:ℝ) ⊆ .univ \ {0} := fun x hx => ⟨Set.mem_univ x, hx.ne⟩
+  have hL1 := hL.mono_left (nhdsWithin_mono 0 hsub1)
+  have hL2 := hL.mono_left (nhdsWithin_mono 0 hsub2)
+  have h1 : L = 1 := tendsto_nhds_unique hL1 e1
+  have h2 : L = -1 := tendsto_nhds_unique hL2 e2
+  rw [h1] at h2; norm_num at h2
 
 example : ¬ DifferentiableWithinAt ℝ f_10_1_6 (.univ) 0 := by
   rw [differentiableWithinAt_univ]; exact not_differentiableAt_abs_zero
@@ -203,7 +227,10 @@ theorem _root_.HasDerivWithinAt.of_div {X: Set ℝ} {x₀ f'x₀ g'x₀: ℝ}
   exact (hf.div hg hgx₀).congr_deriv (by ring)
 
 example (x₀:ℝ) (hx₀: x₀ ≠ 1): HasDerivWithinAt (fun x ↦ (x-2)/(x-1)) (1 /(x₀-1)^2) (.univ \ {1}) x₀ := by
-  sorry
+  have hsub : x₀ - 1 ≠ 0 := sub_ne_zero.mpr hx₀
+  have hnum : HasDerivAt (fun x:ℝ => x - 2) 1 x₀ := by simpa using (hasDerivAt_id x₀).sub_const 2
+  have hden : HasDerivAt (fun x:ℝ => x - 1) 1 x₀ := by simpa using (hasDerivAt_id x₀).sub_const 1
+  exact (hnum.div hden hsub).hasDerivWithinAt.congr_deriv (by field_simp; ring)
 
 /-- Theorem 10.1.15 (Chain rule) / Exercise 10.1.7 -/
 theorem _root_.HasDerivWithinAt.of_comp {X Y: Set ℝ} {x₀ y₀ f'x₀ g'y₀: ℝ}
@@ -216,12 +243,17 @@ theorem _root_.HasDerivWithinAt.of_comp {X Y: Set ℝ} {x₀ y₀ f'x₀ g'y₀:
 /-- Exercise 10.1.5 -/
 theorem _root_.HasDerivWithinAt.of_pow (n:ℕ) (x₀:ℝ) : HasDerivWithinAt (fun x ↦ x^n)
 (n * x₀^((n:ℤ)-1)) .univ x₀ := by
-  sorry
+  apply (hasDerivAt_pow n x₀).hasDerivWithinAt.congr_deriv
+  rcases n with _ | m
+  · simp
+  · simp only [Nat.add_sub_cancel]
+    push_cast
+    rw [show ((m:ℤ)+1-1) = (m:ℤ) by ring, zpow_natCast]
 
 /-- Exercise 10.1.6 -/
 theorem _root_.HasDerivWithinAt.of_zpow (n:ℤ) (x₀:ℝ) (hx₀: x₀ ≠ 0) :
-  HasDerivWithinAt (fun x ↦ x^n) (n * x₀^(n-1)) (.univ \ {0}) x₀ := by
-  sorry
+  HasDerivWithinAt (fun x ↦ x^n) (n * x₀^(n-1)) (.univ \ {0}) x₀ :=
+  (hasDerivAt_zpow n x₀ (Or.inl hx₀)).hasDerivWithinAt
 
 
 
