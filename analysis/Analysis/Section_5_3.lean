@@ -529,9 +529,20 @@ theorem Real.boundedAwayZero_of_nonzero {x:Real} (hx: x ≠ 0) :
   choose ε hε hx using hx
   choose N hb' using (Sequence.IsCauchy.coe _).mp hb _ (half_pos hε)
   choose n₀ hn₀ hx using hx N
-  have how : ∀ j ≥ N, |b j| ≥ ε/2 := by sorry
+  have how : ∀ j ≥ N, |b j| ≥ ε/2 := by
+    intro j hj
+    have hd := hb' j hj n₀ hn₀
+    rw [Section_4_3.dist_eq, abs_sub_comm] at hd
+    have htri := abs_sub_abs_le_abs_sub (b n₀) (b j)
+    linarith [hx, hd, htri]
   set a : ℕ → ℚ := fun n ↦ if n < n₀ then ε/2 else b n
-  have not_hard : Sequence.Equiv a b := by sorry
+  have not_hard : Sequence.Equiv a b := by
+    rw [Sequence.equiv_iff]
+    intro δ hδ
+    refine ⟨n₀, fun n hn => ?_⟩
+    have hab : a n = b n := by simp only [a]; rw [if_neg (by omega)]
+    rw [hab, sub_self, abs_zero]
+    linarith
   have ha := (Sequence.isCauchy_of_equiv not_hard).mpr hb
   refine ⟨ a, ha, ?_, by rw [(LIM_eq_LIM ha hb).mpr not_hard] ⟩
   rw [bounded_away_zero_def]
