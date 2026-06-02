@@ -403,12 +403,35 @@ theorem Real.inv_of_gt {x y:Real} (hx: x.IsPos) (hy: y.IsPos) (hxy: x > y) : x�
 
 /-- (Not from textbook) Real has the structure of a strict ordered ring. -/
 instance Real.instIsStrictOrderedRing : IsStrictOrderedRing Real where
-  add_le_add_left := by sorry
-  add_le_add_right := by sorry
-  mul_lt_mul_of_pos_left := by sorry
-  mul_lt_mul_of_pos_right := by sorry
-  le_of_add_le_add_left := by sorry
-  zero_le_one := by sorry
+  add_le_add_left := by
+    intro a b h c
+    rw [Real.le_iff] at h ⊢
+    rcases h with h | h
+    · left; exact Real.add_lt_add_right c h
+    · right; rw [h]
+  add_le_add_right := by
+    intro a b h c
+    rw [Real.le_iff] at h ⊢
+    rcases h with h | h
+    · left; rw [add_comm c a, add_comm c b]; exact Real.add_lt_add_right c h
+    · right; rw [h]
+  mul_lt_mul_of_pos_left := by
+    intro a ha b c hbc
+    rw [mul_comm a b, mul_comm a c]
+    exact Real.mul_lt_mul_right hbc ((Real.isPos_iff a).mpr ha)
+  mul_lt_mul_of_pos_right := by
+    intro a ha b c hbc
+    exact Real.mul_lt_mul_right hbc ((Real.isPos_iff a).mpr ha)
+  le_of_add_le_add_left := by
+    intro a b c h
+    rw [Real.le_iff] at h ⊢
+    rcases h with h | h
+    · left; rw [Real.lt_iff, show (a+b)-(a+c) = b-c from by ring, ← Real.lt_iff] at h; exact h
+    · right; exact add_left_cancel h
+  zero_le_one := by
+    rw [Real.le_iff]; left
+    rw [Real.lt_iff, show (0:Real)-1 = ((-1:ℚ):Real) from by push_cast; ring, Real.neg_of_coe]
+    norm_num
 
 /-- Proposition 5.4.9 (The non-negative reals are closed)-/
 theorem Real.LIM_of_nonneg {a: ℕ → ℚ} (ha: ∀ n, a n ≥ 0) (hcauchy: (a:Sequence).IsCauchy) :
