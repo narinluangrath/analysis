@@ -470,10 +470,30 @@ theorem bounded_away_zero_def (a:ℕ → ℚ) : BoundedAwayZero a ↔
 example : BoundedAwayZero (fun n ↦ (-1)^n) := by use 1; simp
 
 /-- Examples 5.3.13 -/
-example : ¬ BoundedAwayZero (fun n ↦ 10^(-(n:ℤ)-1)) := by sorry
+example : ¬ BoundedAwayZero (fun n ↦ 10^(-(n:ℤ)-1)) := by
+  rw [bounded_away_zero_def]; push_neg
+  intro c hc
+  obtain ⟨m, hm⟩ := exists_nat_gt (1/c)
+  refine ⟨m, ?_⟩
+  rw [abs_of_pos (by positivity), show (10:ℚ)^(-(m:ℤ)-1) = 1/(10:ℚ)^(m+1) from by
+    rw [one_div, ← zpow_natCast (10:ℚ) (m+1), ← zpow_neg]; congr 1; omega,
+    div_lt_iff₀ (by positivity)]
+  have hpow : (m:ℚ)+1 ≤ (10:ℚ)^(m+1) := by
+    have key := one_add_mul_le_pow (show (-2:ℚ) ≤ 9 by norm_num) (m+1)
+    norm_num at key
+    have hmnn : (0:ℚ) ≤ (m:ℚ) := by positivity
+    push_cast at key
+    nlinarith [key, hmnn]
+  rw [div_lt_iff₀ hc] at hm
+  nlinarith [hm, hpow, hc, mul_le_mul_of_nonneg_left hpow hc.le]
 
 /-- Examples 5.3.13 -/
-example : ¬ BoundedAwayZero (fun n ↦ 1 - 10^(-(n:ℤ))) := by sorry
+example : ¬ BoundedAwayZero (fun n ↦ 1 - 10^(-(n:ℤ))) := by
+  rw [bounded_away_zero_def]; push_neg
+  intro c hc
+  refine ⟨0, ?_⟩
+  have h0 : |(1:ℚ) - 10^(-((0:ℕ):ℤ))| = 0 := by norm_num
+  rw [h0]; exact hc
 
 /-- Examples 5.3.13 -/
 example : BoundedAwayZero (fun n ↦ 10^(n+1)) := by
