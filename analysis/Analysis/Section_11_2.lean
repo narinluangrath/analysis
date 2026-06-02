@@ -210,7 +210,26 @@ example : PiecewiseConstantWith f_11_2_12 P_11_2_12 := by
       if_neg (by linarith [hx.1] : x ≠ 3)]
 
 example : PiecewiseConstantWith.integ f_11_2_12 P_11_2_12 = 10 := by
-  sorry
+  rw [PiecewiseConstantWith.integ,
+    show P_11_2_12.intervals = {Ico 1 3, Icc 3 3, Ioc 3 4} from by
+      simp [P_11_2_12, Partition.intervals_of_join, Partition.intervals_of_bot]]
+  rw [Finset.sum_insert (by simp), Finset.sum_insert (by simp), Finset.sum_singleton]
+  have hv1 : constant_value_on f_11_2_12 ↑(Ico 1 3) = 2 := by
+    apply ConstantOn.const_eq ⟨1, by norm_num [set_Ico]⟩
+    intro x hx; simp only [set_Ico, Set.mem_Ico] at hx
+    simp only [f_11_2_12, if_pos hx.2]
+  have hv2 : constant_value_on f_11_2_12 ↑(Icc 3 3) = 4 := by
+    apply ConstantOn.const_eq ⟨3, by norm_num [set_Icc]⟩
+    intro x hx; simp only [set_Icc, Set.mem_Icc] at hx
+    have hx3 : x = 3 := le_antisymm hx.2 hx.1
+    simp only [f_11_2_12, hx3]; norm_num
+  have hv3 : constant_value_on f_11_2_12 ↑(Ioc 3 4) = 6 := by
+    apply ConstantOn.const_eq ⟨4, by norm_num [set_Ioc]⟩
+    intro x hx; simp only [set_Ioc, Set.mem_Ioc] at hx
+    simp only [f_11_2_12, if_neg (by linarith [hx.1] : ¬ x < 3),
+      if_neg (by linarith [hx.1] : x ≠ 3)]
+  rw [hv1, hv2, hv3]
+  norm_num [BoundedInterval.length]
 
 noncomputable abbrev P_11_2_12' : Partition (Icc 1 4) :=
   ((((⊥: Partition (Ico 1 2)).join (⊥ : Partition (Ico 2 3))
