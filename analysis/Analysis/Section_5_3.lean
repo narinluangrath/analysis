@@ -442,8 +442,12 @@ noncomputable instance Real.instCommRing : CommRing Real where
     rw [Real.LIM_mul ha hb, Real.LIM_mul (Sequence.IsCauchy.mul ha hb) hc,
       Real.LIM_mul hb hc, Real.LIM_mul ha (Sequence.IsCauchy.mul hb hc)]
     congr 1; ext n; simp [Pi.mul_apply]; ring
-  natCast_succ := by sorry
-  intCast_negSucc := by sorry
+  natCast_succ := fun n => by
+    show (((n+1:ℕ):ℚ):Real) = (((n:ℕ):ℚ):Real) + 1
+    rw [Nat.cast_add_one, show (1:Real) = ((1:ℚ):Real) from rfl, ← Real.ratCast_add]
+  intCast_negSucc := fun n => by
+    show (((Int.negSucc n:ℤ):ℚ):Real) = -(((n+1:ℕ):ℚ):Real)
+    rw [Int.cast_negSucc, ← Real.neg_ratCast]
 
 abbrev Real.ratCast_hom : ℚ →+* Real where
   toFun := RatCast.ratCast
