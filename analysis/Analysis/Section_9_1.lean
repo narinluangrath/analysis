@@ -61,11 +61,19 @@ example {a b: EReal} (h: a = b) : Set.Icc a a = {a} := by
 abbrev Real.adherent' (ε:ℝ) (x:ℝ) (X: Set ℝ) := ∃ y ∈ X, |x - y| ≤ ε
 
 /-- Example 9.1.7 -/
-example : (0.5:ℝ).adherent' 1.1 (.Ioo 0 1) := by sorry
+example : (0.5:ℝ).adherent' 1.1 (.Ioo 0 1) := by
+  refine ⟨0.9, by norm_num [Set.mem_Ioo], ?_⟩
+  rw [abs_le]; norm_num
 
-example : ¬ (0.1:ℝ).adherent' 1.1 (.Ioo 0 1) := by sorry
+example : ¬ (0.1:ℝ).adherent' 1.1 (.Ioo 0 1) := by
+  rintro ⟨y, hy, hle⟩
+  simp only [Set.mem_Ioo] at hy
+  rw [abs_le] at hle
+  linarith [hy.2, hle.2]
 
-example : (0.5:ℝ).adherent' 1.1 {1,2,3} := by sorry
+example : (0.5:ℝ).adherent' 1.1 {1,2,3} := by
+  refine ⟨1, by norm_num, ?_⟩
+  rw [abs_le]; norm_num
 
 
 namespace Chapter9
@@ -73,9 +81,21 @@ namespace Chapter9
 /-- Definition 9.1.-/
 abbrev AdherentPt (x:ℝ) (X:Set ℝ) := ∀ ε > (0:ℝ), ε.adherent' x X
 
-example : AdherentPt 1 (.Ioo 0 1) := by sorry
+example : AdherentPt 1 (.Ioo 0 1) := by
+  intro ε hε
+  have hm : (0:ℝ) < min ε 1 := lt_min hε one_pos
+  refine ⟨1 - min ε 1 / 2, ?_, ?_⟩
+  · simp only [Set.mem_Ioo]
+    constructor <;> nlinarith [min_le_right ε 1, min_le_left ε 1]
+  · rw [show (1:ℝ) - (1 - min ε 1 / 2) = min ε 1 / 2 by ring, abs_of_nonneg (by linarith)]
+    nlinarith [min_le_left ε 1]
 
-example : ¬ AdherentPt 2 (.Ioo 0 1) := by sorry
+example : ¬ AdherentPt 2 (.Ioo 0 1) := by
+  intro h
+  obtain ⟨y, hy, hle⟩ := h (1/2) (by norm_num)
+  simp only [Set.mem_Ioo] at hy
+  rw [abs_le] at hle
+  linarith [hy.2, hle.2]
 
 /-- Definition 9.1.10 (Closure).  Here we identify this definition with the Mathilb version. -/
 theorem closure_def (X:Set ℝ) : closure X = { x | AdherentPt x X } := by
