@@ -203,7 +203,17 @@ theorem Convergesto.f_9_3_17_remove : Convergesto (.univ \ {0}) f_9_3_17 0 0 := 
     simp [hx]) tendsto_const_nhds
 
 theorem Convergesto.f_9_3_17_all : ¬ ∃ L, Convergesto .univ f_9_3_17 L 0 := by
-  sorry
+  rintro ⟨L, hL⟩
+  rw [Convergesto.iff, nhdsWithin_univ] at hL
+  have hpunct : Filter.Tendsto f_9_3_17 (nhdsWithin 0 {(0:ℝ)}ᶜ) (nhds 0) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx
+    simp only [Set.mem_compl_iff, Set.mem_singleton_iff] at hx
+    simp [f_9_3_17, hx]
+  have hL0 : L = 0 := tendsto_nhds_unique (hL.mono_left nhdsWithin_le_nhds) hpunct
+  subst hL0
+  have h0 := (hL.eventually (Metric.ball_mem_nhds (0:ℝ) (by norm_num : (0:ℝ) < 1/2))).self_of_nhds
+  norm_num [f_9_3_17, Real.dist_eq] at h0
 
 /-- Proposition 9.3.18 / Exercise 9.3.3 -/
 theorem Convergesto.local {E:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) {δ:ℝ} (hδ: δ > 0) :
@@ -217,7 +227,11 @@ theorem Convergesto.local {E:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: Ad
 
 /-- Example 9.3.19.  The point of this example is somewhat blunted by the ability to remove the hypothesis that `g` is non-zero from the relevant part of Proposition 9.3.14 -/
 example : Convergesto .univ (fun x ↦ (x+2)/(x+1)) (4/3:ℝ) 2 := by
-  sorry
+  rw [Convergesto.iff, nhdsWithin_univ]
+  have hc : ContinuousAt (fun x:ℝ ↦ (x+2)/(x+1)) 2 :=
+    ContinuousAt.div (by fun_prop) (by fun_prop) (by norm_num)
+  convert hc.tendsto using 2
+  norm_num
 
 /-- Example 9.3.20 -/
 example : Convergesto (.univ \ {1}) (fun x ↦ (x^2-1)/(x-1)) 2 1 := by
