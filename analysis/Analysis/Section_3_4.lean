@@ -274,12 +274,24 @@ noncomputable abbrev SetTheory.Set.iInter (I: Set) (hI: I ≠ ∅) (A: I → Set
 
 theorem SetTheory.Set.mem_iInter {I:Set} (hI: I ≠ ∅) (A: I → Set) (x:Object) :
     x ∈ iInter I hI A ↔ ∀ α:I, x ∈ A α := by
-  sorry
+  simp only [iInter, iInter', specification_axiom'']
+  constructor
+  · rintro ⟨_, hP⟩; exact hP
+  · intro hP; exact ⟨hP _, hP⟩
 
 /-- Exercise 3.4.1 -/
 theorem SetTheory.Set.preimage_eq_image_of_inv {X Y V:Set} (f:X → Y) (f_inv: Y → X)
   (hf: Function.LeftInverse f_inv f ∧ Function.RightInverse f_inv f) (hV: V ⊆ Y) :
-    image f_inv V = preimage f V := by sorry
+    image f_inv V = preimage f V := by
+  obtain ⟨hL, hR⟩ := hf
+  apply ext; intro z
+  rw [mem_image, mem_preimage']
+  constructor
+  · rintro ⟨y, hyV, rfl⟩
+    refine ⟨f_inv y, rfl, ?_⟩
+    rw [hR y]; exact hyV
+  · rintro ⟨x, rfl, hfx⟩
+    exact ⟨f x, hfx, by rw [hL x]⟩
 
 /- Exercise 3.4.2.  State and prove an assertion connecting `preimage f (image f S)` and `S`. -/
 -- theorem SetTheory.Set.preimage_of_image {X Y:Set} (f:X → Y) (S: Set) (hS: S ⊆ X) : sorry := by sorry
