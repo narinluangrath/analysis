@@ -512,9 +512,6 @@ theorem Real.le_mul {ε:Real} (hε: ε.IsPos) (x:Real) : ∃ M:ℕ, M > 0 ∧ M 
     rw [isPos_iff] at hε; field_simp
   use 1; simp_all [isPos_iff]; linarith
 
-/-- Proposition 5.4.14 / Exercise 5.4.5 -/
-theorem Real.rat_between {x y:Real} (hxy: x < y) : ∃ q:ℚ, x < (q:Real) ∧ (q:Real) < y := by sorry
-
 /-- Exercise 5.4.3 -/
 theorem Real.floor_exist (x:Real) : ∃! n:ℤ, (n:Real) ≤ x ∧ x < (n:Real)+1 := by
   classical
@@ -551,6 +548,21 @@ theorem Real.exist_inv_nat_le {x:Real} (hx: x.IsPos) : ∃ N:ℤ, N>0 ∧ (N:Rea
   calc ((M:ℤ):Real)⁻¹ = ((M:ℤ):Real)⁻¹ * 1 := (mul_one _).symm
     _ < ((M:ℤ):Real)⁻¹ * (((M:ℤ):Real) * x) := mul_lt_mul_of_pos_left key (inv_pos.mpr hMpos)
     _ = x := by rw [← mul_assoc, inv_mul_cancel₀ (ne_of_gt hMpos), one_mul]
+
+/-- Proposition 5.4.14 / Exercise 5.4.5 -/
+theorem Real.rat_between {x y:Real} (hxy: x < y) : ∃ q:ℚ, x < (q:Real) ∧ (q:Real) < y := by
+  have hpos : (y-x).IsPos := (isPos_iff _).mpr (by linarith)
+  obtain ⟨N, hN, hNinv⟩ := exist_inv_nat_le hpos
+  have hNr : (0:Real) < (N:Real) := by exact_mod_cast hN
+  obtain ⟨m, ⟨hm1, hm2⟩, -⟩ := floor_exist ((N:Real)*x)
+  have h1 : 1 < (N:Real)*(y-x) := by
+    have := mul_lt_mul_of_pos_left hNinv hNr
+    rwa [mul_inv_cancel₀ (ne_of_gt hNr)] at this
+  set q : ℚ := ((m:ℚ)+1)/(N:ℚ) with hqdef
+  have hq : (q:Real) = ((m:Real)+1)/((N:Real)) := by rw [hqdef]; push_cast; ring
+  refine ⟨q, ?_, ?_⟩
+  · rw [hq, lt_div_iff₀ hNr, mul_comm]; exact hm2
+  · rw [hq, div_lt_iff₀ hNr]; nlinarith [hm1, h1]
 
 /-- Exercise 5.4.6 -/
 theorem Real.dist_lt_iff (ε x y:Real) : |x-y| < ε ↔ y-ε < x ∧ x < y+ε := by
