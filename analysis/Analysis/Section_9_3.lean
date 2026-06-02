@@ -192,7 +192,18 @@ theorem Convergesto.sign_left : Convergesto (.Iio 0) Real.sign (-1) 0 := by
     rw [Real.sign_def]; split_ifs with h1 <;> simp_all [Set.mem_Iio] <;> linarith) tendsto_const_nhds
 
 /-- Example 9.3.16 -/
-theorem Convergesto.sign_all : ¬ ∃ L, Convergesto (.univ) Real.sign L 0 := by sorry
+theorem Convergesto.sign_all : ¬ ∃ L, Convergesto (.univ) Real.sign L 0 := by
+  rintro ⟨L, hL⟩
+  rw [Convergesto.iff, nhdsWithin_univ] at hL
+  have h1 : Filter.Tendsto Real.sign (nhdsWithin 0 (Set.Ioi 0)) (nhds 1) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx; exact Real.sign_of_pos hx
+  have h2 : Filter.Tendsto Real.sign (nhdsWithin 0 (Set.Iio 0)) (nhds (-1)) := by
+    apply tendsto_nhds_of_eventually_eq
+    filter_upwards [self_mem_nhdsWithin] with x hx; exact Real.sign_of_neg hx
+  have e1 : L = 1 := tendsto_nhds_unique (hL.mono_left nhdsWithin_le_nhds) h1
+  have e2 : L = -1 := tendsto_nhds_unique (hL.mono_left nhdsWithin_le_nhds) h2
+  rw [e1] at e2; norm_num at e2
 
 noncomputable abbrev f_9_3_17 : ℝ → ℝ := fun x ↦ if x = 0 then 1 else 0
 
