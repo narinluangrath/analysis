@@ -229,7 +229,19 @@ theorem Sequence.IsCauchy.mul {a b:ℕ → ℚ}  (ha: (a:Sequence).IsCauchy) (hb
 /-- Proposition 5.3.10 (Product of equivalent sequences is equivalent) / Exercise 5.3.2 -/
 theorem Sequence.mul_equiv_left {a a':ℕ → ℚ} (b:ℕ → ℚ) (hb : (b:Sequence).IsCauchy) (haa': Equiv a a') :
   Equiv (a * b) (a' * b) := by
-  sorry
+  obtain ⟨Mb, hMb, hBb⟩ := Sequence.isBounded_of_isCauchy hb
+  have hbb : ∀ j:ℕ, |b j| ≤ Mb := fun j => by
+    have h := hBb (j:ℤ)
+    rwa [Sequence.eval_coe_at_int, if_pos (by positivity), Int.toNat_natCast] at h
+  rw [Sequence.equiv_iff] at *
+  intro ε hε
+  obtain ⟨N, hN⟩ := haa' (ε/(Mb+1)) (by positivity)
+  refine ⟨N, fun n hn => ?_⟩
+  have e := hN n hn
+  simp only [Pi.mul_apply]
+  rw [show a n * b n - a' n * b n = (a n - a' n) * b n by ring, abs_mul, mul_comm]
+  calc |b n| * |a n - a' n| ≤ Mb * (ε/(Mb+1)) := mul_le_mul (hbb n) e (abs_nonneg _) hMb
+    _ ≤ ε := by rw [mul_div_assoc', div_le_iff₀ (by positivity)]; nlinarith [hMb, hε]
 
 /--Proposition 5.3.10 (Product of equivalent sequences is equivalent) / Exercise 5.3.2 -/
 theorem Sequence.mul_equiv_right {b b':ℕ → ℚ} (a:ℕ → ℚ)  (ha : (a:Sequence).IsCauchy)  (hbb': Equiv b b') :
