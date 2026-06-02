@@ -62,17 +62,66 @@ lemma Rat.eventuallyClose_def (ε: ℚ) (a b: Sequence) :
 
 /-- Definition 5.2.3 (Eventually ε-close sequences) -/
 lemma Rat.eventuallyClose_iff (ε: ℚ) (a b: ℕ → ℚ) :
-    ε.EventuallyClose (a:Sequence) (b:Sequence) ↔ ∃ N, ∀ n ≥ N, |a n - b n| ≤ ε := by sorry
+    ε.EventuallyClose (a:Sequence) (b:Sequence) ↔ ∃ N, ∀ n ≥ N, |a n - b n| ≤ ε := by
+  rw [Rat.eventuallyClose_def]
+  constructor
+  · rintro ⟨N, hc⟩
+    rw [Rat.closeSeq_def] at hc
+    refine ⟨N.toNat, fun m hm => ?_⟩
+    have hmz : (m:ℤ) ≥ N := by omega
+    have hmz0 : (m:ℤ) ≥ 0 := by positivity
+    have hcond_a : (m:ℤ) ≥ ((a:Chapter5.Sequence).from N).n₀ := by
+      show (m:ℤ) ≥ max ((a:Chapter5.Sequence).n₀) N; rw [Sequence.n0_coe]; omega
+    have hcond_b : (m:ℤ) ≥ ((b:Chapter5.Sequence).from N).n₀ := by
+      show (m:ℤ) ≥ max ((b:Chapter5.Sequence).n₀) N; rw [Sequence.n0_coe]; omega
+    have hc' := hc (m:ℤ) hcond_a hcond_b
+    unfold Rat.Close at hc'
+    rwa [Sequence.from_eval _ hmz, Sequence.from_eval _ hmz, Sequence.eval_coe_at_int,
+      Sequence.eval_coe_at_int, if_pos hmz0, Int.toNat_natCast] at hc'
+  · rintro ⟨N, hb⟩
+    refine ⟨(N:ℤ), ?_⟩
+    rw [Rat.closeSeq_def]
+    intro n hca _
+    have hn0eq : ((a:Chapter5.Sequence).from (N:ℤ)).n₀ = max 0 (N:ℤ) := by
+      simp [Sequence.from, Sequence.n0_coe]
+    rw [hn0eq] at hca
+    have hn_n : n ≥ (N:ℤ) := by omega
+    have hn0 : n ≥ 0 := by omega
+    unfold Rat.Close
+    rw [Sequence.from_eval _ hn_n, Sequence.from_eval _ hn_n, Sequence.eval_coe_at_int,
+      Sequence.eval_coe_at_int, if_pos hn0, if_pos hn0]
+    exact hb n.toNat (by omega)
 
 /-- Example 5.2.5 -/
 example : ¬ (0.1:ℚ).CloseSeq ((fun n:ℕ ↦ (1:ℚ)+10^(-(n:ℤ)-1)):Sequence)
-  ((fun n:ℕ ↦ (1:ℚ)-10^(-(n:ℤ)-1)):Sequence) := by sorry
+  ((fun n:ℕ ↦ (1:ℚ)-10^(-(n:ℤ)-1)):Sequence) := by
+  rw [Rat.closeSeq_def]; push_neg
+  refine ⟨0, by simp [Sequence.n0_coe], by simp [Sequence.n0_coe], ?_⟩
+  rw [Sequence.eval_coe_at_int, Sequence.eval_coe_at_int, if_pos (le_refl 0), if_pos (le_refl 0)]
+  unfold Rat.Close; push_neg
+  norm_num
 
 example : (0.1:ℚ).EventuallyClose ((fun n:ℕ ↦ (1:ℚ)+10^(-(n:ℤ)-1)):Sequence)
-  ((fun n:ℕ ↦ (1:ℚ)-10^(-(n:ℤ)-1)):Sequence) := by sorry
+  ((fun n:ℕ ↦ (1:ℚ)-10^(-(n:ℤ)-1)):Sequence) := by
+  rw [Rat.eventuallyClose_iff]
+  refine ⟨1, fun n hn => ?_⟩
+  rw [show ((1:ℚ)+10^(-(n:ℤ)-1)) - (1 - 10^(-(n:ℤ)-1)) = 2*(10:ℚ)^(-(n:ℤ)-1) by ring,
+    abs_of_pos (by positivity)]
+  calc 2*(10:ℚ)^(-(n:ℤ)-1) ≤ 2*(10:ℚ)^(-2:ℤ) := by
+        apply mul_le_mul_of_nonneg_left _ (by norm_num)
+        exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+    _ ≤ 0.1 := by norm_num
 
 example : (0.01:ℚ).EventuallyClose ((fun n:ℕ ↦ (1:ℚ)+10^(-(n:ℤ)-1)):Sequence)
-  ((fun n:ℕ ↦ (1:ℚ)-10^(-(n:ℤ)-1)):Sequence) := by sorry
+  ((fun n:ℕ ↦ (1:ℚ)-10^(-(n:ℤ)-1)):Sequence) := by
+  rw [Rat.eventuallyClose_iff]
+  refine ⟨2, fun n hn => ?_⟩
+  rw [show ((1:ℚ)+10^(-(n:ℤ)-1)) - (1 - 10^(-(n:ℤ)-1)) = 2*(10:ℚ)^(-(n:ℤ)-1) by ring,
+    abs_of_pos (by positivity)]
+  calc 2*(10:ℚ)^(-(n:ℤ)-1) ≤ 2*(10:ℚ)^(-3:ℤ) := by
+        apply mul_le_mul_of_nonneg_left _ (by norm_num)
+        exact zpow_le_zpow_right₀ (by norm_num) (by omega)
+    _ ≤ 0.01 := by norm_num
 
 /-- Definition 5.2.6 (Equivalent sequences) -/
 abbrev Sequence.Equiv (a b: ℕ → ℚ) : Prop :=
@@ -84,7 +133,8 @@ lemma Sequence.equiv_def (a b: ℕ → ℚ) :
 
 /-- Definition 5.2.6 (Equivalent sequences) -/
 lemma Sequence.equiv_iff (a b: ℕ → ℚ) : Equiv a b ↔ ∀ ε > 0, ∃ N, ∀ n ≥ N, |a n - b n| ≤ ε := by
-  sorry
+  rw [Sequence.equiv_def]
+  simp_rw [Rat.eventuallyClose_iff]
 
 /-- Proposition 5.2.8 -/
 lemma Sequence.equiv_example :
