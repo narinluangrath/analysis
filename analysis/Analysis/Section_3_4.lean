@@ -133,7 +133,7 @@ example : (fun n:ℤ ↦ n^2) ⁻¹' ((fun n:ℤ ↦ n^2) '' {-1,0,1,2}) ≠ {-1
     simp only [Set.mem_preimage, Set.mem_image]
     exact ⟨2, by simp, by norm_num⟩
   rw [h] at h2
-  norm_num [Set.mem_insert_iff, Set.mem_singleton_iff] at h2
+  norm_num [Set.mem_insert, Set.mem_singleton_iff] at h2
 
 instance SetTheory.Set.inst_pow : Pow Set Set where
   pow := pow
@@ -230,7 +230,19 @@ theorem SetTheory.Set.union_axiom (A: Set) (x:Object) :
 /-- Example 3.4.12 -/
 theorem SetTheory.Set.example_3_4_12 :
     union { (({2,3}:Set):Object), (({3,4}:Set):Object), (({4,5}:Set):Object) } = {2,3,4,5} := by
-  sorry
+  apply ext; intro x
+  simp only [union_axiom, mem_triple, coe_eq_iff]
+  constructor
+  · rintro ⟨S, hxS, rfl | rfl | rfl⟩ <;>
+      simp only [mem_pair, mem_triple] at hxS <;>
+      simp only [mem_insert, mem_singleton, mem_pair] <;> tauto
+  · intro hx
+    simp only [mem_insert, mem_singleton] at hx
+    rcases hx with rfl | rfl | rfl | rfl
+    · exact ⟨{2,3}, by simp [mem_pair], Or.inl rfl⟩
+    · exact ⟨{2,3}, by simp [mem_pair], Or.inl rfl⟩
+    · exact ⟨{3,4}, by simp [mem_pair], Or.inr (Or.inl rfl)⟩
+    · exact ⟨{4,5}, by simp [mem_pair], Or.inr (Or.inr rfl)⟩
 
 /-- Connection with Mathlib union -/
 theorem SetTheory.Set.union_eq (A: Set) :
