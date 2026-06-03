@@ -42,20 +42,15 @@ variable (I : Type*)
 #check EReal.image_coe_Iio
 
 /-- Example 9.1.4 -/
-example {a b: EReal} (h: a > b) : Set.Icc a b = ∅ := by
-  sorry
+example {a b: EReal} (h: a > b) : Set.Icc a b = ∅ := Set.Icc_eq_empty (not_le.mpr h)
 
-example {a b: EReal} (h: a ≥ b) : Set.Ico a b = ∅ := by
-  sorry
+example {a b: EReal} (h: a ≥ b) : Set.Ico a b = ∅ := Set.Ico_eq_empty (not_lt.mpr h)
 
-example {a b: EReal} (h: a ≥ b) : Set.Ioc a b = ∅ := by
-  sorry
+example {a b: EReal} (h: a ≥ b) : Set.Ioc a b = ∅ := Set.Ioc_eq_empty (not_lt.mpr h)
 
-example {a b: EReal} (h: a ≥ b) : Set.Ioo a b = ∅ := by
-  sorry
+example {a b: EReal} (h: a ≥ b) : Set.Ioo a b = ∅ := Set.Ioo_eq_empty (not_lt.mpr h)
 
-example {a b: EReal} (h: a = b) : Set.Icc a a = {a} := by
-  sorry
+example {a b: EReal} (h: a = b) : Set.Icc a a = {a} := Set.Icc_self a
 
 /-- Definition 9.1.5.  Note that a slightly different `Real.adherent` was defined in Chapter 6.4 -/
 abbrev Real.adherent' (ε:ℝ) (x:ℝ) (X: Set ℝ) := ∃ y ∈ X, |x - y| ≤ ε
