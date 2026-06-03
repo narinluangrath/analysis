@@ -294,50 +294,66 @@ theorem LimitPt.iff_limit (x:ℝ) (X: Set ℝ) :
   LimitPt x X ↔ ∃ a : ℕ → ℝ, (∀ n, a n ∈ X \ {x}) ∧ Filter.atTop.Tendsto a (nhds x) := by
   simp [limit_of_AdherentPt]
 
+/-- Helper: `x` is a limit point of `X` whenever some open subinterval of `X \ {x}` has `x` in its
+closure. -/
+private theorem limitpt_of_sub {X: Set ℝ} {x p q:ℝ} (hpq: Set.Ioo p q ⊆ X \ {x})
+    (hxc: x ∈ closure (Set.Ioo p q)) : LimitPt x X :=
+  (closure_def' (X \ {x}) x).mp (closure_mono hpq hxc)
+
 /-- Lemma 9.1.21 -/
 theorem mem_Icc_isLimit {a b x:ℝ} (h: a < b) (hx: x ∈ Set.Icc a b) : LimitPt x (.Icc a b) := by
-  -- This proof is written to follow the structure of the original text, with some slight simplifications.
-  simp at hx
-  rw [LimitPt.iff_limit]
-  obtain hxb | hxb := le_iff_lt_or_eq.1 hx.2
-  . use (fun n:ℕ ↦ (x + 1/(n+(b-x)⁻¹)))
-    constructor
-    . intro n; simp
-      have : b - x > 0 := by linarith
-      have : (b - x)⁻¹ > 0 := by positivity
-      have : n + (b - x)⁻¹ > 0 := by linarith
-      have : (n+(b - x)⁻¹)⁻¹ > 0 := by positivity
-      have : (b-x)⁻¹ ≤ n + (b - x)⁻¹ := by linarith
-      have : (n + (b - x)⁻¹)⁻¹ ≤ b-x := by rwa [inv_le_comm₀ ?_ ?_] <;> positivity
-      grind
-    convert (Filter.Tendsto.const_add x (a := 0) ?_) using 1; · simp
-    convert Filter.Tendsto.comp (f := fun (k:ℕ) ↦ (k:ℝ)) (g := fun k ↦ 1/(k+(b-x)⁻¹)) ?_ tendsto_natCast_atTop_atTop
-    convert tendsto_mul_add_inv_atTop_nhds_zero 1 (b - x)⁻¹ (by norm_num) using 2 with n; simp
-  sorry
+  obtain ⟨ha, hb⟩ := hx
+  by_cases hxb : x < b
+  · apply limitpt_of_sub (p := x) (q := b)
+    · intro y hy; exact ⟨⟨ha.trans hy.1.le, hy.2.le⟩, (ne_of_lt hy.1).symm⟩
+    · rw [closure_Ioo (ne_of_lt hxb)]; exact Set.left_mem_Icc.mpr hxb.le
+  · have hax : a < x := by push_neg at hxb; linarith
+    apply limitpt_of_sub (p := a) (q := x)
+    · intro y hy; exact ⟨⟨hy.1.le, hy.2.le.trans hb⟩, (ne_of_lt hy.2)⟩
+    · rw [closure_Ioo (ne_of_lt hax)]; exact Set.right_mem_Icc.mpr hax.le
 
 theorem mem_Ico_isLimit {a b x:ℝ} (hx: x ∈ Set.Ico a b) : LimitPt x (.Ico a b) := by
-  sorry
+  obtain ⟨ha, hb⟩ := hx
+  apply limitpt_of_sub (p := x) (q := b)
+  · intro y hy; exact ⟨⟨ha.trans hy.1.le, hy.2⟩, (ne_of_lt hy.1).symm⟩
+  · rw [closure_Ioo (ne_of_lt hb)]; exact Set.left_mem_Icc.mpr hb.le
 
 theorem mem_Ioc_isLimit {a b x:ℝ} (hx: x ∈ Set.Ioc a b) : LimitPt x (.Ioc a b) := by
-  sorry
+  obtain ⟨ha, hb⟩ := hx
+  apply limitpt_of_sub (p := a) (q := x)
+  · intro y hy; exact ⟨⟨hy.1, hy.2.le.trans hb⟩, (ne_of_lt hy.2)⟩
+  · rw [closure_Ioo (ne_of_lt ha)]; exact Set.right_mem_Icc.mpr ha.le
 
 theorem mem_Ioo_isLimit {a b x:ℝ} (hx: x ∈ Set.Ioo a b) : LimitPt x (.Ioo a b) := by
-  sorry
+  obtain ⟨ha, hb⟩ := hx
+  apply limitpt_of_sub (p := a) (q := x)
+  · intro y hy; exact ⟨⟨hy.1, hy.2.trans hb⟩, (ne_of_lt hy.2)⟩
+  · rw [closure_Ioo (ne_of_lt ha)]; exact Set.right_mem_Icc.mpr ha.le
 
 theorem mem_Ici_isLimit {a x:ℝ} (hx: x ∈ Set.Ici a) : LimitPt x (.Ici a) := by
-  sorry
+  apply limitpt_of_sub (p := x) (q := x + 1)
+  · intro y hy; exact ⟨le_trans hx hy.1.le, (ne_of_lt hy.1).symm⟩
+  · rw [closure_Ioo (ne_of_lt (by linarith))]; exact Set.left_mem_Icc.mpr (by linarith)
 
 theorem mem_Ioi_isLimit {a x:ℝ} (hx: x ∈ Set.Ioi a) : LimitPt x (.Ioi a) := by
-  sorry
+  apply limitpt_of_sub (p := x) (q := x + 1)
+  · intro y hy; exact ⟨lt_trans hx hy.1, (ne_of_lt hy.1).symm⟩
+  · rw [closure_Ioo (ne_of_lt (by linarith))]; exact Set.left_mem_Icc.mpr (by linarith)
 
 theorem mem_Iic_isLimit {a x:ℝ} (hx: x ∈ Set.Iic a) : LimitPt x (.Iic a) := by
-  sorry
+  apply limitpt_of_sub (p := x - 1) (q := x)
+  · intro y hy; exact ⟨le_trans hy.2.le hx, (ne_of_lt hy.2)⟩
+  · rw [closure_Ioo (ne_of_lt (by linarith))]; exact Set.right_mem_Icc.mpr (by linarith)
 
 theorem mem_Iio_isLimit {a x:ℝ} (hx: x ∈ Set.Iio a) : LimitPt x (.Iio a) := by
-  sorry
+  apply limitpt_of_sub (p := x - 1) (q := x)
+  · intro y hy; exact ⟨lt_trans hy.2 hx, (ne_of_lt hy.2)⟩
+  · rw [closure_Ioo (ne_of_lt (by linarith))]; exact Set.right_mem_Icc.mpr (by linarith)
 
 theorem mem_R_isLimit {x:ℝ} : LimitPt x (.univ) := by
-  sorry
+  apply limitpt_of_sub (p := x) (q := x + 1)
+  · intro y hy; exact ⟨Set.mem_univ y, (ne_of_lt hy.1).symm⟩
+  · rw [closure_Ioo (ne_of_lt (by linarith))]; exact Set.left_mem_Icc.mpr (by linarith)
 
 /-- Definition 9.1.22.  We use here Mathlib's `Bornology.IsBounded`-/
 
