@@ -321,16 +321,41 @@ example : ∃ P:Partition (Icc 1 8),
   use P5.add_empty; simp_all; aesop
 
 example : ∃ P:Partition (Icc 1 8), P.intervals = {Icc 1 1, Ioo 1 3, Ico 3 5, Icc 5 5, Ioc 5 8} := by
-  sorry
+  set P1 : Partition (Icc 1 1) := ⊥
+  set P2 : Partition (Ico 1 3) := P1.join (⊥:Partition (Ioo 1 3)) (join_Icc_Ioo (by norm_num) (by norm_num) )
+  set P3 : Partition (Ico 1 5) := P2.join (⊥:Partition (Ico 3 5)) (join_Ico_Ico (by norm_num) (by norm_num) )
+  set P4 : Partition (Icc 1 5) := P3.join (⊥:Partition (Icc 5 5)) (join_Ico_Icc (by norm_num) (by norm_num) )
+  set P5 : Partition (Icc 1 8) := P4.join (⊥:Partition (Ioc 5 8)) (join_Icc_Ioc (by norm_num) (by norm_num) )
+  use P5
+  simp only [P5, P4, P3, P2, P1, Partition.intervals_of_join, Partition.intervals_of_bot]
+  aesop
 
 example : ¬∃ P:Partition (Icc 1 5), P.intervals = {Icc 1 4, Icc 3 5} := by
-  sorry
+  rintro ⟨P, hP⟩
+  have h35 : (3.5:ℝ) ∈ (Icc 1 5 : BoundedInterval) := by rw [mem_iff, set_Icc]; norm_num
+  obtain ⟨J, _, hUniq⟩ := P.exists_unique 3.5 h35
+  have e1 : Icc 1 4 = J := hUniq (Icc 1 4) ⟨by rw [hP]; simp, by rw [mem_iff, set_Icc]; norm_num⟩
+  have e2 : Icc 3 5 = J := hUniq (Icc 3 5) ⟨by rw [hP]; simp, by rw [mem_iff, set_Icc]; norm_num⟩
+  rw [← e1] at e2
+  simp only [BoundedInterval.Icc.injEq] at e2
+  norm_num at e2
 
 example : ¬∃ P:Partition (Ioo 1 5), P.intervals = {Ioo 1 3, Ioo 3 5} := by
-  sorry
+  rintro ⟨P, hP⟩
+  have h3 : (3:ℝ) ∈ (Ioo 1 5 : BoundedInterval) := by rw [mem_iff, set_Ioo]; norm_num
+  obtain ⟨J, ⟨hJmem, hJ3⟩, _⟩ := P.exists_unique 3 h3
+  rw [hP] at hJmem; simp only [Finset.mem_insert, Finset.mem_singleton] at hJmem
+  rcases hJmem with rfl | rfl <;> · rw [mem_iff, set_Ioo, Set.mem_Ioo] at hJ3; linarith [hJ3.1, hJ3.2]
 
 example : ¬∃ P:Partition (Ioo 1 5), P.intervals = {Ioo 0 3, Ico 3 5} := by
-  sorry
+  rintro ⟨P, hP⟩
+  have hmem : Ioo 0 3 ∈ P.intervals := by rw [hP]; simp
+  have hsub := P.contains _ hmem
+  rw [subset_iff] at hsub
+  have h05 : ((1:ℝ)/2) ∈ (↑(Ioo 0 3) : Set ℝ) := by rw [set_Ioo]; norm_num
+  have := hsub h05
+  rw [set_Ioo, Set.mem_Ioo] at this
+  linarith [this.1]
 
 
 /-- Exercise 11.1.3.  The exercise only claims c ≤ b, but the stronger claim c < b is true and useful. -/
