@@ -371,7 +371,13 @@ theorem lim_of_exp {x:ℝ} (hpos: 0 < x) (hbound: x < 1) :
     ((fun (n:ℕ) ↦ x^n):Sequence).Convergent ∧ lim ((fun (n:ℕ) ↦ x^n):Sequence) = 0 := by
   -- This proof is written to follow the structure of the original text.
   set a := ((fun (n:ℕ) ↦ x^n):Sequence)
-  have why : a.IsAntitone := sorry
+  have why : a.IsAntitone := by
+    intro k hk
+    have hk0 : (0:ℤ) ≤ k := hk
+    show a (k+1) ≤ a k
+    simp only [a, Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos hk0, if_pos (by linarith), show (k+1).toNat = k.toNat+1 by omega, pow_succ]
+    nlinarith [pow_nonneg hpos.le k.toNat, hbound]
   have hbound : a.BddBelowBy 0 := by intro n _; positivity
   have hbound' : a.BddBelow := by use 0
   have hconv := a.convergent_of_antitone hbound' why
@@ -379,7 +385,22 @@ theorem lim_of_exp {x:ℝ} (hpos: 0 < x) (hbound: x < 1) :
   have : lim ((fun (n:ℕ) ↦ x^(n+1)):Sequence) = x * L := by
     rw [←(a.lim_smul x hconv).2]; congr; ext n; rfl
     simp [a, pow_succ', HSMul.hSMul, SMul.smul]
-  have why2 : lim ((fun (n:ℕ) ↦ x^(n+1)):Sequence) = lim ((fun (n:ℕ) ↦ x^n):Sequence) := by sorry
+  have why2 : lim ((fun (n:ℕ) ↦ x^(n+1)):Sequence) = lim ((fun (n:ℕ) ↦ x^n):Sequence) := by
+    have hbtend : ((fun (n:ℕ) ↦ x^(n+1)):Sequence).TendsTo L := by
+      have hatend := Sequence.lim_def hconv
+      rw [Sequence.tendsTo_iff] at hatend ⊢
+      intro ε hε
+      obtain ⟨N, hN⟩ := hatend ε hε
+      refine ⟨max N 0, fun n hn => ?_⟩
+      have hn0 : (0:ℤ) ≤ n := le_trans (le_max_right _ _) hn
+      have heval : ((fun (n:ℕ) ↦ x^(n+1)):Sequence) n = a (n+1) := by
+        simp only [a, Sequence.instCoeFun, Sequence.ofNatFun]
+        rw [if_pos hn0, if_pos (by linarith), show (n+1).toNat = n.toNat+1 by omega]
+      rw [heval]
+      apply hN
+      have : N ≤ n := le_trans (le_max_left _ _) hn
+      linarith
+    exact (Sequence.lim_eq.mp hbtend).2
   convert_to x * L = 1 * L at why2; simp [a,L]
   have hx : x ≠ 1 := by grind
   simp_all [-one_mul]
