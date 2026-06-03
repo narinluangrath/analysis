@@ -190,7 +190,9 @@ theorem mono_of_continuous_inj {a b:ℝ} (h: a < b) {f:ℝ → ℝ}
   (hf: ContinuousOn f (.Icc a b))
   (hinj: Function.Injective (fun x: Set.Icc a b ↦ f x )) :
   StrictMonoOn f (.Icc a b) ∨ StrictAntiOn f (.Icc a b) := by
-  sorry
+  apply ContinuousOn.strictMonoOn_of_injOn_Icc' h.le hf
+  rw [Set.injOn_iff_injective]
+  exact hinj
 
 /-- Exercise 9.8.4 -/
 def MonotoneOn.exist_inverse_without_continuity {a b:ℝ} (h: a < b) {f: ℝ → ℝ} (hmono: StrictMonoOn f (.Icc a b)) :
