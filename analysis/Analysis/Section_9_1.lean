@@ -149,43 +149,39 @@ theorem closure_of_Ioo {a b:ℝ} (h:a < b) : closure (.Ioo a b) = .Icc a b := by
   . sorry
   intro ε _; use x, (by exact ⟨lt_of_le_of_ne h1 (Ne.symm ha), lt_of_le_of_ne h2 hb⟩); simp; order
 
-theorem closure_of_Ioc {a b:ℝ} (h:a < b) : closure (.Ioc a b) = .Icc a b := by
-  sorry
+theorem closure_of_Ioc {a b:ℝ} (h:a < b) : closure (.Ioc a b) = .Icc a b :=
+  closure_Ioc (ne_of_lt h)
 
-theorem closure_of_Ico {a b:ℝ} (h:a < b) : closure (.Ico a b) = .Icc a b := by
-  sorry
+theorem closure_of_Ico {a b:ℝ} (h:a < b) : closure (.Ico a b) = .Icc a b :=
+  closure_Ico (ne_of_lt h)
 
-theorem closure_of_Icc {a b:ℝ} (h:a ≤ b) : closure (.Icc a b) = .Icc a b := by
-  sorry
+theorem closure_of_Icc {a b:ℝ} (h:a ≤ b) : closure (.Icc a b) = .Icc a b :=
+  closure_Icc a b
 
-theorem closure_of_Ioi {a:ℝ} : closure (.Ioi a) = .Ici a := by
-  sorry
+theorem closure_of_Ioi {a:ℝ} : closure (.Ioi a) = .Ici a := closure_Ioi a
 
-theorem closure_of_Ici {a:ℝ} : closure (.Ici a) = .Ici a := by
-  sorry
+theorem closure_of_Ici {a:ℝ} : closure (.Ici a) = .Ici a := isClosed_Ici.closure_eq
 
-theorem closure_of_Iio {a:ℝ} : closure (.Iio a) = .Iic a := by
-  sorry
+theorem closure_of_Iio {a:ℝ} : closure (.Iio a) = .Iic a := closure_Iio a
 
-theorem closure_of_Iic {a:ℝ} : closure (.Iic a) = .Iic a := by
-  sorry
+theorem closure_of_Iic {a:ℝ} : closure (.Iic a) = .Iic a := isClosed_Iic.closure_eq
 
 theorem closure_of_R : closure (.univ: Set ℝ) = .univ := closure_univ
 
 /-- Lemma 9.1.13 / Exercise 9.1.3 -/
 theorem closure_of_N :
   closure ((fun n:ℕ ↦ (n:ℝ)) '' .univ) = ((fun n:ℕ ↦ (n:ℝ)) '' .univ) := by
-    sorry
+    rw [Set.image_univ]; exact Nat.isClosedEmbedding_coe_real.isClosed_range.closure_eq
 
 /-- Lemma 9.1.13 / Exercise 9.1.3 -/
 theorem closure_of_Z :
   closure ((fun n:ℤ ↦ (n:ℝ)) '' .univ) = ((fun n:ℤ ↦ (n:ℝ)) '' .univ) := by
-    sorry
+    rw [Set.image_univ]; exact Int.isClosedEmbedding_coe_real.isClosed_range.closure_eq
 
 /-- Lemma 9.1.13 / Exercise 9.1.3 -/
 theorem closure_of_Q :
   closure ((fun n:ℚ ↦ (n:ℝ)) '' .univ) = .univ := by
-    sorry
+    rw [Set.image_univ]; exact Rat.denseRange_cast.closure_range
 
 /-- Lemma 9.1.14 / Exercise 9.1.5 -/
 theorem limit_of_AdherentPt (X: Set ℝ) (x:ℝ) :
