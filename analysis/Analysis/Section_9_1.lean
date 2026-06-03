@@ -454,7 +454,41 @@ example {X:Set ℝ} {x:ℝ} : ¬ (LimitPt x X ∧ IsolatedPt x X) := by
 example {X:Set ℝ} (hX: X ≠ ∅) : Bornology.IsBounded X ↔
   sSup ((fun x:ℝ ↦ (x:EReal)) '' X) < ⊤ ∧
   sInf ((fun x:ℝ ↦ (x:EReal)) '' X) > ⊥ := by
-  sorry
+  obtain ⟨x₀, hx₀⟩ := Set.nonempty_iff_ne_empty.mpr hX
+  set S := (fun x:ℝ ↦ (x:EReal)) '' X with hS
+  constructor
+  · intro hbdd
+    rw [isBounded_def] at hbdd
+    obtain ⟨M, hM, hsub⟩ := hbdd
+    refine ⟨lt_of_le_of_lt (b := (M:EReal)) ?_ (EReal.coe_lt_top M),
+      lt_of_lt_of_le (b := ((-M:ℝ):EReal)) (EReal.bot_lt_coe (-M)) ?_⟩
+    · apply sSup_le; rintro z ⟨x, hx, rfl⟩
+      show (x:EReal) ≤ (M:EReal)
+      have := hsub hx; rw [Set.mem_Icc] at this; exact_mod_cast this.2
+    · apply le_sInf; rintro z ⟨x, hx, rfl⟩
+      show ((-M:ℝ):EReal) ≤ (x:EReal)
+      have := hsub hx; rw [Set.mem_Icc] at this; exact_mod_cast this.1
+  · rintro ⟨hsup, hinf⟩
+    rw [isBounded_def]
+    have hsup_bot : (⊥:EReal) < sSup S := lt_of_lt_of_le (EReal.bot_lt_coe x₀) (le_sSup ⟨x₀, hx₀, rfl⟩)
+    have hinf_top : sInf S < (⊤:EReal) := lt_of_le_of_lt (sInf_le ⟨x₀, hx₀, rfl⟩) (EReal.coe_lt_top x₀)
+    set a := (sSup S).toReal with ha
+    set b := (sInf S).toReal with hb
+    have hae : (a:EReal) = sSup S := EReal.coe_toReal (ne_of_lt hsup) (ne_of_gt hsup_bot)
+    have hbe : (b:EReal) = sInf S := EReal.coe_toReal (ne_of_lt hinf_top) (ne_of_gt hinf)
+    refine ⟨max (max a (-b)) 1, lt_of_lt_of_le one_pos (le_max_right _ _), ?_⟩
+    intro x hx
+    rw [Set.mem_Icc]
+    have hxa : x ≤ a := by
+      have : (x:EReal) ≤ (a:EReal) := hae ▸ le_sSup ⟨x, hx, rfl⟩
+      exact_mod_cast this
+    have hxb : b ≤ x := by
+      have : (b:EReal) ≤ (x:EReal) := hbe ▸ sInf_le ⟨x, hx, rfl⟩
+      exact_mod_cast this
+    constructor
+    · have : -b ≤ max (max a (-b)) 1 := le_trans (le_max_right a (-b)) (le_max_left _ _)
+      linarith
+    · exact le_trans hxa (le_trans (le_max_left a (-b)) (le_max_left _ _))
 
 /-- Exercise 9.1.11 -/
 example {X:Set ℝ} (hX: Bornology.IsBounded X) : Bornology.IsBounded (closure X) := hX.closure
