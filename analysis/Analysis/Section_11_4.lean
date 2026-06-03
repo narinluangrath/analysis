@@ -51,12 +51,15 @@ theorem IntegrableOn.mono {I: BoundedInterval} {f g:ℝ → ℝ} (hf: Integrable
 /-- Theorem 11.4.1(f) / Exercise 11.4.1 -/
 theorem IntegrableOn.const (c:ℝ) (I: BoundedInterval) :
   IntegrableOn (fun _ ↦ c) I ∧ integ (fun _ ↦ c) I = c * |I|ₗ := by
-  sorry
+  have hc : ConstantOn (fun _:ℝ ↦ c) I := ConstantOn.of_const' c _
+  obtain ⟨hint, heq⟩ := integ_of_piecewise_const hc.piecewiseConstantOn
+  exact ⟨hint, heq.trans (PiecewiseConstantOn.integ_const c I)⟩
 
 /-- Theorem 11.4.1(f) / Exercise 11.4.1 -/
 theorem IntegrableOn.const' {I: BoundedInterval} {f:ℝ → ℝ} (hf: ConstantOn f I) :
   IntegrableOn f I ∧ integ f I = (constant_value_on f I) * |I|ₗ := by
-  sorry
+  obtain ⟨hint, heq⟩ := integ_of_piecewise_const hf.piecewiseConstantOn
+  exact ⟨hint, heq.trans (PiecewiseConstantOn.integ_const' hf)⟩
 
 
 open Classical in
