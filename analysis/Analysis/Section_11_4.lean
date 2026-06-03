@@ -57,7 +57,74 @@ theorem IntegrableOn.add {I: BoundedInterval} {f g:ℝ → ℝ} (hf: IntegrableO
 /-- Theorem 11.4.1(b) / Exercise 11.4.1 -/
 theorem IntegrableOn.smul {I: BoundedInterval} (c:ℝ) {f:ℝ → ℝ} (hf: IntegrableOn f I) :
   IntegrableOn (c • f) I ∧ integ (c • f) I = c * integ f I := by
-  sorry
+  unfold IntegrableOn at hf
+  have hbound : BddOn (c • f) I := by
+    choose M hM using hf.1; use |c| * M; peel hM with x hx hM
+    simp only [Pi.smul_apply, smul_eq_mul, abs_mul]; exact mul_le_mul_of_nonneg_left hM (abs_nonneg c)
+  have hfu : integ f I = upper_integral f I := rfl
+  rcases lt_trichotomy c 0 with hc | hc | hc
+  · -- c < 0
+    have hup : upper_integral (c • f) I ≤ c * integ f I := by
+      apply le_of_forall_pos_le_add; intro ε hε
+      obtain ⟨f', hf'min, hf'const, hf'int⟩ := gt_of_lt_lower_integral hf.1 (X := integ f I + ε/c) (by rw [hfu]; have : ε/c < 0 := div_neg_of_pos_of_neg hε hc; linarith [lower_integral_le_upper hf.1])
+      have hmaj : MajorizesOn (c • f') (c • f) I := fun x hx => by
+        simp only [Pi.smul_apply, smul_eq_mul]; exact mul_le_mul_of_nonpos_left (hf'min x hx) hc.le
+      have hle := upper_integral_le_integ hbound hmaj (hf'const.smul c)
+      rw [show (hf'const.smul c).integ' = PiecewiseConstantOn.integ (c • f') I from rfl,
+        PiecewiseConstantOn.integ_smul c hf'const] at hle
+      have hkey : c * PiecewiseConstantOn.integ f' I ≤ c * integ f I + ε := by
+        have := mul_le_mul_of_nonpos_left hf'int.le hc.le
+        rw [mul_add, mul_div_cancel₀ ε (ne_of_lt hc)] at this; linarith
+      linarith
+    have hlow : c * integ f I ≤ lower_integral (c • f) I := by
+      apply le_of_forall_pos_le_add; intro ε hε
+      obtain ⟨f'', hf''maj, hf''const, hf''int⟩ := lt_of_gt_upper_integral hf.1 (X := integ f I - ε/c) (by rw [hfu]; have : ε/c < 0 := div_neg_of_pos_of_neg hε hc; linarith)
+      have hmin : MinorizesOn (c • f'') (c • f) I := fun x hx => by
+        simp only [Pi.smul_apply, smul_eq_mul]; exact mul_le_mul_of_nonpos_left (hf''maj x hx) hc.le
+      have hle := integ_le_lower_integral hbound hmin (hf''const.smul c)
+      rw [show (hf''const.smul c).integ' = PiecewiseConstantOn.integ (c • f'') I from rfl,
+        PiecewiseConstantOn.integ_smul c hf''const] at hle
+      have hkey : c * integ f I - ε ≤ c * PiecewiseConstantOn.integ f'' I := by
+        have := mul_le_mul_of_nonpos_left hf''int.le hc.le
+        rw [mul_sub, mul_div_cancel₀ ε (ne_of_lt hc)] at this; linarith
+      linarith
+    have hlu := lower_integral_le_upper hbound
+    exact ⟨⟨hbound, by linarith⟩, by show upper_integral (c • f) I = c * integ f I; linarith⟩
+  · subst hc
+    have hz : (0:ℝ) • f = (fun _ => (0:ℝ)) := by ext x; simp
+    rw [hz, zero_mul]
+    have hconst : ConstantOn (fun _:ℝ => (0:ℝ)) I := ConstantOn.of_const' 0 _
+    obtain ⟨hint, heq⟩ := integ_of_piecewise_const hconst.piecewiseConstantOn
+    refine ⟨hint, ?_⟩
+    rw [heq, show hconst.piecewiseConstantOn.integ' = PiecewiseConstantOn.integ (fun _ => (0:ℝ)) I from rfl,
+      PiecewiseConstantOn.integ_const 0 I, zero_mul]
+  · -- c > 0
+    have hup : upper_integral (c • f) I ≤ c * integ f I := by
+      apply le_of_forall_pos_le_add; intro ε hε
+      obtain ⟨f'', hf''maj, hf''const, hf''int⟩ := lt_of_gt_upper_integral hf.1 (X := integ f I + ε/c) (by rw [hfu]; have := div_pos hε hc; linarith)
+      have hmaj : MajorizesOn (c • f'') (c • f) I := fun x hx => by
+        simp only [Pi.smul_apply, smul_eq_mul]; exact mul_le_mul_of_nonneg_left (hf''maj x hx) hc.le
+      have hle := upper_integral_le_integ hbound hmaj (hf''const.smul c)
+      rw [show (hf''const.smul c).integ' = PiecewiseConstantOn.integ (c • f'') I from rfl,
+        PiecewiseConstantOn.integ_smul c hf''const] at hle
+      have hkey : c * PiecewiseConstantOn.integ f'' I < c * integ f I + ε := by
+        have := mul_lt_mul_of_pos_left hf''int hc
+        rw [mul_add, mul_div_cancel₀ ε (ne_of_gt hc)] at this; linarith
+      linarith
+    have hlow : c * integ f I ≤ lower_integral (c • f) I := by
+      apply le_of_forall_pos_le_add; intro ε hε
+      obtain ⟨f', hf'min, hf'const, hf'int⟩ := gt_of_lt_lower_integral hf.1 (X := integ f I - ε/c) (by rw [hfu]; have := div_pos hε hc; linarith [lower_integral_le_upper hf.1])
+      have hmin : MinorizesOn (c • f') (c • f) I := fun x hx => by
+        simp only [Pi.smul_apply, smul_eq_mul]; exact mul_le_mul_of_nonneg_left (hf'min x hx) hc.le
+      have hle := integ_le_lower_integral hbound hmin (hf'const.smul c)
+      rw [show (hf'const.smul c).integ' = PiecewiseConstantOn.integ (c • f') I from rfl,
+        PiecewiseConstantOn.integ_smul c hf'const] at hle
+      have hkey : c * integ f I - ε < c * PiecewiseConstantOn.integ f' I := by
+        have := mul_lt_mul_of_pos_left hf'int hc
+        rw [mul_sub, mul_div_cancel₀ ε (ne_of_gt hc)] at this; linarith
+      linarith
+    have hlu := lower_integral_le_upper hbound
+    exact ⟨⟨hbound, by linarith⟩, by show upper_integral (c • f) I = c * integ f I; linarith⟩
 
 theorem IntegrableOn.neg {I: BoundedInterval} {f:ℝ → ℝ} (hf: IntegrableOn f I) :
   IntegrableOn (-f) I ∧ integ (-f) I = -integ f I := by have := IntegrableOn.smul (-1) hf; aesop
