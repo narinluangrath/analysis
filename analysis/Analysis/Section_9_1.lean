@@ -126,23 +126,8 @@ theorem closure_of_subset_closure {X Y:Set ℝ} (h: X ⊆ Y) (h' : Y ⊆ closure
   · exact closure_mono h
 
 /-- Lemma 9.1.12 -/
-theorem closure_of_Ioo {a b:ℝ} (h:a < b) : closure (.Ioo a b) = .Icc a b := by
-  -- This proof is written to follow the structure of the original text.
-  ext x; simp [closure_def, AdherentPt, Real.adherent']
-  constructor
-  . intro h; contrapose! h
-    obtain h' | h' := le_or_gt a x
-    . specialize h h'
-      use x-b, by linarith
-      intro y ⟨ _, _ ⟩; observe : x-y ≤ |x-y|; linarith
-    use a-x, by linarith
-    intro y ⟨ _, _ ⟩; observe : -(x-y) ≤ |x-y|; linarith
-  intro ⟨ h1, h2 ⟩
-  by_cases ha : x = a
-  . sorry
-  by_cases hb : x = b
-  . sorry
-  intro ε _; use x, (by exact ⟨lt_of_le_of_ne h1 (Ne.symm ha), lt_of_le_of_ne h2 hb⟩); simp; order
+theorem closure_of_Ioo {a b:ℝ} (h:a < b) : closure (.Ioo a b) = .Icc a b :=
+  closure_Ioo (ne_of_lt h)
 
 theorem closure_of_Ioc {a b:ℝ} (h:a < b) : closure (.Ioc a b) = .Icc a b :=
   closure_Ioc (ne_of_lt h)
