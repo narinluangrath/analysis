@@ -284,8 +284,9 @@ theorem finite_series_of_finite_series {XX YY:Type*} (X: Finset XX) (Y: Finset Y
       simp at hz ⊢; grind
     _ = _ := by
       symm; convert finite_series_of_disjoint_union _ _
-      . sorry
-      sorry
+      . rw [hunion]; convert Finset.union_product using 2 <;>
+          first | infer_instance | exact Subsingleton.elim _ _ | (congr 1; exact Subsingleton.elim _ _)
+      exact Finset.disjoint_product.mpr (Or.inl hdisj)
 
 /-- Corollary 7.1.14 (Fubini's theorem for finite series)-/
 theorem finite_series_refl {XX YY:Type*} (X: Finset XX) (Y: Finset YY) (f: XX × YY → ℝ) :
