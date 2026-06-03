@@ -511,7 +511,14 @@ example : ∃ P P' : Partition (Icc 1 4), P.intervals = {Ico 1 3, Icc 3 4} ∧ P
 /-- Lemma 11.1.8 / Exercise 11.1.4 -/
 theorem BoundedInterval.le_max {I: BoundedInterval} (P P': Partition I) :
   P ≤ P ⊔ P' ∧ P' ≤ P ⊔ P' := by
-  sorry
+  have hint : (P ⊔ P').intervals = Finset.image₂ (fun J K ↦ J ∩ K) P.intervals P'.intervals := rfl
+  refine ⟨fun L hL => ?_, fun L hL => ?_⟩
+  · rw [hint, Finset.mem_image₂] at hL
+    obtain ⟨J, hJ, K, hK, rfl⟩ := hL
+    exact ⟨J, hJ, by rw [subset_iff, inter_eq]; exact Set.inter_subset_left⟩
+  · rw [hint, Finset.mem_image₂] at hL
+    obtain ⟨J, hJ, K, hK, rfl⟩ := hL
+    exact ⟨K, hK, by rw [subset_iff, inter_eq]; exact Set.inter_subset_right⟩
 
 /-- Not from textbook: the reverse inclusion -/
 theorem BoundedInterval.max_le_iff (I: BoundedInterval) {P P' P'': Partition I}
