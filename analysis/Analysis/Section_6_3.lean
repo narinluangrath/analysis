@@ -212,13 +212,56 @@ abbrev Sequence.IsMonotone (a:Sequence) : Prop := ∀ n ≥ a.m, a (n+1) ≥ a n
 
 abbrev Sequence.IsAntitone (a:Sequence) : Prop := ∀ n ≥ a.m, a (n+1) ≤ a n
 
+/-- A monotone sequence is increasing over its whole range. -/
+private theorem Sequence.mono_le {a:Sequence} (hmono: a.IsMonotone) {j k:ℤ}
+    (hj: a.m ≤ j) (hjk: j ≤ k) : a j ≤ a k := by
+  induction k, hjk using Int.le_induction with
+  | base => exact le_refl _
+  | succ k hk ih => exact le_trans ih (hmono k (le_trans hj hk))
+
+/-- The supremum of a monotone sequence bounded above is a finite real, and the sequence
+converges to it. -/
+private theorem Sequence.tendsTo_toReal_sup {a:Sequence} (hbound: a.BddAbove)
+    (hmono: a.IsMonotone) :
+    a.sup ≠ ⊤ ∧ a.sup ≠ ⊥ ∧ a.TendsTo a.sup.toReal := by
+  obtain ⟨M, hM⟩ := hbound
+  have hsup_ne_top : a.sup ≠ ⊤ := by
+    intro h
+    have hle : a.sup ≤ (M:EReal) := by
+      apply sSup_le; rintro x ⟨n, hn, rfl⟩; exact_mod_cast hM n hn
+    rw [h] at hle; exact absurd hle (not_le.mpr (EReal.coe_lt_top M))
+  have hsup_ne_bot : a.sup ≠ ⊥ := by
+    intro h
+    have hge : (a a.m : EReal) ≤ a.sup := le_sSup ⟨a.m, le_refl _, rfl⟩
+    rw [h] at hge; exact absurd hge (not_le.mpr (EReal.bot_lt_coe _))
+  refine ⟨hsup_ne_top, hsup_ne_bot, ?_⟩
+  set L := a.sup.toReal with hLdef
+  have hLsup : (L:EReal) = a.sup := EReal.coe_toReal hsup_ne_top hsup_ne_bot
+  rw [tendsTo_iff]
+  intro ε hε
+  have hlt : ((L - ε:ℝ):EReal) < a.sup := by
+    rw [← hLsup]; exact_mod_cast (by linarith : L - ε < L)
+  obtain ⟨N, hNm, hN1, hN2⟩ := exists_between_lt_sup hlt
+  refine ⟨N, fun n hn => ?_⟩
+  have han : a N ≤ a n := mono_le hmono hNm hn
+  have hub : a n ≤ L := by
+    have hle : (a n : EReal) ≤ a.sup := le_sSup ⟨n, le_trans hNm hn, rfl⟩
+    rw [← hLsup] at hle; exact_mod_cast hle
+  have hlb : L - ε < a n := by
+    rw [EReal.coe_lt_coe_iff] at hN1
+    linarith
+  rw [abs_le]; constructor <;> linarith
+
 /-- Proposition 6.3.8 / Exercise 6.3.3 -/
 theorem Sequence.convergent_of_monotone {a:Sequence} (hbound: a.BddAbove) (hmono: a.IsMonotone) :
-    a.Convergent := by sorry
+    a.Convergent := ⟨_, (tendsTo_toReal_sup hbound hmono).2.2⟩
 
 /-- Proposition 6.3.8 / Exercise 6.3.3 -/
 theorem Sequence.lim_of_monotone {a:Sequence} (hbound: a.BddAbove) (hmono: a.IsMonotone) :
-    lim a = a.sup := by sorry
+    lim a = a.sup := by
+  obtain ⟨hne_top, hne_bot, htends⟩ := tendsTo_toReal_sup hbound hmono
+  rw [(lim_eq.mp htends).2]
+  exact EReal.coe_toReal hne_top hne_bot
 
 theorem Sequence.convergent_of_antitone {a:Sequence} (hbound: a.BddBelow) (hmono: a.IsAntitone) :
     a.Convergent := by sorry
