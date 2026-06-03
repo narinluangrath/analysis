@@ -92,9 +92,11 @@ example : IsMin (⟨ {5}, by aesop ⟩ : X_8_5_4) ∧ IsMax (⟨ {5}, by aesop �
 example : ¬ IsMin (⟨ {2,3}, by aesop ⟩ : X_8_5_4) ∧ ¬ IsMax (⟨ {2,3}, by aesop ⟩ : X_8_5_4) := by sorry
 
 /-- Example 8.5.7 -/
-example : IsMin (0:ℕ) := by sorry
-example (n:ℕ) : ¬ IsMax n := by sorry
-example (n:ℤ): ¬ IsMin n ∧ ¬ IsMax n := by sorry
+example : IsMin (0:ℕ) := by intro b _; exact Nat.zero_le b
+example (n:ℕ) : ¬ IsMax n := by intro h; have := h (Nat.le_succ n); omega
+example (n:ℤ): ¬ IsMin n ∧ ¬ IsMax n :=
+  ⟨fun h => by have := h (show n-1 ≤ n by omega); omega,
+   fun h => by have := h (show n ≤ n+1 by omega); omega⟩
 
 /-- Definition 8.5.8.  We use `[LinearOrder X] [WellFoundedLT X]` to describe well-ordered sets. -/
 theorem WellFoundedLT.iff (X:Type) [LinearOrder X] :
@@ -117,9 +119,21 @@ example : WellFoundedLT ℕ := by
   simp [IsMin]; grind [Nat.min_spec]
 
 /-- Exercise 8.1.2 -/
-example : ¬ WellFoundedLT ℤ := by sorry
-example : ¬ WellFoundedLT ℚ := by sorry
-example : ¬ WellFoundedLT ℝ := by sorry
+example : ¬ WellFoundedLT ℤ := by
+  rw [WellFoundedLT.iff]; push_neg
+  refine ⟨Set.univ, ⟨0, trivial⟩, ?_⟩
+  rintro ⟨x, hx⟩; rw [IsMin.iff]; push_neg
+  exact ⟨⟨x-1, trivial⟩, Subtype.mk_lt_mk.mpr (by omega)⟩
+example : ¬ WellFoundedLT ℚ := by
+  rw [WellFoundedLT.iff]; push_neg
+  refine ⟨Set.univ, ⟨0, trivial⟩, ?_⟩
+  rintro ⟨x, hx⟩; rw [IsMin.iff]; push_neg
+  exact ⟨⟨x-1, trivial⟩, Subtype.mk_lt_mk.mpr (by linarith)⟩
+example : ¬ WellFoundedLT ℝ := by
+  rw [WellFoundedLT.iff]; push_neg
+  refine ⟨Set.univ, ⟨0, trivial⟩, ?_⟩
+  rintro ⟨x, hx⟩; rw [IsMin.iff]; push_neg
+  exact ⟨⟨x-1, trivial⟩, Subtype.mk_lt_mk.mpr (by linarith)⟩
 
 /-- Exercise 8.5.8 -/
 theorem IsMax.ofFinite {X:Type} [LinearOrder X] [Finite X] [Nonempty X] : ∃ x:X, IsMax x := by sorry
