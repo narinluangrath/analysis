@@ -350,22 +350,39 @@ theorem isBounded_def (X: Set ℝ) : Bornology.IsBounded X ↔ ∃ M > 0, X ⊆ 
   intro ⟨ M, hM, hXM ⟩; use M; intro x hx; specialize hXM hx; simp_all [abs_le']; linarith [hXM.1]
 
 /-- Example 9.1.23 -/
-theorem Icc_bounded (a b:ℝ) : Bornology.IsBounded (.Icc a b) := by sorry
+theorem Icc_bounded (a b:ℝ) : Bornology.IsBounded (.Icc a b) := Metric.isBounded_Icc a b
 
 /-- Example 9.1.23 -/
-theorem Ici_unbounded (a: ℝ) : ¬ Bornology.IsBounded (.Ici a) := by sorry
+theorem Ici_unbounded (a: ℝ) : ¬ Bornology.IsBounded (.Ici a) := by
+  rw [isBounded_def]; rintro ⟨M, hM, hsub⟩
+  have := hsub (Set.mem_Ici.mpr (le_max_left a (M+1)))
+  rw [Set.mem_Icc] at this; linarith [le_max_right a (M+1), this.2]
 
 /-- Example 9.1.23 -/
-theorem N_unbounded (a: ℝ) : ¬ Bornology.IsBounded ((fun n:ℕ ↦ (n:ℝ)) '' .univ) := by sorry
+theorem N_unbounded (a: ℝ) : ¬ Bornology.IsBounded ((fun n:ℕ ↦ (n:ℝ)) '' .univ) := by
+  rw [isBounded_def]; rintro ⟨M, hM, hsub⟩
+  obtain ⟨n, hn⟩ := exists_nat_gt M
+  have := hsub (⟨n, Set.mem_univ _, rfl⟩ : (n:ℝ) ∈ (fun n:ℕ ↦ (n:ℝ)) '' Set.univ)
+  rw [Set.mem_Icc] at this; linarith [this.2]
 
 /-- Example 9.1.23 -/
-theorem Z_unbounded (a: ℝ) : ¬ Bornology.IsBounded ((fun n:ℤ ↦ (n:ℝ)) '' .univ) := by sorry
+theorem Z_unbounded (a: ℝ) : ¬ Bornology.IsBounded ((fun n:ℤ ↦ (n:ℝ)) '' .univ) := by
+  rw [isBounded_def]; rintro ⟨M, hM, hsub⟩
+  obtain ⟨n, hn⟩ := exists_nat_gt M
+  have := hsub (⟨(n:ℤ), Set.mem_univ _, by push_cast; ring⟩ : (n:ℝ) ∈ (fun n:ℤ ↦ (n:ℝ)) '' Set.univ)
+  rw [Set.mem_Icc] at this; linarith [this.2]
 
 /-- Example 9.1.23 -/
-theorem Q_unbounded (a: ℝ) : ¬ Bornology.IsBounded ((fun n:ℚ ↦ (n:ℝ)) '' .univ) := by sorry
+theorem Q_unbounded (a: ℝ) : ¬ Bornology.IsBounded ((fun n:ℚ ↦ (n:ℝ)) '' .univ) := by
+  rw [isBounded_def]; rintro ⟨M, hM, hsub⟩
+  obtain ⟨n, hn⟩ := exists_nat_gt M
+  have := hsub (⟨(n:ℚ), Set.mem_univ _, by push_cast; ring⟩ : (n:ℝ) ∈ (fun n:ℚ ↦ (n:ℝ)) '' Set.univ)
+  rw [Set.mem_Icc] at this; linarith [this.2]
 
 /-- Example 9.1.23 -/
-theorem R_unbounded (a: ℝ) : ¬ Bornology.IsBounded (.univ: Set ℝ) := by sorry
+theorem R_unbounded (a: ℝ) : ¬ Bornology.IsBounded (.univ: Set ℝ) := by
+  rw [isBounded_def]; rintro ⟨M, hM, hsub⟩
+  have := hsub (Set.mem_univ (M+1)); rw [Set.mem_Icc] at this; linarith [this.2]
 
 /-- Theorem 9.1.24 / Exercise 9.1.13 (Heine-Borel theorem for the line)-/
 theorem Heine_Borel (X: Set ℝ) :
