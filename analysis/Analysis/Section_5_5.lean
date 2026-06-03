@@ -321,10 +321,13 @@ theorem Real.exist_irrational : ∃ x:Real, ¬ ∃ q:ℚ, x = (q:Real) := by sor
 theorem Real.mem_neg (E: Set Real) (x:Real) : x ∈ -E ↔ -x ∈ E := Set.mem_neg
 
 /-- Exercise 5.5.1-/
-theorem Real.inf_neg {E: Set Real} {M:Real} (h: IsLUB E M) : IsGLB (-E) (-M) := by sorry
+theorem Real.inf_neg {E: Set Real} {M:Real} (h: IsLUB E M) : IsGLB (-E) (-M) := h.neg
 
 theorem Real.GLB_exist {E: Set Real} (hE: Set.Nonempty E) (hbound: BddBelow E): ∃ S, IsGLB E S := by
-  sorry
+  obtain ⟨S, hS⟩ := Real.LUB_exist (E := -E) hE.neg hbound.neg
+  refine ⟨-S, ?_⟩
+  have := hS.neg
+  rwa [neg_neg] at this
 
 open Classical in
 noncomputable abbrev ExtendedReal.inf (E: Set Real) : ExtendedReal :=
