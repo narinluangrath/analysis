@@ -729,10 +729,33 @@ def Sequence.tendsTo_real_iff :
 abbrev Sequence.ExtendedLimitPoint (a:Sequence) (x:EReal) : Prop := if x = ⊤ then ¬ a.BddAbove else if x = ⊥ then ¬ a.BddBelow else a.LimitPoint x.toReal
 
 /-- Exercise 6.4.8 -/
-theorem Sequence.extended_limit_point_of_limsup (a:Sequence) : a.ExtendedLimitPoint a.limsup := by sorry
+theorem Sequence.extended_limit_point_of_limsup (a:Sequence) : a.ExtendedLimitPoint a.limsup := by
+  unfold Sequence.ExtendedLimitPoint
+  split_ifs with h1 h2
+  · rintro ⟨M, hM⟩
+    have hle : a.limsup ≤ (M:EReal) :=
+      a.limsup_le_sup.trans (a.sup_le_upper (fun n hn => by exact_mod_cast hM n hn))
+    rw [h1] at hle; exact absurd hle (not_le.mpr (EReal.coe_lt_top M))
+  · rintro ⟨M, hM⟩
+    have hge : (M:EReal) ≤ a.limsup :=
+      (a.inf_ge_lower (fun n hn => by exact_mod_cast hM n hn)).trans
+        (a.inf_le_liminf.trans a.liminf_le_limsup)
+    rw [h2] at hge; exact absurd hge (not_le.mpr (EReal.bot_lt_coe M))
+  · exact limit_point_of_limsup (EReal.coe_toReal h1 h2).symm
 
 /-- Exercise 6.4.8 -/
-theorem Sequence.extended_limit_point_of_liminf (a:Sequence) : a.ExtendedLimitPoint a.liminf := by sorry
+theorem Sequence.extended_limit_point_of_liminf (a:Sequence) : a.ExtendedLimitPoint a.liminf := by
+  unfold Sequence.ExtendedLimitPoint
+  split_ifs with h1 h2
+  · rintro ⟨M, hM⟩
+    have hle : a.liminf ≤ (M:EReal) :=
+      a.liminf_le_limsup.trans (a.limsup_le_sup.trans (a.sup_le_upper (fun n hn => by exact_mod_cast hM n hn)))
+    rw [h1] at hle; exact absurd hle (not_le.mpr (EReal.coe_lt_top M))
+  · rintro ⟨M, hM⟩
+    have hge : (M:EReal) ≤ a.liminf :=
+      (a.inf_ge_lower (fun n hn => by exact_mod_cast hM n hn)).trans a.inf_le_liminf
+    rw [h2] at hge; exact absurd hge (not_le.mpr (EReal.bot_lt_coe M))
+  · exact limit_point_of_liminf (EReal.coe_toReal h1 h2).symm
 
 theorem Sequence.extended_limit_point_le_limsup {a:Sequence} {L:EReal} (h:a.ExtendedLimitPoint L): L ≤ a.limsup := by sorry
 
