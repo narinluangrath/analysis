@@ -228,8 +228,23 @@ theorem Nat.monotone_enum_of_infinite (X : Set ℕ) [Infinite X] : ∃! f : ℕ 
   set m := min { n | g n ≠ f n }
   have hm : g m ≠ f m := (min_spec this).1
   have hm' {n:ℕ} (hn: n < m) : g n = f n := by by_contra hgfn; linarith [(min_spec this).2 n (by simp [hgfn])]
-  have hgm : g m = min { x ∈ X | ∀ (n:ℕ) (h:n < m), x ≠ a n } := by
-    sorry
+  have hgm : (g m : ℕ) = min { x ∈ X | ∀ (n:ℕ) (h:n < m), x ≠ a n } := by
+    refine (Nat.min_eq (ha_nonempty m) ⟨⟨(g m).property, ?_⟩, ?_⟩).symm
+    · intro n hn heq
+      have hgn : (g n : ℕ) = a n := by rw [hm' hn]
+      have hgmn : g m = g n := Subtype.val_injective (by rw [heq, ← hgn])
+      have := hg_bijective.injective hgmn
+      omega
+    · rintro y ⟨hyX, hyne⟩
+      obtain ⟨k, hk⟩ := hg_bijective.surjective ⟨y, hyX⟩
+      have hyk : (g k : ℕ) = y := by rw [hk]
+      have hkm : m ≤ k := by
+        by_contra hkm; push_neg at hkm
+        have hgk : (g k : ℕ) = a k := by rw [hm' hkm]
+        rw [hyk] at hgk
+        exact hyne k hkm hgk
+      have : (g m : ℕ) ≤ (g k : ℕ) := Subtype.coe_le_coe.mpr (hg_mono.monotone hkm)
+      rw [hyk] at this; exact this
   rw [←ha m] at hgm; contrapose! hm; exact Subtype.val_injective hgm
 
 theorem Nat.countable_of_infinite (X : Set ℕ) [Infinite X] : CountablyInfinite X := by
