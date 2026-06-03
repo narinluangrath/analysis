@@ -439,19 +439,84 @@ theorem Sequence.lim_of_between {a b c:Sequence} {L:ℝ} (hm: b.m = a.m ∧ c.m 
 
 /-- Example 6.4.15 -/
 example : ((fun (n:ℕ) ↦ 2/(n+1:ℝ)):Sequence).TendsTo 0 := by
-  sorry
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  obtain ⟨N, hN⟩ := exists_nat_gt (2/ε)
+  refine ⟨(N:ℤ), fun n hn => ?_⟩
+  have hn0 : (0:ℤ) ≤ n := le_trans (Int.natCast_nonneg N) hn
+  simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn0, sub_zero, abs_of_pos (by positivity)]
+  have hle : (N:ℤ) ≤ (n.toNat:ℤ) := by rw [Int.toNat_of_nonneg hn0]; exact hn
+  have hNn : (N:ℝ) ≤ (n.toNat:ℝ) := by exact_mod_cast hle
+  have hNe : (2:ℝ) < N * ε := (div_lt_iff₀ hε).mp hN
+  rw [div_le_iff₀ (by positivity)]
+  nlinarith [hNe, hNn, hε]
 
 /-- Example 6.4.15 -/
 example : ((fun (n:ℕ) ↦ -2/(n+1:ℝ)):Sequence).TendsTo 0 := by
-  sorry
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  obtain ⟨N, hN⟩ := exists_nat_gt (2/ε)
+  refine ⟨(N:ℤ), fun n hn => ?_⟩
+  have hn0 : (0:ℤ) ≤ n := le_trans (Int.natCast_nonneg N) hn
+  simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn0, sub_zero,
+    show (-2:ℝ)/((n.toNat:ℝ)+1) = -(2/((n.toNat:ℝ)+1)) by ring, abs_neg, abs_of_pos (by positivity)]
+  have hle : (N:ℤ) ≤ (n.toNat:ℤ) := by rw [Int.toNat_of_nonneg hn0]; exact hn
+  have hNn : (N:ℝ) ≤ (n.toNat:ℝ) := by exact_mod_cast hle
+  have hNe : (2:ℝ) < N * ε := (div_lt_iff₀ hε).mp hN
+  rw [div_le_iff₀ (by positivity)]
+  nlinarith [hNe, hNn, hε]
 
 /-- Example 6.4.15 -/
 example : ((fun (n:ℕ) ↦ (-1)^n/(n+1:ℝ) + 1 / (n+1)^2):Sequence).TendsTo 0 := by
-  sorry
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  obtain ⟨N, hN⟩ := exists_nat_gt (4/ε)
+  refine ⟨(N:ℤ), fun n hn => ?_⟩
+  have hn0 : (0:ℤ) ≤ n := le_trans (Int.natCast_nonneg N) hn
+  simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn0, sub_zero]
+  set m := n.toNat
+  have hm1 : (0:ℝ) < (m:ℝ)+1 := by positivity
+  have htri : |(-1:ℝ)^m/((m:ℝ)+1) + 1/((m:ℝ)+1)^2| ≤ 2/((m:ℝ)+1) := by
+    have h1 : |(-1:ℝ)^m/((m:ℝ)+1)| = 1/((m:ℝ)+1) := by
+      rw [abs_div, abs_pow, abs_neg, abs_one, one_pow, abs_of_pos hm1]
+    have h2 : |1/((m:ℝ)+1)^2| = 1/((m:ℝ)+1)^2 := abs_of_pos (by positivity)
+    have h3 : (1:ℝ)/((m:ℝ)+1)^2 ≤ 1/((m:ℝ)+1) := by
+      apply one_div_le_one_div_of_le hm1
+      nlinarith [hm1]
+    calc |(-1:ℝ)^m/((m:ℝ)+1) + 1/((m:ℝ)+1)^2|
+        ≤ |(-1:ℝ)^m/((m:ℝ)+1)| + |1/((m:ℝ)+1)^2| := abs_add_le _ _
+      _ = 1/((m:ℝ)+1) + 1/((m:ℝ)+1)^2 := by rw [h1, h2]
+      _ ≤ 2/((m:ℝ)+1) := by
+          have h4 : (1:ℝ)/((m:ℝ)+1) + 1/((m:ℝ)+1) = 2/((m:ℝ)+1) := by
+            rw [div_add_div_same]; norm_num
+          linarith [h3, h4]
+  refine le_trans htri ?_
+  have hle : (N:ℤ) ≤ (m:ℤ) := by rw [Int.toNat_of_nonneg hn0]; exact hn
+  have hNn : (N:ℝ) ≤ (m:ℝ) := by exact_mod_cast hle
+  have hNe : (4:ℝ) < N * ε := (div_lt_iff₀ hε).mp hN
+  rw [div_le_iff₀ hm1]
+  nlinarith [hNe, hNn, hε]
 
 /-- Example 6.4.15 -/
 example : ((fun (n:ℕ) ↦ (2:ℝ)^(-(n:ℤ))):Sequence).TendsTo 0 := by
-  sorry
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  obtain ⟨k, hk⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1:ℝ)/2 < 1)
+  refine ⟨(k:ℤ), fun n hn => ?_⟩
+  have hn0 : (0:ℤ) ≤ n := le_trans (Int.natCast_nonneg k) hn
+  simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn0, sub_zero, abs_of_pos (by positivity)]
+  have e : (2:ℝ)^(-(n.toNat:ℤ)) = (1/2:ℝ)^n.toNat := by
+    rw [div_pow, one_pow, one_div, ← zpow_natCast, ← zpow_neg]
+  rw [e]
+  have hkn : k ≤ n.toNat := by
+    have hle : (k:ℤ) ≤ (n.toNat:ℤ) := by rw [Int.toNat_of_nonneg hn0]; exact hn
+    exact_mod_cast hle
+  calc (1/2:ℝ)^n.toNat ≤ (1/2:ℝ)^k := pow_le_pow_of_le_one (by norm_num) (by norm_num) hkn
+    _ ≤ ε := le_of_lt hk
 
 abbrev Sequence.abs (a:Sequence) : Sequence where
   m := a.m
