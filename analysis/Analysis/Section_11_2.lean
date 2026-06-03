@@ -138,32 +138,55 @@ theorem PiecewiseConstantWith.mono {f:ℝ → ℝ} {I: BoundedInterval} {P P': P
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.add {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (f + g) I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  refine ⟨P ⊔ Q, fun J hJ => ?_⟩
+  obtain ⟨cf, hcf⟩ := hP.mono (BoundedInterval.le_max P Q).1 J hJ
+  obtain ⟨cg, hcg⟩ := hQ.mono (BoundedInterval.le_max P Q).2 J hJ
+  exact ⟨cf + cg, fun y => by show f ↑y + g ↑y = cf + cg; simp only [hcf, hcg]⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.sub {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (f - g) I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  refine ⟨P ⊔ Q, fun J hJ => ?_⟩
+  obtain ⟨cf, hcf⟩ := hP.mono (BoundedInterval.le_max P Q).1 J hJ
+  obtain ⟨cg, hcg⟩ := hQ.mono (BoundedInterval.le_max P Q).2 J hJ
+  exact ⟨cf - cg, fun y => by show f ↑y - g ↑y = cf - cg; simp only [hcf, hcg]⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.max {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (max f g) I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  refine ⟨P ⊔ Q, fun J hJ => ?_⟩
+  obtain ⟨cf, hcf⟩ := hP.mono (BoundedInterval.le_max P Q).1 J hJ
+  obtain ⟨cg, hcg⟩ := hQ.mono (BoundedInterval.le_max P Q).2 J hJ
+  exact ⟨Max.max cf cg, fun y => by show Max.max (f ↑y) (g ↑y) = Max.max cf cg; simp only [hcf, hcg]⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.min {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (min f g) I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  refine ⟨P ⊔ Q, fun J hJ => ?_⟩
+  obtain ⟨cf, hcf⟩ := hP.mono (BoundedInterval.le_max P Q).1 J hJ
+  obtain ⟨cg, hcg⟩ := hQ.mono (BoundedInterval.le_max P Q).2 J hJ
+  exact ⟨Min.min cf cg, fun y => by show Min.min (f ↑y) (g ↑y) = Min.min cf cg; simp only [hcf, hcg]⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.mul {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (f * g) I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  refine ⟨P ⊔ Q, fun J hJ => ?_⟩
+  obtain ⟨cf, hcf⟩ := hP.mono (BoundedInterval.le_max P Q).1 J hJ
+  obtain ⟨cg, hcg⟩ := hQ.mono (BoundedInterval.le_max P Q).2 J hJ
+  exact ⟨cf * cg, fun y => by show f ↑y * g ↑y = cf * cg; simp only [hcf, hcg]⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2 -/
 theorem PiecewiseConstantOn.smul {f: ℝ → ℝ} {I: BoundedInterval}
   (c:ℝ) (hf: PiecewiseConstantOn f I) : PiecewiseConstantOn (c • f) I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf
+  refine ⟨P, fun J hJ => ?_⟩
+  obtain ⟨cf, hcf⟩ := hP J hJ
+  exact ⟨c • cf, fun y => by show c • f ↑y = c • cf; simp only [hcf]⟩
 
 /-- Lemma 11.2.8 / Exercise 11.2.2.  I believe the hypothesis that `g` does not vanish is not needed. -/
 theorem PiecewiseConstantOn.div {f g: ℝ → ℝ} {I: BoundedInterval}
