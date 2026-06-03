@@ -169,14 +169,20 @@ example : ¬ WellFoundedLT ℝ := by
   exact ⟨⟨x-1, trivial⟩, Subtype.mk_lt_mk.mpr (by linarith)⟩
 
 /-- Exercise 8.5.8 -/
-theorem IsMax.ofFinite {X:Type} [LinearOrder X] [Finite X] [Nonempty X] : ∃ x:X, IsMax x := by sorry
+theorem IsMax.ofFinite {X:Type} [LinearOrder X] [Finite X] [Nonempty X] : ∃ x:X, IsMax x := by
+  obtain ⟨x, hx⟩ := Finite.exists_max (id : X → X)
+  exact ⟨x, fun b _ => hx b⟩
 
-theorem IsMin.ofFinite {X:Type} [LinearOrder X] [Finite X] [Nonempty X] : ∃ x:X, IsMin x := by sorry
+theorem IsMin.ofFinite {X:Type} [LinearOrder X] [Finite X] [Nonempty X] : ∃ x:X, IsMin x := by
+  obtain ⟨x, hx⟩ := Finite.exists_min (id : X → X)
+  exact ⟨x, fun b _ => hx b⟩
 
 /-- Exercise 8.5.8 -/
-theorem WellFoundedLT.ofFinite {X:Type} [LinearOrder X] [Finite X] : WellFoundedLT X := by sorry
+theorem WellFoundedLT.ofFinite {X:Type} [LinearOrder X] [Finite X] : WellFoundedLT X :=
+  Finite.to_wellFoundedLT
 
-example {X:Type} [LinearOrder X] [WellFoundedLT X] (A: Set X) : WellFoundedLT A := by sorry
+example {X:Type} [LinearOrder X] [WellFoundedLT X] (A: Set X) : WellFoundedLT A :=
+  Subtype.wellFoundedLT _
 
 theorem WellFoundedLT.subset {X:Type} [PartialOrder X] {A B: Set X} (hA: IsTotal A) [hwell: WellFoundedLT A] (hAB: B ⊆ A) : WellFoundedLT B := by
   set hAlin : LinearOrder A := LinearOrder.mk hA
