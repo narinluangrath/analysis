@@ -48,17 +48,61 @@ theorem Sequence.limit_point_def (a:Sequence) (x:ℝ) :
 
 noncomputable abbrev Example_6_4_3 : Sequence := (fun (n:ℕ) ↦ 1 - (10:ℝ)^(-(n:ℤ)-1))
 
-/-- Example 6.4.3 -/
-example : (0.1:ℝ).Adherent Example_6_4_3 0.8 := by sorry
+private theorem E3_eval {n:ℤ} (hn: 0 ≤ n) :
+    Example_6_4_3 n = 1 - (10:ℝ)^(-(n.toNat:ℤ)-1) := by
+  simp only [Example_6_4_3, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
 
 /-- Example 6.4.3 -/
-example : ¬ (0.1:ℝ).ContinuallyAdherent Example_6_4_3 0.8 := by sorry
+example : (0.1:ℝ).Adherent Example_6_4_3 0.8 := by
+  refine ⟨0, le_refl _, ?_⟩
+  rw [Real.Close, Real.dist_eq, E3_eval (le_refl 0)]
+  norm_num
 
 /-- Example 6.4.3 -/
-example : (0.1:ℝ).ContinuallyAdherent Example_6_4_3 1 := by sorry
+example : ¬ (0.1:ℝ).ContinuallyAdherent Example_6_4_3 0.8 := by
+  intro h
+  obtain ⟨n, hn, hclose⟩ := h 1 (by norm_num)
+  rw [show (Example_6_4_3.from 1).m = max Example_6_4_3.m 1 from rfl] at hn
+  have hn1 : (1:ℤ) ≤ n := le_trans (le_max_right _ _) hn
+  rw [Sequence.from_eval Example_6_4_3 hn1, Real.Close, Real.dist_eq,
+    E3_eval (by omega)] at hclose
+  have hpow : (10:ℝ)^(-(n.toNat:ℤ)-1) ≤ (10:ℝ)^(-2:ℤ) := by
+    apply zpow_le_zpow_right₀ (by norm_num); omega
+  rw [abs_le] at hclose
+  have h001 : (10:ℝ)^(-2:ℤ) = 0.01 := by norm_num
+  rw [h001] at hpow
+  linarith [hclose.2, hpow]
 
 /-- Example 6.4.3 -/
-example : Example_6_4_3.LimitPoint 1 := by sorry
+example : (0.1:ℝ).ContinuallyAdherent Example_6_4_3 1 := by
+  intro N hN
+  have hN0 : (0:ℤ) ≤ N := hN
+  refine ⟨N, (max_eq_right hN).le, ?_⟩
+  rw [Sequence.from_eval Example_6_4_3 (le_refl N), Real.Close, Real.dist_eq, E3_eval hN0]
+  rw [show (1:ℝ) - 10^(-(N.toNat:ℤ)-1) - 1 = -(10^(-(N.toNat:ℤ)-1)) by ring, abs_neg,
+    abs_of_pos (by positivity), show (0.1:ℝ) = (10:ℝ)^(-1:ℤ) by norm_num]
+  apply zpow_le_zpow_right₀ (by norm_num); omega
+
+/-- Example 6.4.3 -/
+example : Example_6_4_3.LimitPoint 1 := by
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  obtain ⟨k, hk⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1:ℝ)/10 < 1)
+  refine ⟨max N (k:ℤ), le_max_left _ _, ?_⟩
+  set n := max N (k:ℤ)
+  have hn0 : (0:ℤ) ≤ n := le_trans hN (le_max_left _ _)
+  rw [E3_eval hn0, show (1:ℝ) - 10^(-(n.toNat:ℤ)-1) - 1 = -(10^(-(n.toNat:ℤ)-1)) by ring,
+    abs_neg, abs_of_pos (by positivity)]
+  have hbound : (10:ℝ)^(-(n.toNat:ℤ)-1) ≤ (1/10:ℝ)^n.toNat := by
+    have e : (1/10:ℝ)^n.toNat = (10:ℝ)^(-(n.toNat:ℤ)) := by
+      rw [div_pow, one_pow, one_div, ← zpow_natCast, ← zpow_neg]
+    rw [e]; apply zpow_le_zpow_right₀ (by norm_num); omega
+  have hmono : (1/10:ℝ)^n.toNat ≤ (1/10:ℝ)^k := by
+    apply pow_le_pow_of_le_one (by norm_num) (by norm_num)
+    have : (k:ℤ) ≤ n := le_max_right _ _
+    omega
+  linarith [hbound, hmono, hk]
 
 noncomputable abbrev Example_6_4_4 : Sequence :=
   (fun (n:ℕ) ↦ (-1:ℝ)^n * (1 + (10:ℝ)^(-(n:ℤ)-1)))
