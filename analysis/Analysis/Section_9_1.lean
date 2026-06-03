@@ -409,25 +409,27 @@ theorem Heine_Borel (X: Set ℝ) :
 
 /-- Exercise 9.1.4 -/
 example : ∃ (X Y:Set ℝ), closure (X ∩ Y) ≠ closure X ∩ closure Y := by
-  sorry
+  refine ⟨Set.Iio 0, Set.Ioi 0, ?_⟩
+  have hempty : Set.Iio (0:ℝ) ∩ Set.Ioi 0 = ∅ := by ext x; simp; intro h; linarith
+  rw [hempty, closure_empty, closure_Iio, closure_Ioi]
+  intro h
+  have h0 : (0:ℝ) ∈ Set.Iic 0 ∩ Set.Ici 0 := ⟨Set.mem_Iic.mpr (le_refl 0), Set.mem_Ici.mpr (le_refl 0)⟩
+  rw [← h] at h0
+  exact absurd h0 (by simp)
 
 /-- Exercise 9.1.6 -/
-example (X:Set ℝ) : IsClosed (closure X) := by
-  sorry
+example (X:Set ℝ) : IsClosed (closure X) := isClosed_closure
 
 /-- Exercise 9.1.6 -/
-example {X Y:Set ℝ} (hY: IsClosed Y) (hXY: X ⊆ Y) : closure X ⊆ Y := by
-  sorry
+example {X Y:Set ℝ} (hY: IsClosed Y) (hXY: X ⊆ Y) : closure X ⊆ Y := closure_minimal hXY hY
 
 /-- Exercise 9.1.7 -/
 example {n:ℕ} (X: Fin n → Set ℝ) (hX: ∀ i, IsClosed (X i)) :
-  IsClosed (⋃ i, X i) := by
-  sorry
+  IsClosed (⋃ i, X i) := isClosed_iUnion_of_finite hX
 
 /-- Exercise 9.1.8 -/
 example {I:Type} (X: I → Set ℝ) (hX: ∀ i, IsClosed (X i)) :
-  IsClosed (⋂ i, X i) := by
-  sorry
+  IsClosed (⋂ i, X i) := isClosed_iInter hX
 
 /-- Exercise 9.1.9 -/
 example {X:Set ℝ} {x:ℝ} (hx: AdherentPt x X) : LimitPt x X ∨ IsolatedPt x X := by
@@ -444,17 +446,15 @@ example {X:Set ℝ} (hX: X ≠ ∅) : Bornology.IsBounded X ↔
   sorry
 
 /-- Exercise 9.1.11 -/
-example {X:Set ℝ} (hX: Bornology.IsBounded X) : Bornology.IsBounded (closure X) := by
-  sorry
+example {X:Set ℝ} (hX: Bornology.IsBounded X) : Bornology.IsBounded (closure X) := hX.closure
 
 /-- Exercise 9.1.12.  As a followup: prove or disprove this exercise with `[Fintype I]` removed. -/
 example {I:Type} [Fintype I] (X: I → Set ℝ) (hX: ∀ i, Bornology.IsBounded (X i)) :
-  Bornology.IsBounded (⋃ i, X i) := by
-  sorry
+  Bornology.IsBounded (⋃ i, X i) := Bornology.isBounded_iUnion.mpr hX
 
 /-- Exercise 9.1.14 -/
-example (I: Finset ℝ) : IsClosed (I:Set ℝ) ∧ Bornology.IsBounded (I:Set ℝ) := by
-  sorry
+example (I: Finset ℝ) : IsClosed (I:Set ℝ) ∧ Bornology.IsBounded (I:Set ℝ) :=
+  ⟨I.finite_toSet.isClosed, I.finite_toSet.isBounded⟩
 
 /-- Exercise 9.1.15 -/
 example {E:Set ℝ} (hE: Bornology.IsBounded E) (hnon: E.Nonempty): AdherentPt (sSup E) E ∧ AdherentPt (sSup E) Eᶜ := by
