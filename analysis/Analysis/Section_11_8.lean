@@ -567,21 +567,31 @@ noncomputable abbrev RS_IntegrableOn (f:ℝ → ℝ) (I: BoundedInterval) (α: �
   BddOn f I ∧ lower_RS_integral f I α = upper_RS_integral f I α
 
 /-- Analogue of various components of Lemma 11.3.3 -/
+private theorem pc_RS_integ_id_eq_integ {g:ℝ → ℝ} {I: BoundedInterval} (hg: PiecewiseConstantOn g I) :
+    PiecewiseConstantOn.RS_integ g I (fun x ↦ x) = PiecewiseConstantOn.integ g I := by
+  rw [PiecewiseConstantOn.RS_integ_def hg.choose_spec, PiecewiseConstantOn.integ_def hg.choose_spec]
+  exact PiecewiseConstantWith.RS_integ_eq_integ hg.choose
+
 theorem upper_RS_integral_eq_upper_integral (f:ℝ → ℝ) (I: BoundedInterval) :
   upper_RS_integral f I (fun x ↦ x) = upper_integral f I := by
-  sorry
+  unfold upper_RS_integral upper_integral
+  congr 1
+  exact Set.image_congr (fun g ⟨_, hg⟩ => pc_RS_integ_id_eq_integ hg)
 
 theorem lower_RS_integral_eq_lower_integral (f:ℝ → ℝ) (I: BoundedInterval) :
   lower_RS_integral f I (fun x ↦ x) = lower_integral f I := by
-  sorry
+  unfold lower_RS_integral lower_integral
+  congr 1
+  exact Set.image_congr (fun g ⟨_, hg⟩ => pc_RS_integ_id_eq_integ hg)
 
 theorem RS_integ_eq_integ (f:ℝ → ℝ) (I: BoundedInterval) :
-  RS_integ f I (fun x ↦ x) = integ f I := by
-  sorry
+  RS_integ f I (fun x ↦ x) = integ f I :=
+  upper_RS_integral_eq_upper_integral f I
 
 theorem RS_IntegrableOn_iff_IntegrableOn (f:ℝ → ℝ) (I: BoundedInterval) :
   RS_IntegrableOn f I (fun x ↦ x) ↔ IntegrableOn f I := by
-  sorry
+  unfold RS_IntegrableOn IntegrableOn
+  rw [upper_RS_integral_eq_upper_integral, lower_RS_integral_eq_lower_integral]
 
 /-- Exercise 11.8.4 -/
 theorem RS_integ_of_uniform_cts {I: BoundedInterval} {f:ℝ → ℝ} (hf: UniformContinuousOn f I)
