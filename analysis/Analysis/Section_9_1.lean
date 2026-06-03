@@ -255,13 +255,22 @@ theorem Iio_not_closed (a:ℝ) : ¬ IsClosed (.Iio a) := by
   exact absurd ha (lt_irrefl a)
 
 /-- Examples 9.1.16 -/
-theorem N_closed : IsClosed ((fun n:ℕ ↦ (n:ℝ)) '' .univ) := by sorry
+theorem N_closed : IsClosed ((fun n:ℕ ↦ (n:ℝ)) '' .univ) := by
+  rw [Set.image_univ]; exact Nat.isClosedEmbedding_coe_real.isClosed_range
 
 /-- Examples 9.1.16 -/
-theorem Z_closed : IsClosed ((fun n:ℤ ↦ (n:ℝ)) '' .univ) := by sorry
+theorem Z_closed : IsClosed ((fun n:ℤ ↦ (n:ℝ)) '' .univ) := by
+  rw [Set.image_univ]; exact Int.isClosedEmbedding_coe_real.isClosed_range
 
 /-- Examples 9.1.16 -/
-theorem Q_not_closed : ¬ IsClosed ((fun n:ℚ ↦ (n:ℝ)) '' .univ) := by sorry
+theorem Q_not_closed : ¬ IsClosed ((fun n:ℚ ↦ (n:ℝ)) '' .univ) := by
+  intro hcl
+  have h2 := hcl.closure_eq
+  rw [Set.image_univ, Rat.denseRange_cast.closure_range] at h2
+  obtain ⟨x, hx⟩ := exists_irrational_btwn (show (0:ℝ) < 1 by norm_num)
+  have : x ∈ Set.range (fun n:ℚ ↦ (n:ℝ)) := h2 ▸ Set.mem_univ x
+  obtain ⟨q, hq⟩ := this
+  exact hx.1 ⟨q, hq⟩
 
 /-- Corollary 9.1.17 -/
 theorem isClosed_iff_limits_mem (X: Set ℝ) :
