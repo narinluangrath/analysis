@@ -226,7 +226,40 @@ example : AntiderivOn F_11_9 (deriv F_11_9) (Icc (-1) 1) := by sorry
 theorem antideriv_eq_antideriv_add_const {I:BoundedInterval} {f F G : ℝ → ℝ}
   (hfF: AntiderivOn F f I) (hfG: AntiderivOn G f I) :
    ∃ C, ∀ x ∈ (I:Set ℝ), F x = G x + C := by
-    sorry
+    rcases (↑I:Set ℝ).eq_empty_or_nonempty with hIe | ⟨x₀, hx₀⟩
+    · exact ⟨0, fun x hx => by rw [hIe] at hx; exact absurd hx (Set.notMem_empty x)⟩
+    refine ⟨F x₀ - G x₀, fun x hx => ?_⟩
+    by_cases hsub : (↑I:Set ℝ).Subsingleton
+    · rw [hsub hx hx₀]; ring
+    rw [Set.not_subsingleton_iff] at hsub
+    have hconv : Convex ℝ (↑I:Set ℝ) := by
+      cases I with
+      | Ioo a b => rw [BoundedInterval.set_Ioo]; exact convex_Ioo a b
+      | Icc a b => rw [BoundedInterval.set_Icc]; exact convex_Icc a b
+      | Ioc a b => rw [BoundedInterval.set_Ioc]; exact convex_Ioc a b
+      | Ico a b => rw [BoundedInterval.set_Ico]; exact convex_Ico a b
+    have hab : I.a < I.b := by
+      rcases lt_or_ge I.a I.b with h | h
+      · exact h
+      · exact absurd ((Set.subsingleton_coe _).mp (BoundedInterval.length_of_subsingleton.mpr
+          (by simp only [BoundedInterval.length]; exact max_eq_right (by linarith)))) hsub.not_subsingleton
+    have huniq : UniqueDiffOn ℝ (↑I:Set ℝ) := by
+      cases I with
+      | Ioo a b => rw [BoundedInterval.set_Ioo]; exact uniqueDiffOn_Ioo a b
+      | Icc a b => rw [BoundedInterval.set_Icc]; exact uniqueDiffOn_Icc hab
+      | Ioc a b => rw [BoundedInterval.set_Ioc]; exact uniqueDiffOn_Ioc a b
+      | Ico a b => rw [BoundedInterval.set_Ico]; exact uniqueDiffOn_Ico a b
+    have key : (F - G) x = (F - G) x₀ := by
+      apply hconv.is_const_of_fderivWithin_eq_zero (hfF.1.sub hfG.1) _ hx hx₀
+      intro y hy
+      have hd : HasDerivWithinAt (F - G) 0 (↑I) y := by
+        have h1 := hfF.2 y ((BoundedInterval.mem_iff I y).mpr hy)
+        have h2 := hfG.2 y ((BoundedInterval.mem_iff I y).mpr hy)
+        simpa using h1.sub h2
+      rw [hd.hasFDerivWithinAt.fderivWithin (huniq y hy)]
+      ext z; simp
+    simp only [Pi.sub_apply] at key
+    linarith
 
 /-- Exercise 11.9.3 -/
 example {a b x₀:ℝ} (hab: a < b) (hx₀: x₀ ∈ Icc a b) {f: ℝ → ℝ} (hf: MonotoneOn f (Icc a b)) :
