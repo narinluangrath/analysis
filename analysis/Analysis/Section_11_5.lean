@@ -213,7 +213,24 @@ noncomputable abbrev f_11_5_5 : ℝ → ℝ := fun x ↦
   else if x = 2 then 7
   else x^3
 
-example : ¬ ContinuousOn f_11_5_5 (Icc 1 3) := by sorry
+example : ¬ ContinuousOn f_11_5_5 (Icc 1 3) := by
+  intro h
+  have h2mem : (2:ℝ) ∈ (↑(Icc 1 3):Set ℝ) := by rw [BoundedInterval.set_Icc, Set.mem_Icc]; norm_num
+  have hsub : Set.Ico (1:ℝ) 2 ⊆ (↑(Icc 1 3):Set ℝ) := by
+    rw [BoundedInterval.set_Icc]; intro x hx; rw [Set.mem_Ico] at hx; rw [Set.mem_Icc]
+    exact ⟨hx.1, by linarith [hx.2]⟩
+  have hc := (h.continuousWithinAt h2mem).mono hsub
+  have hcont : Filter.Tendsto (fun x:ℝ => x^2) (nhdsWithin 2 (Set.Ico 1 2)) (nhds 4) := by
+    have h4 : ((2:ℝ))^2 = 4 := by norm_num
+    rw [← h4]; exact ((continuous_pow 2).tendsto 2).mono_left nhdsWithin_le_nhds
+  have hcf : Filter.Tendsto f_11_5_5 (nhdsWithin 2 (Set.Ico 1 2)) (nhds 4) :=
+    tendsto_nhdsWithin_congr (fun x hx => by rw [Set.mem_Ico] at hx; simp only [f_11_5_5, if_pos hx.2]) hcont
+  haveI : (nhdsWithin (2:ℝ) (Set.Ico 1 2)).NeBot := by
+    rw [← mem_closure_iff_nhdsWithin_neBot, closure_Ico (by norm_num : (1:ℝ) ≠ 2)]
+    exact Set.mem_Icc.mpr ⟨by norm_num, le_refl 2⟩
+  have := tendsto_nhds_unique hc hcf
+  rw [show f_11_5_5 2 = 7 from by simp [f_11_5_5]] at this
+  norm_num at this
 
 example : ContinuousOn f_11_5_5 (Ico 1 2) := by
   rw [BoundedInterval.set_Ico]
