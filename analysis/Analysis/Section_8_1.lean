@@ -283,7 +283,10 @@ theorem CountablyInfinite.lower_diag : CountablyInfinite { n : ℕ × ℕ | n.2 
   let A := { n : ℕ × ℕ | n.2 ≤ n.1 }
   let a : ℕ → ℕ := fun n ↦ ∑ m ∈ .range (n+1), m
   have ha : StrictMono a := by
-    sorry
+    apply strictMono_nat_of_lt_succ
+    intro n
+    have : a (n+1) = a n + (n+1) := by simp only [a]; rw [Finset.sum_range_succ]
+    omega
   let f : A → ℕ := fun ⟨ (n, m), _ ⟩ ↦ a n + m
   have hf : Function.Injective f := by
     rintro ⟨ ⟨ n, m ⟩, hnm ⟩ ⟨ ⟨ n',m'⟩, hnm' ⟩ h
@@ -310,7 +313,10 @@ theorem CountablyInfinite.lower_diag : CountablyInfinite { n : ℕ × ℕ | n.2 
     obtain ⟨ n, m, q, rfl ⟩ := hl; use ⟨ (n, m), q ⟩
   have : AtMostCountable A := by rw [AtMostCountable.equiv ⟨ _, hf' ⟩]; apply Nat.atMostCountable_subset
   have hfin : ¬ Finite A := by
-    sorry
+    rw [Set.finite_coe_iff]
+    exact Set.infinite_of_injective_forall_mem
+      (f := fun n : ℕ => ((n, 0) : ℕ × ℕ))
+      (fun a b h => by simpa using h) (fun n => Nat.zero_le n)
   simp [AtMostCountable] at this; tauto
 
 /-- Corollary 8.1.13 -/
