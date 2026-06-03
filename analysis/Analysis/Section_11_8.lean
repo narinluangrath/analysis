@@ -186,13 +186,21 @@ theorem α_length_of_cts {α:ℝ → ℝ} {I: BoundedInterval} {a b: ℝ}
 
 /-- Example 11.8.2-/
 example : (fun x ↦ x^2)[Icc 2 3]ₗ = 5 := by
-  sorry
+  rw [α_length_of_cts (a := 1) (b := 4) (by norm_num) (by norm_num) (by norm_num)
+    (by rw [BoundedInterval.subset_iff, BoundedInterval.set_Icc, BoundedInterval.set_Ioo]
+        intro x hx; rw [Set.mem_Icc] at hx; rw [Set.mem_Ioo]; exact ⟨by linarith [hx.1], by linarith [hx.2]⟩)
+    (by exact (continuous_pow 2).continuousOn)]
+  norm_num
 
 example : (fun x ↦ x^2)[Icc 2 2]ₗ = 0 := by
-  sorry
+  rw [α_length_of_cts (a := 1) (b := 3) (by norm_num) (by norm_num) (by norm_num)
+    (by rw [BoundedInterval.subset_iff, BoundedInterval.set_Icc, BoundedInterval.set_Ioo]
+        intro x hx; rw [Set.mem_Icc] at hx; rw [Set.mem_Ioo]; exact ⟨by linarith [hx.1], by linarith [hx.2]⟩)
+    (by exact (continuous_pow 2).continuousOn)]
+  norm_num
 
 example : (fun x ↦ x^2)[Ioo 2 2]ₗ = 0 := by
-  sorry
+  simp [α_length]
 
 /-- Example 11.8.3-/
 @[simp]
