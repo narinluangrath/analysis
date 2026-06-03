@@ -40,13 +40,17 @@ theorem IntegrableOn.sub {I: BoundedInterval} {f g:ℝ → ℝ} (hf: IntegrableO
 /-- Theorem 11.4.1(d) / Exercise 11.4.1 -/
 theorem IntegrableOn.nonneg {I: BoundedInterval} {f:ℝ → ℝ} (hf: IntegrableOn f I) (hf_nonneg: ∀ x ∈ I, 0 ≤ f x) :
   0 ≤ integ f I := by
-  sorry
+  apply le_csInf (integral_bound_upper_nonempty hf.1)
+  rintro v ⟨φ, ⟨hφmaj, hφpc⟩, rfl⟩
+  exact hφpc.integ_of_nonneg (fun x hx => le_trans (hf_nonneg x hx) (hφmaj x hx))
 
 /-- Theorem 11.4.1(e) / Exercise 11.4.1 -/
 theorem IntegrableOn.mono {I: BoundedInterval} {f g:ℝ → ℝ} (hf: IntegrableOn f I) (hg: IntegrableOn g I)
   (h: MajorizesOn g f I) :
   integ f I ≤ integ g I := by
-  sorry
+  apply csInf_le_csInf (integral_bound_below hf.1) (integral_bound_upper_nonempty hg.1)
+  rintro v ⟨φ, ⟨hφmaj, hφpc⟩, rfl⟩
+  exact ⟨φ, ⟨fun x hx => le_trans (h x hx) (hφmaj x hx), hφpc⟩, rfl⟩
 
 /-- Theorem 11.4.1(f) / Exercise 11.4.1 -/
 theorem IntegrableOn.const (c:ℝ) (I: BoundedInterval) :
