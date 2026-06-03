@@ -186,7 +186,7 @@ theorem closure_of_Q :
 /-- Lemma 9.1.14 / Exercise 9.1.5 -/
 theorem limit_of_AdherentPt (X: Set ℝ) (x:ℝ) :
   AdherentPt x X ↔ ∃ a : ℕ → ℝ, (∀ n, a n ∈ X) ∧ Filter.atTop.Tendsto a (nhds x) := by
-    sorry
+    rw [← closure_def', mem_closure_iff_seq_limit]
 
 theorem AdherentPt.of_mem {X: Set ℝ} {x: ℝ} (h: x ∈ X) : AdherentPt x X := by
   rw [limit_of_AdherentPt]; use fun _ ↦ x; simp [h]
