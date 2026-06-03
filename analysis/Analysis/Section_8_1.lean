@@ -326,13 +326,20 @@ theorem CountablyInfinite.prod_nat : CountablyInfinite (ℕ × ℕ) := by
 /-- Corollary 8.1.14 / Exercise 8.1.8 -/
 theorem CountablyInfinite.prod {X Y:Type} (hX: CountablyInfinite X) (hY: CountablyInfinite Y) :
   CountablyInfinite (X × Y) := by
-  sorry
+  rw [CountablyInfinite.iff'] at hX hY ⊢
+  haveI := hX.1; haveI := hX.2; haveI := hY.1; haveI := hY.2
+  exact ⟨inferInstance, inferInstance⟩
 
 /-- Corollary 8.1.15 -/
 theorem Rat.countablyInfinite : CountablyInfinite ℚ := by
   -- This proof is written to follow the structure of the original text.
   have : CountablyInfinite { n:ℤ | n ≠ 0 } := by
-    sorry
+    rw [CountablyInfinite.iff']
+    refine ⟨Set.countable_coe_iff.mpr (Set.to_countable _), ?_⟩
+    rw [Set.infinite_coe_iff]
+    have hc : { n:ℤ | n ≠ 0 } = ({0}ᶜ : Set ℤ) := by ext n; simp
+    rw [hc]
+    exact (Set.finite_singleton (0:ℤ)).infinite_compl
   apply Int.countablyInfinite.prod at this
   let f : ℤ × { n:ℤ | n ≠ 0 } → ℚ := fun (a,b) ↦ (a/b:ℚ)
   replace := AtMostCountable.image this f
