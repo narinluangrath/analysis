@@ -80,7 +80,11 @@ example : ¬ Example_6_4_4.LimitPoint 0 := by sorry
 
 /-- Proposition 6.4.5 / Exercise 6.4.1 -/
 theorem Sequence.limit_point_of_limit {a:Sequence} {x:ℝ} (h: a.TendsTo x) : a.LimitPoint x := by
-  sorry
+  rw [limit_point_def]
+  intro ε hε N hN
+  rw [Sequence.tendsTo_iff] at h
+  obtain ⟨M, hM⟩ := h ε hε
+  exact ⟨max N M, le_max_left _ _, hM (max N M) (le_max_right _ _)⟩
 
 /--
   A technical issue uncovered by the formalization: the upper and lower sequences of a real
