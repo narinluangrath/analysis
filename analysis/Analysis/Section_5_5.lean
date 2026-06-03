@@ -39,19 +39,28 @@ theorem Real.Icc_def (x y:Real) : .Icc x y = { z | x ≤ z ∧ z ≤ y } := rfl
 theorem Real.mem_Icc (x y z:Real) : z ∈ Set.Icc x y ↔ x ≤ z ∧ z ≤ y := by simp [Real.Icc_def]
 
 /-- Example 5.5.2 -/
-example (M: Real) : M ∈ upperBounds (.Icc 0 1) ↔ M ≥ 1 := by sorry
+example (M: Real) : M ∈ upperBounds (.Icc 0 1) ↔ M ≥ 1 := by
+  constructor
+  · intro hM; exact hM ((Real.mem_Icc 0 1 1).mpr ⟨by norm_num, le_refl 1⟩)
+  · intro hM x hx; rw [Real.mem_Icc] at hx; exact le_trans hx.2 hM
 
 /-- API for Example 5.5.3 -/
 theorem Real.Ioi_def (x:Real) : .Ioi x = { z | z > x } := rfl
 
 /-- Example 5.5.3 -/
-example : ¬ ∃ M : Real, M ∈ upperBounds (.Ioi 0) := by sorry
+example : ¬ ∃ M : Real, M ∈ upperBounds (.Ioi 0) := by
+  rintro ⟨M, hM⟩
+  have hy : (max M 0 + 1 : Real) ∈ Set.Ioi 0 := by
+    rw [Real.Ioi_def]; show max M 0 + 1 > 0
+    have := le_max_right M (0:Real); linarith
+  have := hM hy
+  have := le_max_left M (0:Real); linarith
 
 /-- Example 5.5.4 -/
-example : ∀ M, M ∈ upperBounds (∅ : Set Real) := by sorry
+example : ∀ M, M ∈ upperBounds (∅ : Set Real) := fun M x hx => hx.elim
 
 theorem Real.upperBound_upper {M M': Real} (h: M ≤ M') {E: Set Real} (hb: M ∈ upperBounds E) :
-    M' ∈ upperBounds E := by sorry
+    M' ∈ upperBounds E := fun x hx => le_trans (hb hx) h
 
 /-- Definition 5.5.5 (least upper bound).  Here we use the `isLUB` predicate defined in Mathlib. -/
 theorem Real.isLUB_def (E: Set Real) (M: Real) :
@@ -61,10 +70,17 @@ theorem Real.isGLB_def (E: Set Real) (M: Real) :
     IsGLB E M ↔ M ∈ lowerBounds E ∧ ∀ M' ∈ lowerBounds E, M' ≤ M := by rfl
 
 /-- Example 5.5.6 -/
-example : IsLUB (.Icc 0 1) (1 : Real) := by sorry
+example : IsLUB (.Icc 0 1) (1 : Real) := by
+  rw [Real.isLUB_def]
+  refine ⟨fun x hx => (Real.mem_Icc 0 1 x).mp hx |>.2, ?_⟩
+  intro M' hM'; exact hM' ((Real.mem_Icc 0 1 1).mpr ⟨by norm_num, le_refl 1⟩)
 
 /-- Example 5.5.7 -/
-example : ¬∃ M, IsLUB (∅: Set Real) M := by sorry
+example : ¬∃ M, IsLUB (∅: Set Real) M := by
+  rintro ⟨M, hM⟩
+  rw [Real.isLUB_def] at hM
+  have := hM.2 (M-1) (fun x hx => hx.elim)
+  linarith
 
 /-- Proposition 5.5.8 (Uniqueness of least upper bound)-/
 theorem Real.LUB_unique {E: Set Real} {M M': Real} (h1: IsLUB E M) (h2: IsLUB E M') : M = M' := by
