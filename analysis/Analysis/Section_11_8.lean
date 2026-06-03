@@ -205,7 +205,19 @@ example : (fun x ↦ x^2)[Ioo 2 2]ₗ = 0 := by
 /-- Example 11.8.3-/
 @[simp]
 theorem α_len_of_id (I: BoundedInterval) : (fun x ↦ x)[I]ₗ = |I|ₗ := by
-  sorry
+  rcases lt_or_ge I.b I.a with hab | hab
+  · rw [α_length_of_empty _ (BoundedInterval.empty_of_lt hab)]
+    simp only [BoundedInterval.length]
+    exact (max_eq_right (by linarith)).symm
+  · rw [α_length_of_cts (a := I.a - 1) (b := I.b + 1) (by linarith) hab (by linarith)
+      (by rw [BoundedInterval.subset_iff]
+          refine (?_ : (I:Set ℝ) ⊆ Set.Icc I.a I.b).trans ?_
+          · have := BoundedInterval.subset_Icc I; rwa [BoundedInterval.subset_iff] at this
+          · rw [BoundedInterval.set_Ioo]; intro x hx; rw [Set.mem_Icc] at hx; rw [Set.mem_Ioo]
+            exact ⟨by linarith [hx.1], by linarith [hx.2]⟩)
+      (by exact continuous_id.continuousOn)]
+    simp only [BoundedInterval.length]
+    exact (max_eq_left (by linarith)).symm
 
 /-- An improved version of BoundedInterval.joins that also controls α-length. -/
 abbrev BoundedInterval.joins' (K I J: BoundedInterval) : Prop :=  K.joins I J ∧ ∀ α:ℝ → ℝ, α[K]ₗ = α[I]ₗ + α[J]ₗ
