@@ -467,9 +467,58 @@ example : Example_6_4_8.liminf = ⊥ := liminf_bot_of_not_bddBelow E8_not_bddBel
 noncomputable abbrev Example_6_4_9 : Sequence :=
   (fun (n:ℕ) ↦ if Even n then (n+1:ℝ)⁻¹ else -(n+1:ℝ)⁻¹)
 
+private theorem E9_eval {n:ℤ} (hn: 0 ≤ n) :
+    Example_6_4_9 n = if Even n.toNat then ((n.toNat:ℝ)+1)⁻¹ else -((n.toNat:ℝ)+1)⁻¹ := by
+  simp only [Example_6_4_9, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
+
 example (n:ℕ) : Example_6_4_9.upperseq n = if Even n then (n+1:ℝ)⁻¹ else -(n+2:ℝ)⁻¹ := by sorry
 
-example : Example_6_4_9.limsup = 0 := by sorry
+example : Example_6_4_9.limsup = 0 := by
+  have hub : ∀ N:ℤ, 0 ≤ N → Example_6_4_9.upperseq N ≤ ((((N:ℝ)+1)⁻¹:ℝ):EReal) := by
+    intro N hN
+    show (Example_6_4_9.from N).sup ≤ _
+    apply Sequence.sup_le_upper
+    intro k hk
+    have hkN : k ≥ N := le_trans (le_max_right _ _) hk
+    have hk0 : 0 ≤ k := le_trans hN hkN
+    rw [Sequence.from_eval Example_6_4_9 hkN, E9_eval hk0, EReal.coe_le_coe_iff]
+    have hkt : (N:ℝ) ≤ (k.toNat:ℝ) := by
+      have h : (N:ℤ) ≤ (k.toNat:ℤ) := by rw [Int.toNat_of_nonneg hk0]; exact hkN
+      exact_mod_cast h
+    rcases Nat.even_or_odd k.toNat with he | ho
+    · rw [if_pos he]; exact inv_anti₀ (by positivity) (by linarith)
+    · rw [if_neg (Nat.not_even_iff_odd.mpr ho)]
+      have h1 : (0:ℝ) < ((k.toNat:ℝ)+1)⁻¹ := by positivity
+      have h2 : (0:ℝ) < ((N:ℝ)+1)⁻¹ := by positivity
+      linarith
+  apply le_antisymm
+  · by_contra hcon; rw [not_le] at hcon
+    obtain ⟨d, hd0, hdL⟩ := ereal_coe_lt_exists_real hcon
+    obtain ⟨N, hN⟩ := exists_nat_gt (1/d)
+    have hb : (((N:ℝ)+1)⁻¹) < d := by
+      have hN1 : 1/d < (N:ℝ)+1 := by linarith [hN]
+      rw [inv_lt_comm₀ (by positivity) hd0, inv_eq_one_div]; exact hN1
+    have hle : Example_6_4_9.limsup ≤ Example_6_4_9.upperseq (N:ℤ) := sInf_le ⟨(N:ℤ), by positivity, rfl⟩
+    have : Example_6_4_9.limsup < ((d:ℝ):EReal) :=
+      lt_of_le_of_lt (hle.trans (hub N (by positivity))) (by exact_mod_cast hb)
+    exact absurd (lt_trans hdL this) (lt_irrefl _)
+  · apply le_sInf
+    rintro x ⟨N, hN, rfl⟩
+    have hN0 : (0:ℤ) ≤ N := hN
+    set k0 : ℤ := 2*N with hk0def
+    have hk0N : k0 ≥ N := by omega
+    have hk00 : 0 ≤ k0 := by omega
+    have hmem : ((Example_6_4_9 k0:ℝ):EReal) ≤ Example_6_4_9.upperseq N := by
+      show _ ≤ (Example_6_4_9.from N).sup
+      rw [← Sequence.from_eval Example_6_4_9 hk0N]
+      apply Sequence.le_sup
+      show k0 ≥ (Example_6_4_9.from N).m
+      rw [show (Example_6_4_9.from N).m = max Example_6_4_9.m N from rfl]; exact max_le hk00 hk0N
+    have hev : Even k0.toNat := ⟨N.toNat, by omega⟩
+    have : ((0:ℝ):EReal) ≤ ((Example_6_4_9 k0:ℝ):EReal) := by
+      rw [E9_eval hk00, if_pos hev, EReal.coe_le_coe_iff]; positivity
+    exact this.trans hmem
 
 example (n:ℕ) : Example_6_4_9.lowerseq n = if Even n then -(n+2:ℝ)⁻¹ else -(n+1:ℝ)⁻¹ := by sorry
 
