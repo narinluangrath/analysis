@@ -375,19 +375,48 @@ theorem Sequence.tendsTo_iff_eq_limsup_liminf {a:Sequence} (c:ℝ) :
 
 /-- Lemma 6.4.13 (Comparison principle) / Exercise 6.4.4 -/
 theorem Sequence.sup_mono {a b:Sequence} (hm: a.m = b.m) (hab: ∀ n ≥ a.m, a n ≤ b n) :
-    a.sup ≤ b.sup := by sorry
+    a.sup ≤ b.sup := by
+  apply sSup_le
+  rintro x ⟨n, hn, rfl⟩
+  calc (↑(a n):EReal) ≤ ↑(b n) := by exact_mod_cast hab n hn
+    _ ≤ b.sup := b.le_sup (hm ▸ hn)
 
 /-- Lemma 6.4.13 (Comparison principle) / Exercise 6.4.4 -/
 theorem Sequence.inf_mono {a b:Sequence} (hm: a.m = b.m) (hab: ∀ n ≥ a.m, a n ≤ b n) :
-    a.inf ≤ b.inf := by sorry
+    a.inf ≤ b.inf := by
+  apply le_sInf
+  rintro x ⟨n, hn, rfl⟩
+  have hn' : n ≥ a.m := hm ▸ hn
+  calc a.inf ≤ (↑(a n):EReal) := a.ge_inf hn'
+    _ ≤ ↑(b n) := by exact_mod_cast hab n hn'
 
 /-- Lemma 6.4.13 (Comparison principle) / Exercise 6.4.4 -/
 theorem Sequence.limsup_mono {a b:Sequence} (hm: a.m = b.m) (hab: ∀ n ≥ a.m, a n ≤ b n) :
-    a.limsup ≤ b.limsup := by sorry
+    a.limsup ≤ b.limsup := by
+  apply le_sInf
+  rintro x ⟨N, hN, rfl⟩
+  have hN' : N ≥ a.m := hm ▸ hN
+  calc a.limsup ≤ a.upperseq N := sInf_le ⟨N, hN', rfl⟩
+    _ ≤ b.upperseq N := by
+        apply Sequence.sup_mono (by show max a.m N = max b.m N; rw [hm])
+        intro n hn
+        have hnN : n ≥ N := le_trans (le_max_right a.m N) hn
+        rw [Sequence.from_eval a hnN, Sequence.from_eval b hnN]
+        exact hab n (le_trans (le_max_left a.m N) hn)
 
 /-- Lemma 6.4.13 (Comparison principle) / Exercise 6.4.4 -/
 theorem Sequence.liminf_mono {a b:Sequence} (hm: a.m = b.m) (hab: ∀ n ≥ a.m, a n ≤ b n) :
-    a.liminf ≤ b.liminf := by sorry
+    a.liminf ≤ b.liminf := by
+  apply sSup_le
+  rintro x ⟨N, hN, rfl⟩
+  have hN' : N ≥ b.m := hm ▸ hN
+  calc a.lowerseq N ≤ b.lowerseq N := by
+        apply Sequence.inf_mono (by show max a.m N = max b.m N; rw [hm])
+        intro n hn
+        have hnN : n ≥ N := le_trans (le_max_right a.m N) hn
+        rw [Sequence.from_eval a hnN, Sequence.from_eval b hnN]
+        exact hab n (le_trans (le_max_left a.m N) hn)
+    _ ≤ b.liminf := le_sSup ⟨N, hN', rfl⟩
 
 /-- Corollary 6.4.14 (Squeeze test) / Exercise 6.4.5 -/
 theorem Sequence.lim_of_between {a b c:Sequence} {L:ℝ} (hm: b.m = a.m ∧ c.m = a.m)
