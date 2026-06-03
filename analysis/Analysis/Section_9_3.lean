@@ -267,7 +267,25 @@ example : Filter.atTop.Tendsto (fun n ↦ f_9_3_21 (1/n:ℝ)) (nhds 1) := by sor
 
 example : Filter.atTop.Tendsto (fun n ↦ f_9_3_21 ((Real.sqrt 2)/n:ℝ)) (nhds 0) := by sorry
 
-example : ¬ ∃ L, Convergesto .univ f_9_3_21 L 0 := by sorry
+example : ¬ ∃ L, Convergesto .univ f_9_3_21 L 0 := by
+  rintro ⟨L, hL⟩
+  obtain ⟨δ, hδ, hclose⟩ := hL (1/2) (by norm_num)
+  obtain ⟨q, hq0, hqδ⟩ := exists_rat_btwn hδ
+  have hfq : f_9_3_21 (q:ℝ) = 1 := by
+    have hmem : (q:ℝ) ∈ (fun r:ℚ ↦ (r:ℝ)) '' Set.univ := ⟨q, Set.mem_univ _, rfl⟩
+    simp only [f_9_3_21, hmem, if_true]
+  have hrat : |f_9_3_21 (q:ℝ) - L| < 1/2 :=
+    hclose (q:ℝ) ⟨Set.mem_univ _, Set.mem_Ioo.mpr ⟨by linarith, by linarith⟩⟩
+  obtain ⟨s, hs_irr, hs0, hsδ⟩ := exists_irrational_btwn hδ
+  have hfs : f_9_3_21 s = 0 := by
+    have hnmem : s ∉ (fun r:ℚ ↦ (r:ℝ)) '' Set.univ := by
+      rintro ⟨r, _, hr⟩; exact hs_irr ⟨r, hr⟩
+    simp only [f_9_3_21, hnmem, if_false]
+  have hirr : |f_9_3_21 s - L| < 1/2 :=
+    hclose s ⟨Set.mem_univ _, Set.mem_Ioo.mpr ⟨by linarith, by linarith⟩⟩
+  rw [hfq, abs_lt] at hrat
+  rw [hfs, abs_lt] at hirr
+  linarith [hrat.1, hrat.2, hirr.1, hirr.2]
 
 /- Exercise 9.3.4: State a definition of limit superior and limit inferior for functions, and prove an analogue of Proposition 9.3.9 for those definitions. -/
 
