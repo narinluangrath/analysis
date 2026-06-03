@@ -405,7 +405,14 @@ theorem Heine_Borel (X: Set ℝ) :
   IsClosed X ∧ Bornology.IsBounded X ↔ ∀ a : ℕ → ℝ, (∀ n, a n ∈ X) →
   (∃ n : ℕ → ℕ, StrictMono n
     ∧ ∃ L ∈ X, Filter.atTop.Tendsto (fun j ↦ a (n j)) (nhds L)) := by
-  sorry
+  rw [← Metric.isCompact_iff_isClosed_bounded, isCompact_iff_isSeqCompact]
+  constructor
+  · intro h a ha
+    obtain ⟨L, hL, φ, hφ, htend⟩ := @h a ha
+    exact ⟨φ, hφ, L, hL, htend⟩
+  · intro h a ha
+    obtain ⟨φ, hφ, L, hL, htend⟩ := @h a ha
+    exact ⟨L, hL, φ, hφ, htend⟩
 
 /-- Exercise 9.1.4 -/
 example : ∃ (X Y:Set ℝ), closure (X ∩ Y) ≠ closure X ∩ closure Y := by
