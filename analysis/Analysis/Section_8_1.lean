@@ -230,7 +230,10 @@ theorem AtMostCountable.subset {X: Type} (hX : AtMostCountable X) (Y: Set X) : A
   obtain ⟨ f, hf ⟩ | hX := hX
   . let f' : Y → f '' Y := fun y ↦ ⟨ f y, by aesop ⟩
     have hf' : Function.Bijective f' := by
-      sorry
+      constructor
+      · intro p q hpq; simp only [f', Subtype.mk.injEq] at hpq; exact Subtype.ext (hf.injective hpq)
+      · rintro ⟨l, hl⟩; simp only [Set.mem_image] at hl
+        obtain ⟨y, hy, rfl⟩ := hl; exact ⟨⟨y, hy⟩, rfl⟩
     rw [equiv ⟨ _, hf' ⟩ ]; apply Nat.atMostCountable_subset
   simp [AtMostCountable, show Finite Y by infer_instance]
 
