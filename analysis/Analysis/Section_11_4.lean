@@ -22,7 +22,37 @@ open Chapter9
 /-- Theorem 11.4.1(a) / Exercise 11.4.1 -/
 theorem IntegrableOn.add {I: BoundedInterval} {f g:ℝ → ℝ} (hf: IntegrableOn f I) (hg: IntegrableOn g I) :
   IntegrableOn (f + g) I ∧ integ (f + g) I = integ f I + integ g I := by
-  sorry
+  unfold IntegrableOn at hf hg
+  have hbound : BddOn (f + g) I := by
+    choose M hM using hf.1; choose M' hM' using hg.1
+    use M + M'; peel hM with x hx hM; specialize hM' _ hx
+    simp only [Pi.add_apply]; exact (abs_add_le _ _).trans (add_le_add hM hM')
+  have hfu : integ f I = upper_integral f I := rfl
+  have hgu : integ g I = upper_integral g I := rfl
+  have hup : upper_integral (f + g) I ≤ integ f I + integ g I := by
+    apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨f'', hf''maj, hf''const, hf''int⟩ := lt_of_gt_upper_integral hf.1 (X := integ f I + ε/2) (by rw [hfu]; linarith)
+    obtain ⟨g'', hg''maj, hg''const, hg''int⟩ := lt_of_gt_upper_integral hg.1 (X := integ g I + ε/2) (by rw [hgu]; linarith)
+    have hmaj : MajorizesOn (f'' + g'') (f + g) I := fun x hx => by
+      simp only [Pi.add_apply]; exact add_le_add (hf''maj x hx) (hg''maj x hx)
+    have hle := upper_integral_le_integ hbound hmaj (hf''const.add hg''const)
+    rw [show (hf''const.add hg''const).integ' = PiecewiseConstantOn.integ (f'' + g'') I from rfl,
+      PiecewiseConstantOn.integ_add hf''const hg''const] at hle
+    linarith
+  have hlow : integ f I + integ g I ≤ lower_integral (f + g) I := by
+    apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨f', hf'min, hf'const, hf'int⟩ := gt_of_lt_lower_integral hf.1 (X := integ f I - ε/2) (by rw [hfu]; linarith [lower_integral_le_upper hf.1])
+    obtain ⟨g', hg'min, hg'const, hg'int⟩ := gt_of_lt_lower_integral hg.1 (X := integ g I - ε/2) (by rw [hgu]; linarith [lower_integral_le_upper hg.1])
+    have hmin : MinorizesOn (f' + g') (f + g) I := fun x hx => by
+      simp only [Pi.add_apply]; exact add_le_add (hf'min x hx) (hg'min x hx)
+    have hle := integ_le_lower_integral hbound hmin (hf'const.add hg'const)
+    rw [show (hf'const.add hg'const).integ' = PiecewiseConstantOn.integ (f' + g') I from rfl,
+      PiecewiseConstantOn.integ_add hf'const hg'const] at hle
+    linarith
+  have hlu := lower_integral_le_upper hbound
+  refine ⟨⟨hbound, by linarith⟩, ?_⟩
+  show upper_integral (f + g) I = integ f I + integ g I
+  linarith
 
 /-- Theorem 11.4.1(b) / Exercise 11.4.1 -/
 theorem IntegrableOn.smul {I: BoundedInterval} (c:ℝ) {f:ℝ → ℝ} (hf: IntegrableOn f I) :
