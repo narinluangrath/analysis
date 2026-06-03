@@ -210,6 +210,12 @@ theorem Real.ratPow_mono_of_lt_one {x:ℝ} (hx0: 0 < x) (hx: x < 1) {q r:ℝ} : 
 
 /-- Proposition 6.7.3(f) / Exercise 6.7.1 -/
 theorem Real.ratPow_mul {x y:ℝ} (hx: x > 0) (hy: y > 0) (q:ℝ) : rpow (x*y) q = rpow x q * rpow y q := by
-  sorry
+  choose q' hq' using eq_lim_of_rat q
+  have h1 := ratPow_continuous hx hq'
+  have h2 := ratPow_continuous hy hq'
+  rw [rpow_eq_lim_ratPow hx hq', rpow_eq_lim_ratPow hy hq',
+    rpow_eq_lim_ratPow (mul_pos hx hy) hq', ←(lim_mul h1 h2).2, mul_coe]
+  rcongr n
+  rw [← Real.mul_rpow (le_of_lt hx) (le_of_lt hy)]
 
 end Chapter6
