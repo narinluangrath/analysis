@@ -185,7 +185,16 @@ theorem Real.ratPow_ratPow {x:ℝ} (hx: x > 0) (q r:ℝ) : rpow (rpow x q) r = r
 
 /-- Proposition 6.7.3(c) / Exercise 6.7.1 -/
 theorem Real.ratPow_neg {x:ℝ} (hx: x > 0) (q:ℝ) : rpow x (-q) = 1 / rpow x q := by
-  sorry
+  have h0 : rpow x 0 = 1 := by
+    have := rpow_of_rat_eq_ratPow hx (q := (0:ℚ)); simpa using this
+  have hpos : rpow x q > 0 := by
+    rcases lt_or_eq_of_le (ratPow_nonneg hx q) with h | h
+    · exact h
+    · exfalso
+      have hadd := ratPow_add hx q (-q)
+      rw [add_neg_cancel, h0, ← h, zero_mul] at hadd
+      exact one_ne_zero hadd
+  rw [eq_div_iff (ne_of_gt hpos), ← ratPow_add hx (-q) q, neg_add_cancel, h0]
 
 /-- Proposition 6.7.3(d) / Exercise 6.7.1 -/
 theorem Real.ratPow_mono {x y:ℝ} (hx: x > 0) (hy: y > 0) {q:ℝ} (h: q > 0) : x > y ↔ rpow x q > rpow y q := by
