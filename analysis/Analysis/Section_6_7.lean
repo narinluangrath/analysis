@@ -147,7 +147,23 @@ lemma Real.rpow_of_rat_eq_ratPow {x:ℝ} (hx: x > 0) {q: ℚ} :
 
 /-- Proposition 6.7.3(a) / Exercise 6.7.1 -/
 theorem Real.ratPow_nonneg {x:ℝ} (hx: x > 0) (q:ℝ) : rpow x q ≥ 0 := by
-  sorry
+  choose q' hq' using eq_lim_of_rat q
+  rw [rpow_eq_lim_ratPow hx hq']
+  set b : Sequence := ((fun n ↦ x^(q' n:ℝ)):Sequence) with hb
+  have hconv : b.Convergent := ratPow_continuous hx hq'
+  by_contra hlt
+  rw [ge_iff_le, not_le] at hlt
+  have htend := lim_def hconv
+  rw [Sequence.tendsTo_iff] at htend
+  obtain ⟨N, hN⟩ := htend (-(lim b)/2) (by linarith)
+  have hclose := hN (max N 0) (le_max_left _ _)
+  have hbnn : (0:ℝ) ≤ b (max N 0) := by
+    rw [hb]
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos (le_max_right _ _)]
+    exact Real.rpow_nonneg (le_of_lt hx) _
+  rw [abs_le] at hclose
+  linarith [hclose.2, hbnn]
 
 /-- Proposition 6.7.3(b) -/
 theorem Real.ratPow_add {x:ℝ} (hx: x > 0) (q r:ℝ) : rpow x (q+r) = rpow x q * rpow x r := by
