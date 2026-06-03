@@ -522,7 +522,57 @@ example : Example_6_4_9.limsup = 0 := by
 
 example (n:ℕ) : Example_6_4_9.lowerseq n = if Even n then -(n+2:ℝ)⁻¹ else -(n+1:ℝ)⁻¹ := by sorry
 
-example : Example_6_4_9.liminf = 0 := by sorry
+example : Example_6_4_9.liminf = 0 := by
+  have hlb : ∀ N:ℤ, 0 ≤ N → ((-(((N:ℝ)+1)⁻¹):ℝ):EReal) ≤ Example_6_4_9.lowerseq N := by
+    intro N hN
+    show _ ≤ (Example_6_4_9.from N).inf
+    apply Sequence.inf_ge_lower
+    intro k hk
+    have hkN : k ≥ N := le_trans (le_max_right _ _) hk
+    have hk0 : 0 ≤ k := le_trans hN hkN
+    rw [Sequence.from_eval Example_6_4_9 hkN, E9_eval hk0, ge_iff_le, EReal.coe_le_coe_iff]
+    have hkt : (N:ℝ) ≤ (k.toNat:ℝ) := by
+      have h : (N:ℤ) ≤ (k.toNat:ℤ) := by rw [Int.toNat_of_nonneg hk0]; exact hkN
+      exact_mod_cast h
+    rcases Nat.even_or_odd k.toNat with he | ho
+    · rw [if_pos he]
+      have h1 : (0:ℝ) < ((k.toNat:ℝ)+1)⁻¹ := by positivity
+      have h2 : (0:ℝ) < ((N:ℝ)+1)⁻¹ := by positivity
+      linarith
+    · rw [if_neg (Nat.not_even_iff_odd.mpr ho)]
+      have : ((k.toNat:ℝ)+1)⁻¹ ≤ ((N:ℝ)+1)⁻¹ := inv_anti₀ (by positivity) (by linarith)
+      linarith
+  apply le_antisymm
+  · apply sSup_le
+    rintro x ⟨N, hN, rfl⟩
+    have hN0 : (0:ℤ) ≤ N := hN
+    set k0 : ℤ := 2*N+1 with hk0def
+    have hk0N : k0 ≥ N := by omega
+    have hk00 : 0 ≤ k0 := by omega
+    have hmem : Example_6_4_9.lowerseq N ≤ ((Example_6_4_9 k0:ℝ):EReal) := by
+      show (Example_6_4_9.from N).inf ≤ _
+      rw [← Sequence.from_eval Example_6_4_9 hk0N]
+      apply Sequence.ge_inf
+      show k0 ≥ (Example_6_4_9.from N).m
+      rw [show (Example_6_4_9.from N).m = max Example_6_4_9.m N from rfl]; exact max_le hk00 hk0N
+    have hodd : Odd k0.toNat := ⟨N.toNat, by omega⟩
+    have : ((Example_6_4_9 k0:ℝ):EReal) ≤ ((0:ℝ):EReal) := by
+      rw [E9_eval hk00, if_neg (Nat.not_even_iff_odd.mpr hodd), EReal.coe_le_coe_iff]
+      have : (0:ℝ) < ((k0.toNat:ℝ)+1)⁻¹ := by positivity
+      linarith
+    exact hmem.trans this
+  · by_contra hcon; rw [not_le] at hcon
+    obtain ⟨d, hLd, hdc⟩ := ereal_lt_coe_exists_real hcon
+    obtain ⟨N, hN⟩ := exists_nat_gt (1/(-d))
+    have hb : d < (-(((N:ℝ)+1)⁻¹)) := by
+      have hd0 : (0:ℝ) < -d := by linarith
+      have hN1 : 1/(-d) < (N:ℝ)+1 := by linarith [hN]
+      have : (((N:ℝ)+1)⁻¹) < -d := by rw [inv_lt_comm₀ (by positivity) hd0, inv_eq_one_div]; exact hN1
+      linarith
+    have hge : Example_6_4_9.lowerseq (N:ℤ) ≤ Example_6_4_9.liminf := le_sSup ⟨(N:ℤ), by positivity, rfl⟩
+    have : ((d:ℝ):EReal) < Example_6_4_9.liminf :=
+      lt_of_lt_of_le (by exact_mod_cast hb) ((hlb N (by positivity)).trans hge)
+    exact absurd (lt_trans this hLd) (lt_irrefl _)
 
 noncomputable abbrev Example_6_4_10 : Sequence := (fun (n:ℕ) ↦ (n+1:ℝ))
 
