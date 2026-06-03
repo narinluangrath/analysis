@@ -433,11 +433,22 @@ example {I:Type} (X: I → Set ℝ) (hX: ∀ i, IsClosed (X i)) :
 
 /-- Exercise 9.1.9 -/
 example {X:Set ℝ} {x:ℝ} (hx: AdherentPt x X) : LimitPt x X ∨ IsolatedPt x X := by
-  sorry
+  by_cases hlim : LimitPt x X
+  · exact Or.inl hlim
+  · right
+    have hxX : x ∈ X := by
+      by_contra hxni
+      exact hlim (by rwa [LimitPt, Set.diff_singleton_eq_self hxni])
+    unfold LimitPt AdherentPt at hlim
+    push_neg at hlim
+    obtain ⟨ε, hε, hsep⟩ := hlim
+    exact ⟨hxX, ε, hε, hsep⟩
 
 /-- Exercise 9.1.9 -/
 example {X:Set ℝ} {x:ℝ} : ¬ (LimitPt x X ∧ IsolatedPt x X) := by
-  sorry
+  rintro ⟨hlim, _, ε, hε, hsep⟩
+  obtain ⟨y, hy, hle⟩ := hlim ε hε
+  exact absurd hle (not_le.mpr (hsep y hy))
 
 /-- Exercise 9.1.10 -/
 example {X:Set ℝ} (hX: X ≠ ∅) : Bornology.IsBounded X ↔
