@@ -687,7 +687,20 @@ theorem Sequence.Cauchy_iff_convergent (a:Sequence) :
 
 /-- Exercise 6.4.6 -/
 theorem Sequence.sup_not_strict_mono : ∃ (a b:ℕ → ℝ), (∀ n, a n < b n) ∧ ¬ (a:Sequence).sup < (b:Sequence).sup := by
-  sorry
+  refine ⟨fun n => (n:ℝ), fun n => (n:ℝ)+1, fun n => by linarith, ?_⟩
+  have hsup : ((fun (n:ℕ) => (n:ℝ)):Sequence).sup = ⊤ := by
+    unfold Sequence.sup
+    apply sSup_eq_top.mpr
+    intro b hb
+    obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+    · obtain ⟨k, hk⟩ := exists_nat_gt y
+      refine ⟨((k:ℝ):EReal), ⟨(k:ℤ), by positivity, ?_⟩, by exact_mod_cast hk⟩
+      simp [Sequence.instCoeFun, Sequence.ofNatFun]
+    · exact absurd hb (lt_irrefl _)
+    · exact ⟨((0:ℝ):EReal), ⟨0, le_refl _, by simp [Sequence.instCoeFun, Sequence.ofNatFun]⟩,
+        bot_lt_iff_ne_bot.mpr (by decide)⟩
+  rw [hsup]
+  exact not_top_lt
 
 /- Exercise 6.4.7 -/
 def Sequence.tendsTo_real_iff :
