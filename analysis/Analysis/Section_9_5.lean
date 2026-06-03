@@ -98,7 +98,10 @@ theorem ContinuousAt.iff_eq_left_right_limit {X: Set ℝ} {f: ℝ → ℝ} {x₀
   ContinuousWithinAt f X x₀ ↔ (RightLimitExists X f x₀ ∧ right_limit X f x₀ = f x₀) ∧ (LeftLimitExists X f x₀ ∧ left_limit X f x₀ = f x₀) := by
   -- This proof is written to follow the structure of the original text.
   constructor
-  . sorry
+  . intro hcont
+    have hc : Filter.Tendsto f (nhdsWithin x₀ X) (nhds (f x₀)) := hcont
+    exact ⟨right_limit.eq had_right (hc.mono_left (nhdsWithin_mono x₀ Set.inter_subset_left)),
+      left_limit.eq had_left (hc.mono_left (nhdsWithin_mono x₀ Set.inter_subset_left))⟩
   intro ⟨ ⟨ hre, hright⟩, ⟨ hle, lheft ⟩ ⟩
   set L := f x₀
   have := (ContinuousWithinAt.tfae X f h).out 0 2
@@ -114,9 +117,11 @@ theorem ContinuousAt.iff_eq_left_right_limit {X: Set ℝ} {f: ℝ → ℝ} {x₀
   use min δ_plus δ_minus, (by positivity)
   intro x hx hxx₀
   obtain hlt | rfl | hgt := lt_trichotomy x x₀
-  . sorry
-  . sorry
-  sorry
+  . rw [abs_lt] at hxx₀
+    exact hle x hx hlt (by linarith [min_le_right δ_plus δ_minus]) (by linarith [min_le_right δ_plus δ_minus])
+  . simp only [sub_self, abs_zero]; exact hε
+  . rw [abs_lt] at hxx₀
+    exact hre x hx hgt (by linarith [min_le_left δ_plus δ_minus]) (by linarith [min_le_left δ_plus δ_minus])
 
 abbrev HasJumpDiscontinuity (X: Set ℝ) (f: ℝ → ℝ) (x₀:ℝ) : Prop :=
   RightLimitExists X f x₀ ∧ LeftLimitExists X f x₀ ∧ right_limit X f x₀ ≠ left_limit X f x₀
