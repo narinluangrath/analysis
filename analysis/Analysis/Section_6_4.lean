@@ -706,7 +706,24 @@ theorem Sequence.sup_not_strict_mono : ∃ (a b:ℕ → ℝ), (∀ n, a n < b n)
 def Sequence.tendsTo_real_iff :
   Decidable (∀ (a:Sequence) (x:ℝ), a.TendsTo x ↔ a.abs.TendsTo x) := by
   -- The first line of this construction should be `apply isTrue` or `apply isFalse`.
-  sorry
+  apply isFalse
+  intro h
+  have hconst : ((fun (n:ℕ) => (-1:ℝ)):Sequence).TendsTo (-1) := by
+    rw [Sequence.tendsTo_iff]
+    intro ε hε
+    refine ⟨0, fun n hn => ?_⟩
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos hn]; simp; linarith
+  have habs := (h _ _).mp hconst
+  rw [Sequence.tendsTo_iff] at habs
+  obtain ⟨N, hN⟩ := habs 1 (by norm_num)
+  have hbad := hN (max N 0) (le_max_left _ _)
+  have heval : ((fun (n:ℕ) => (-1:ℝ)):Sequence).abs (max N 0) = 1 := by
+    show |((fun (n:ℕ) => (-1:ℝ)):Sequence) (max N 0)| = 1
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos (le_max_right _ _)]; norm_num
+  rw [heval] at hbad
+  norm_num at hbad
 
 /-- This definition is needed for Exercises 6.4.8 and 6.4.9. -/
 abbrev Sequence.ExtendedLimitPoint (a:Sequence) (x:EReal) : Prop := if x = ⊤ then ¬ a.BddAbove else if x = ⊥ then ¬ a.BddBelow else a.LimitPoint x.toReal
