@@ -523,6 +523,14 @@ theorem BoundedInterval.le_max {I: BoundedInterval} (P P': Partition I) :
 /-- Not from textbook: the reverse inclusion -/
 theorem BoundedInterval.max_le_iff (I: BoundedInterval) {P P' P'': Partition I}
   {hP : P ≤ P''} {hP': P' ≤ P''} : P ⊔ P' ≤ P''  := by
-  sorry
+  intro J hJ
+  obtain ⟨K, hK, hJK⟩ := hP J hJ
+  obtain ⟨K', hK', hJK'⟩ := hP' J hJ
+  refine ⟨K ∩ K', ?_, ?_⟩
+  · show (K ∩ K') ∈ (P ⊔ P').intervals
+    rw [show (P ⊔ P').intervals = Finset.image₂ (fun J K ↦ J ∩ K) P.intervals P'.intervals from rfl]
+    exact Finset.mem_image₂_of_mem hK hK'
+  · rw [subset_iff, inter_eq]
+    exact Set.subset_inter (by rwa [subset_iff] at hJK) (by rwa [subset_iff] at hJK')
 
 end Chapter11
