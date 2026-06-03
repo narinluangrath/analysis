@@ -321,17 +321,50 @@ theorem Sequence.bounded_iff_convergent_of_antitone {a:Sequence} (ha: a.IsAntito
 /-- Example 6.3.9 -/
 noncomputable abbrev Example_6_3_9 (n:ℕ) := ⌊ Real.pi * 10^n ⌋ / (10:ℝ)^n
 
-/-- Example 6.3.9 -/
-example : (Example_6_3_9:Sequence).IsMonotone := by sorry
+private theorem Example_6_3_9_bdd : (Example_6_3_9:Sequence).BddAboveBy 4 := by
+  intro n hn
+  simp only [Example_6_3_9, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
+  have h10 : (0:ℝ) < 10^n.toNat := by positivity
+  rw [div_le_iff₀ h10]
+  have hfloor : (⌊Real.pi * 10^n.toNat⌋:ℝ) ≤ Real.pi * 10^n.toNat := Int.floor_le _
+  nlinarith [hfloor, Real.pi_le_four, h10]
+
+private theorem Example_6_3_9_mono : (Example_6_3_9:Sequence).IsMonotone := by
+  intro k hk
+  have hk0 : (0:ℤ) ≤ k := hk
+  show (Example_6_3_9:Sequence) k ≤ (Example_6_3_9:Sequence) (k+1)
+  simp only [Example_6_3_9, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hk0, if_pos (by linarith), show (k+1).toNat = k.toNat + 1 by omega]
+  set m := k.toNat
+  have key : (10:ℝ) * (⌊Real.pi * 10^m⌋:ℝ) ≤ (⌊Real.pi * 10^(m+1)⌋:ℝ) := by
+    have keyZ : (10:ℤ) * ⌊Real.pi * 10^m⌋ ≤ ⌊Real.pi * 10^(m+1)⌋ := by
+      rw [Int.le_floor]; push_cast [pow_succ]
+      nlinarith [Int.floor_le (Real.pi * 10^m), (by positivity : (0:ℝ) ≤ (10:ℝ)^m)]
+    exact_mod_cast keyZ
+  have hrw : (⌊Real.pi * 10^m⌋:ℝ)/10^m = (10*⌊Real.pi * 10^m⌋)/10^(m+1) := by
+    rw [pow_succ]; field_simp
+  rw [hrw, div_le_div_iff_of_pos_right (by positivity)]
+  exact key
 
 /-- Example 6.3.9 -/
-example : (Example_6_3_9:Sequence).BddAboveBy 4 := by sorry
+example : (Example_6_3_9:Sequence).IsMonotone := Example_6_3_9_mono
 
 /-- Example 6.3.9 -/
-example : (Example_6_3_9:Sequence).Convergent := by sorry
+example : (Example_6_3_9:Sequence).BddAboveBy 4 := Example_6_3_9_bdd
 
 /-- Example 6.3.9 -/
-example : lim (Example_6_3_9:Sequence) ≤ 4 := by sorry
+example : (Example_6_3_9:Sequence).Convergent :=
+  Sequence.convergent_of_monotone ⟨4, Example_6_3_9_bdd⟩ Example_6_3_9_mono
+
+/-- Example 6.3.9 -/
+example : lim (Example_6_3_9:Sequence) ≤ 4 := by
+  have hle : ((lim (Example_6_3_9:Sequence):ℝ):EReal) ≤ ((4:ℝ):EReal) := by
+    rw [Sequence.lim_of_monotone ⟨4, Example_6_3_9_bdd⟩ Example_6_3_9_mono]
+    apply sSup_le
+    rintro x ⟨n, hn, rfl⟩
+    exact_mod_cast Example_6_3_9_bdd n hn
+  exact_mod_cast hle
 
 /-- Proposition 6.3.1-/
 theorem lim_of_exp {x:ℝ} (hpos: 0 < x) (hbound: x < 1) :
