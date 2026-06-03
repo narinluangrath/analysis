@@ -268,7 +268,9 @@ theorem f_11_8_6_RS_integ : PiecewiseConstantWith.RS_integ f_11_8_6 P_11_8_6 (fu
 
 /-- Example 11.8.7 -/
 theorem PiecewiseConstantWith.RS_integ_eq_integ {f:ℝ → ℝ} {I: BoundedInterval} (P: Partition I) :RS_integ f P (fun x ↦ x) = integ f P := by
-  sorry
+  simp only [PiecewiseConstantWith.RS_integ, PiecewiseConstantWith.integ]
+  apply Finset.sum_congr rfl
+  intro J hJ; rw [α_len_of_id]
 
 /-- Analogue of Proposition 11.2.13 -/
 theorem PiecewiseConstantWith.RS_integ_eq {f:ℝ → ℝ} {I: BoundedInterval} {P P': Partition I}
