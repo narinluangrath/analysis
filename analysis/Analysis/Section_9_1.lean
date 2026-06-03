@@ -252,11 +252,27 @@ theorem LimitPt.iff_AccPt (x:ℝ) (X: Set ℝ) : LimitPt x X ↔ AccPt x (.princ
 abbrev IsolatedPt (x:ℝ) (X: Set ℝ) := x ∈ X ∧ ∃ ε>0, ∀ y ∈ X \ {x}, |x-y| > ε
 
 /-- Example 9.1.19 -/
-example : AdherentPt 3 ((.Ioo 1 2) ∪ {3}) := by sorry
+example : AdherentPt 3 ((.Ioo 1 2) ∪ {3}) :=
+  AdherentPt.of_mem (Set.mem_union_right _ (Set.mem_singleton 3))
 
-example : ¬ LimitPt 3 ((.Ioo 1 2) ∪ {3}) := by sorry
+example : ¬ LimitPt 3 ((.Ioo 1 2) ∪ {3}) := by
+  intro h
+  obtain ⟨y, hy, hle⟩ := h (1/2) (by norm_num)
+  simp only [Set.mem_diff, Set.mem_union, Set.mem_Ioo, Set.mem_singleton_iff] at hy
+  rw [abs_le] at hle
+  obtain ⟨hyin, hyne⟩ := hy
+  rcases hyin with ⟨h1, h2⟩ | h3
+  · linarith [hle.2]
+  · exact hyne h3
 
-example : IsolatedPt 3 ((.Ioo 1 2) ∪ {3}) := by sorry
+example : IsolatedPt 3 ((.Ioo 1 2) ∪ {3}) := by
+  refine ⟨Set.mem_union_right _ (Set.mem_singleton 3), 1/2, by norm_num, ?_⟩
+  intro y hy
+  simp only [Set.mem_diff, Set.mem_union, Set.mem_Ioo, Set.mem_singleton_iff] at hy
+  obtain ⟨hyin, hyne⟩ := hy
+  rcases hyin with ⟨h1, h2⟩ | h3
+  · rw [gt_iff_lt, abs_of_pos (show (0:ℝ) < 3 - y by linarith)]; linarith
+  · exact absurd h3 hyne
 
 /-- Remark 9.1.20 -/
 theorem LimitPt.iff_limit (x:ℝ) (X: Set ℝ) :
