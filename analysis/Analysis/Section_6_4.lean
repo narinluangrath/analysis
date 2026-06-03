@@ -359,7 +359,55 @@ example (n:ℕ) :
     = if Even n then -(1 + (10:ℝ)^(-(n:ℤ)-2)) else -(1 + (10:ℝ)^(-(n:ℤ)-1)) := by
   sorry
 
-example : Example_6_4_7.liminf = -1 := by sorry
+example : Example_6_4_7.liminf = -1 := by
+  have hlb : ∀ N:ℤ, 0 ≤ N → ((-(1 + (10:ℝ)^(-N-1)):ℝ):EReal) ≤ Example_6_4_7.lowerseq N := by
+    intro N hN
+    show _ ≤ (Example_6_4_7.from N).inf
+    apply Sequence.inf_ge_lower
+    intro k hk
+    have hkN : k ≥ N := le_trans (le_max_right _ _) hk
+    have hk0 : 0 ≤ k := le_trans hN hkN
+    rw [Sequence.from_eval Example_6_4_7 hkN, E7_eval hk0, ge_iff_le, EReal.coe_le_coe_iff]
+    have hkt : (k.toNat:ℤ) = k := Int.toNat_of_nonneg hk0
+    rcases Nat.even_or_odd k.toNat with he | ho
+    · rw [Even.neg_one_pow he, one_mul]
+      have h1 : (0:ℝ) < 10^(-(k.toNat:ℤ)-1) := by positivity
+      have h2 : (0:ℝ) < (10:ℝ)^(-N-1) := by positivity
+      linarith
+    · rw [Odd.neg_one_pow ho, neg_one_mul]
+      have : (10:ℝ)^(-(k.toNat:ℤ)-1) ≤ (10:ℝ)^(-N-1) := by
+        apply zpow_le_zpow_right₀ (by norm_num); omega
+      linarith
+  apply le_antisymm
+  · apply sSup_le
+    rintro x ⟨N, hN, rfl⟩
+    have hN0 : (0:ℤ) ≤ N := hN
+    set k0 : ℤ := 2*N+1 with hk0def
+    have hk0N : k0 ≥ N := by omega
+    have hk00 : 0 ≤ k0 := by omega
+    have hmem : Example_6_4_7.lowerseq N ≤ ((Example_6_4_7 k0:ℝ):EReal) := by
+      show (Example_6_4_7.from N).inf ≤ _
+      rw [← Sequence.from_eval Example_6_4_7 hk0N]
+      apply Sequence.ge_inf
+      show k0 ≥ (Example_6_4_7.from N).m
+      rw [show (Example_6_4_7.from N).m = max Example_6_4_7.m N from rfl]; exact max_le hk00 hk0N
+    have hodd : Odd k0.toNat := ⟨N.toNat, by omega⟩
+    have : ((Example_6_4_7 k0:ℝ):EReal) ≤ ((-1:ℝ):EReal) := by
+      rw [E7_eval hk00, Odd.neg_one_pow hodd, neg_one_mul, EReal.coe_le_coe_iff]
+      have : (0:ℝ) < 10^(-(k0.toNat:ℤ)-1) := by positivity
+      linarith
+    exact hmem.trans this
+  · by_contra hcon; rw [not_le] at hcon
+    obtain ⟨d, hLd, hdc⟩ := ereal_lt_coe_exists_real hcon
+    obtain ⟨k, hk⟩ := exists_pow_lt_of_lt_one (by linarith : (0:ℝ) < -1 - d) (by norm_num : (1:ℝ)/10 < 1)
+    have hb : d < (-(1 + (10:ℝ)^(-(k:ℤ)-1))) := by
+      have e : (1/10:ℝ)^k = (10:ℝ)^(-(k:ℤ)) := by rw [div_pow, one_pow, one_div, ← zpow_natCast, ← zpow_neg]
+      have : (10:ℝ)^(-(k:ℤ)-1) ≤ (1/10:ℝ)^k := by rw [e]; apply zpow_le_zpow_right₀ (by norm_num); omega
+      linarith
+    have hge : Example_6_4_7.lowerseq (k:ℤ) ≤ Example_6_4_7.liminf := le_sSup ⟨(k:ℤ), by positivity, rfl⟩
+    have : ((d:ℝ):EReal) < Example_6_4_7.liminf :=
+      lt_of_lt_of_le (by exact_mod_cast hb) ((hlb k (by positivity)).trans hge)
+    exact absurd (lt_trans this hLd) (lt_irrefl _)
 
 example : Example_6_4_7.sup = (1.1:ℝ) := by
   apply IsGreatest.csSup_eq
