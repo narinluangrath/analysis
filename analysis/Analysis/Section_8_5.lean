@@ -380,11 +380,26 @@ def empty_set_well_order [h₀: LT Empty]: Decidable (Nonempty (WellFoundedLT Em
   sorry
 
 /-- Exercise 8.5.2 -/
-example : ∃ (X:Type) (h₀: LE X), (∀ x:X, x ≤ x) ∧ (∀ x y:X, x ≤ y → y ≤ x → x = y) ∧ ¬ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) := by sorry
+example : ∃ (X:Type) (h₀: LE X), (∀ x:X, x ≤ x) ∧ (∀ x y:X, x ≤ y → y ≤ x → x = y) ∧ ¬ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) :=
+  ⟨Fin 3, ⟨fun x y => x = y ∨ (x = 0 ∧ y = 1) ∨ (x = 1 ∧ y = 2)⟩,
+    fun _ => Or.inl rfl,
+    fun x y hxy hyx => by
+      rcases hxy with h|⟨rfl,rfl⟩|⟨rfl,rfl⟩
+      · exact h
+      · rcases hyx with h|⟨h,_⟩|⟨_,h⟩ <;> exact absurd h (by decide)
+      · rcases hyx with h|⟨h,_⟩|⟨h,_⟩ <;> exact absurd h (by decide),
+    by
+      intro htrans
+      have := htrans 0 1 2 (Or.inr (Or.inl ⟨rfl, rfl⟩)) (Or.inr (Or.inr ⟨rfl, rfl⟩))
+      rcases this with h|⟨_,h⟩|⟨h,_⟩ <;> exact absurd h (by decide)⟩
 
-example : ∃ (X:Type) (h₀: LE X), (∀ x:X, x ≤ x) ∧ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) ∧ ¬ (∀ x y:X, x ≤ y → y ≤ x → x = y) := by sorry
+example : ∃ (X:Type) (h₀: LE X), (∀ x:X, x ≤ x) ∧ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) ∧ ¬ (∀ x y:X, x ≤ y → y ≤ x → x = y) :=
+  ⟨Fin 2, ⟨fun _ _ => True⟩, fun _ => trivial, fun _ _ _ _ _ => trivial,
+    fun h => absurd (h 0 1 trivial trivial) (by decide)⟩
 
-example : ∃ (X:Type) (h₀: LE X), (∀ x y:X, x ≤ y → y ≤ x → x = y) ∧ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) ∧ ¬ (∀ x:X, x ≤ x) := by sorry
+example : ∃ (X:Type) (h₀: LE X), (∀ x y:X, x ≤ y → y ≤ x → x = y) ∧ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) ∧ ¬ (∀ x:X, x ≤ x) :=
+  ⟨Fin 1, ⟨fun _ _ => False⟩, fun _ _ hxy _ => hxy.elim, fun _ _ _ hxy _ => hxy.elim,
+    fun h => (h 0).elim⟩
 
 /-- Exercise 8.5.3 -/
 example : ∃ (h₀: PartialOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by sorry
