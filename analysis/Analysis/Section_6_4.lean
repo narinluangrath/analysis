@@ -274,13 +274,85 @@ private theorem liminf_bot_of_not_bddBelow {a:Sequence} (hnb: ¬a.BddBelow) : a.
   rintro x ⟨N, hN, rfl⟩
   exact tail_inf_bot hnb hN
 
+private lemma ereal_lt_coe_exists_real {L:EReal} {c:ℝ} (h: L < (c:EReal)) :
+    ∃ d:ℝ, L < (d:EReal) ∧ d < c := by
+  obtain ⟨z, hz1, hz2⟩ := exists_between h
+  have hzt : z ≠ ⊤ := ne_top_of_lt hz2
+  have hzb : z ≠ ⊥ := by rintro rfl; exact not_lt_bot hz1
+  exact ⟨z.toReal, by rwa [EReal.coe_toReal hzt hzb],
+    by rw [← EReal.coe_lt_coe_iff, EReal.coe_toReal hzt hzb]; exact hz2⟩
+
+private lemma ereal_coe_lt_exists_real {L:EReal} {c:ℝ} (h: (c:EReal) < L) :
+    ∃ d:ℝ, c < d ∧ (d:EReal) < L := by
+  obtain ⟨z, hz1, hz2⟩ := exists_between h
+  have hzt : z ≠ ⊤ := by rintro rfl; exact not_top_lt hz2
+  have hzb : z ≠ ⊥ := ne_bot_of_gt hz1
+  exact ⟨z.toReal, by rw [← EReal.coe_lt_coe_iff, EReal.coe_toReal hzt hzb]; exact hz1,
+    by rwa [EReal.coe_toReal hzt hzb]⟩
+
 noncomputable abbrev Example_6_4_7 : Sequence := (fun (n:ℕ) ↦ (-1:ℝ)^n * (1 + (10:ℝ)^(-(n:ℤ)-1)))
+
+private theorem E7_eval {n:ℤ} (hn: 0 ≤ n) :
+    Example_6_4_7 n = (-1:ℝ)^n.toNat * (1 + (10:ℝ)^(-(n.toNat:ℤ)-1)) := by
+  simp only [Example_6_4_7, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
 
 example (n:ℕ) :
     Example_6_4_7.upperseq n = if Even n then 1 + (10:ℝ)^(-(n:ℤ)-1) else 1 + (10:ℝ)^(-(n:ℤ)-2) := by
   sorry
 
-example : Example_6_4_7.limsup = 1 := by sorry
+example : Example_6_4_7.limsup = 1 := by
+  have hub : ∀ N:ℤ, 0 ≤ N → Example_6_4_7.upperseq N ≤ ((1 + (10:ℝ)^(-N-1):ℝ):EReal) := by
+    intro N hN
+    show (Example_6_4_7.from N).sup ≤ _
+    apply Sequence.sup_le_upper
+    intro k hk
+    have hkN : k ≥ N := le_trans (le_max_right _ _) hk
+    have hk0 : 0 ≤ k := le_trans hN hkN
+    rw [Sequence.from_eval Example_6_4_7 hkN, E7_eval hk0, EReal.coe_le_coe_iff]
+    have hkt : (k.toNat:ℤ) = k := Int.toNat_of_nonneg hk0
+    rcases Nat.even_or_odd k.toNat with he | ho
+    · rw [Even.neg_one_pow he, one_mul]
+      have : (10:ℝ)^(-(k.toNat:ℤ)-1) ≤ (10:ℝ)^(-N-1) := by
+        apply zpow_le_zpow_right₀ (by norm_num); omega
+      linarith
+    · rw [Odd.neg_one_pow ho, neg_one_mul]
+      have h1 : (0:ℝ) < 10^(-(k.toNat:ℤ)-1) := by positivity
+      have h2 : (0:ℝ) < (10:ℝ)^(-N-1) := by positivity
+      linarith
+  apply le_antisymm
+  · by_contra hcon; rw [not_le] at hcon
+    obtain ⟨d, hd1, hdL⟩ := ereal_coe_lt_exists_real hcon
+    obtain ⟨k, hk⟩ := exists_pow_lt_of_lt_one (by linarith : (0:ℝ) < d - 1) (by norm_num : (1:ℝ)/10 < 1)
+    have hb : (1 + (10:ℝ)^(-(k:ℤ)-1)) < d := by
+      have e : (1/10:ℝ)^k = (10:ℝ)^(-(k:ℤ)) := by
+        rw [div_pow, one_pow, one_div, ← zpow_natCast, ← zpow_neg]
+      have : (10:ℝ)^(-(k:ℤ)-1) ≤ (1/10:ℝ)^k := by
+        rw [e]; apply zpow_le_zpow_right₀ (by norm_num); omega
+      linarith
+    have hle : Example_6_4_7.limsup ≤ Example_6_4_7.upperseq (k:ℤ) := sInf_le ⟨(k:ℤ), by positivity, rfl⟩
+    have : Example_6_4_7.limsup < ((d:ℝ):EReal) :=
+      lt_of_le_of_lt (hle.trans (hub k (by positivity))) (by exact_mod_cast hb)
+    exact absurd (lt_trans hdL this) (lt_irrefl _)
+  · apply le_sInf
+    rintro x ⟨N, hN, rfl⟩
+    have hN0 : (0:ℤ) ≤ N := hN
+    set k0 : ℤ := 2 * N with hk0def
+    have hk0N : k0 ≥ N := by omega
+    have hk00 : 0 ≤ k0 := by omega
+    have hmem : ((Example_6_4_7 k0:ℝ):EReal) ≤ Example_6_4_7.upperseq N := by
+      show _ ≤ (Example_6_4_7.from N).sup
+      rw [← Sequence.from_eval Example_6_4_7 hk0N]
+      apply Sequence.le_sup
+      show k0 ≥ (Example_6_4_7.from N).m
+      rw [show (Example_6_4_7.from N).m = max Example_6_4_7.m N from rfl]
+      exact max_le hk00 hk0N
+    have hev : Even k0.toNat := ⟨N.toNat, by omega⟩
+    have : ((1:ℝ):EReal) ≤ ((Example_6_4_7 k0:ℝ):EReal) := by
+      rw [E7_eval hk00, Even.neg_one_pow hev, one_mul, EReal.coe_le_coe_iff]
+      have : (0:ℝ) < 10^(-(k0.toNat:ℤ)-1) := by positivity
+      linarith
+    exact this.trans hmem
 
 example (n:ℕ) :
     Example_6_4_7.lowerseq n
@@ -288,11 +360,6 @@ example (n:ℕ) :
   sorry
 
 example : Example_6_4_7.liminf = -1 := by sorry
-
-private theorem E7_eval {n:ℤ} (hn: 0 ≤ n) :
-    Example_6_4_7 n = (-1:ℝ)^n.toNat * (1 + (10:ℝ)^(-(n.toNat:ℤ)-1)) := by
-  simp only [Example_6_4_7, Sequence.instCoeFun, Sequence.ofNatFun]
-  rw [if_pos hn]
 
 example : Example_6_4_7.sup = (1.1:ℝ) := by
   apply IsGreatest.csSup_eq
@@ -474,22 +541,6 @@ theorem Sequence.liminf_le_limsup (a:Sequence) : a.liminf ≤ a.limsup := by
 theorem Sequence.limsup_le_sup (a:Sequence) : a.limsup ≤ a.sup := by
   apply sInf_le
   exact ⟨a.m, le_refl _, (from_self_sup a).symm⟩
-
-private lemma ereal_lt_coe_exists_real {L:EReal} {c:ℝ} (h: L < (c:EReal)) :
-    ∃ d:ℝ, L < (d:EReal) ∧ d < c := by
-  obtain ⟨z, hz1, hz2⟩ := exists_between h
-  have hzt : z ≠ ⊤ := ne_top_of_lt hz2
-  have hzb : z ≠ ⊥ := by rintro rfl; exact not_lt_bot hz1
-  exact ⟨z.toReal, by rwa [EReal.coe_toReal hzt hzb],
-    by rw [← EReal.coe_lt_coe_iff, EReal.coe_toReal hzt hzb]; exact hz2⟩
-
-private lemma ereal_coe_lt_exists_real {L:EReal} {c:ℝ} (h: (c:EReal) < L) :
-    ∃ d:ℝ, c < d ∧ (d:EReal) < L := by
-  obtain ⟨z, hz1, hz2⟩ := exists_between h
-  have hzt : z ≠ ⊤ := by rintro rfl; exact not_top_lt hz2
-  have hzb : z ≠ ⊥ := ne_bot_of_gt hz1
-  exact ⟨z.toReal, by rw [← EReal.coe_lt_coe_iff, EReal.coe_toReal hzt hzb]; exact hz1,
-    by rwa [EReal.coe_toReal hzt hzb]⟩
 
 /-- Proposition 6.4.12(d) / Exercise 6.4.3 -/
 theorem Sequence.limit_point_between_liminf_limsup {a:Sequence} {c:ℝ} (h: a.LimitPoint c) :
