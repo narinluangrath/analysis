@@ -608,7 +608,59 @@ example : Example_6_4_9.limsup = 0 := by
       rw [E9_eval hk00, if_pos hev, EReal.coe_le_coe_iff]; positivity
     exact this.trans hmem
 
-example (n:ℕ) : Example_6_4_9.lowerseq n = if Even n then -(n+2:ℝ)⁻¹ else -(n+1:ℝ)⁻¹ := by sorry
+example (n:ℕ) : Example_6_4_9.lowerseq n = if Even n then -(n+2:ℝ)⁻¹ else -(n+1:ℝ)⁻¹ := by
+  show (Example_6_4_9.from n).inf = _
+  have hmem_m : (Example_6_4_9.from ↑n).m = (n:ℤ) := by
+    show max Example_6_4_9.m ↑n = ↑n; simp
+  rcases Nat.even_or_odd n with hn | hn
+  · rw [if_pos hn]
+    apply IsLeast.csInf_eq
+    refine ⟨⟨(n:ℤ)+1, by rw [hmem_m]; omega, ?_⟩, ?_⟩
+    · have hod : Odd ((n:ℤ)+1).toNat := by obtain ⟨b, hb⟩ := hn; exact ⟨b, by omega⟩
+      rw [Sequence.from_eval Example_6_4_9 (by omega), E9_eval (by positivity),
+        if_neg (Nat.not_even_iff_odd.mpr hod), show ((n:ℤ)+1).toNat = n+1 from by omega]
+      congr 3; push_cast; ring
+    · rintro x ⟨k, hk, rfl⟩
+      rw [hmem_m] at hk
+      have hk0 : 0 ≤ k := le_trans (by positivity) hk
+      rw [Sequence.from_eval Example_6_4_9 hk, E9_eval hk0, EReal.coe_le_coe_iff]
+      have hkt : (k.toNat:ℤ) = k := Int.toNat_of_nonneg hk0
+      rcases Nat.even_or_odd k.toNat with he | ho
+      · rw [if_pos he]
+        have h1 : (0:ℝ) < ((k.toNat:ℝ)+1)⁻¹ := by positivity
+        have h2 : (0:ℝ) < ((n:ℝ)+2)⁻¹ := by positivity
+        linarith
+      · rw [if_neg (Nat.not_even_iff_odd.mpr ho)]
+        have hle : ((k.toNat:ℝ)+1)⁻¹ ≤ ((n:ℝ)+2)⁻¹ := by
+          apply inv_anti₀ (by positivity)
+          obtain ⟨a, ha⟩ := ho; obtain ⟨b, hb⟩ := hn
+          have hz : (n:ℤ) + 1 ≤ (k.toNat:ℤ) := by omega
+          have hr : (n:ℝ) + 1 ≤ (k.toNat:ℝ) := by exact_mod_cast hz
+          linarith
+        linarith
+  · rw [if_neg (Nat.not_even_iff_odd.mpr hn)]
+    apply IsLeast.csInf_eq
+    refine ⟨⟨(n:ℤ), by rw [hmem_m], ?_⟩, ?_⟩
+    · rw [Sequence.from_eval Example_6_4_9 (le_refl _), E9_eval (by positivity),
+        show ((n:ℤ).toNat) = n by simp, if_neg (Nat.not_even_iff_odd.mpr hn)]
+    · rintro x ⟨k, hk, rfl⟩
+      rw [hmem_m] at hk
+      have hk0 : 0 ≤ k := le_trans (by positivity) hk
+      rw [Sequence.from_eval Example_6_4_9 hk, E9_eval hk0, EReal.coe_le_coe_iff]
+      have hkt : (k.toNat:ℤ) = k := Int.toNat_of_nonneg hk0
+      rcases Nat.even_or_odd k.toNat with he | ho
+      · rw [if_pos he]
+        have h1 : (0:ℝ) < ((k.toNat:ℝ)+1)⁻¹ := by positivity
+        have h2 : (0:ℝ) < ((n:ℝ)+1)⁻¹ := by positivity
+        linarith
+      · rw [if_neg (Nat.not_even_iff_odd.mpr ho)]
+        have hle : ((k.toNat:ℝ)+1)⁻¹ ≤ ((n:ℝ)+1)⁻¹ := by
+          apply inv_anti₀ (by positivity)
+          have : (n:ℝ) ≤ (k.toNat:ℝ) := by
+            have : (n:ℤ) ≤ (k.toNat:ℤ) := by omega
+            exact_mod_cast this
+          linarith
+        linarith
 
 example : Example_6_4_9.liminf = 0 := by
   have hlb : ∀ N:ℤ, 0 ≤ N → ((-(((N:ℝ)+1)⁻¹):ℝ):EReal) ≤ Example_6_4_9.lowerseq N := by
