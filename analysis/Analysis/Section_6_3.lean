@@ -406,6 +406,15 @@ theorem lim_of_exp {x:ℝ} (hpos: 0 < x) (hbound: x < 1) :
   simp_all [-one_mul]
 
 /-- Exercise 6.3.4 -/
-theorem lim_of_exp' {x:ℝ} (hbound: x > 1) : ¬((fun (n:ℕ) ↦ x^n):Sequence).Convergent := by sorry
+theorem lim_of_exp' {x:ℝ} (hbound: x > 1) : ¬((fun (n:ℕ) ↦ x^n):Sequence).Convergent := by
+  intro hconv
+  obtain ⟨M, _, hMbound⟩ := Sequence.bounded_of_convergent hconv
+  obtain ⟨k, hk⟩ := pow_unbounded_of_one_lt M hbound
+  have hle := hMbound (k:ℤ)
+  have heval : ((fun (n:ℕ) ↦ x^n):Sequence) (k:ℤ) = x^k := by
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos (by positivity), Int.toNat_natCast]
+  rw [heval, abs_of_pos (by positivity)] at hle
+  linarith
 
 end Chapter6
