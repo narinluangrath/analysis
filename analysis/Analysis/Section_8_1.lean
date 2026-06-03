@@ -359,7 +359,26 @@ theorem Rat.countablyInfinite : CountablyInfinite ℚ := by
 
 /-- Exercise 8.1.1 -/
 example (X: Type) : Infinite X ↔ ∃ Y : Set X, Y ≠ .univ ∧ EqualCard Y X := by
-  sorry
+  constructor
+  · intro hinf
+    obtain ⟨x₀⟩ := (inferInstance : Nonempty X)
+    refine ⟨{x₀}ᶜ, ?_, ?_⟩
+    · intro h
+      have hx0 : x₀ ∈ ({x₀}ᶜ : Set X) := h ▸ Set.mem_univ x₀
+      simp at hx0
+    · rw [EqualCard.iff']
+      apply Cardinal.mk_compl_of_infinite
+      rw [Cardinal.mk_singleton]
+      exact Cardinal.one_lt_aleph0.trans_le (Cardinal.aleph0_le_mk X)
+  · rintro ⟨Y, hYne, hYX⟩
+    by_contra hfin
+    rw [not_infinite_iff_finite] at hfin
+    haveI := hfin
+    rw [EqualCard.iff'] at hYX
+    have hss : (Y : Set X) ⊂ Set.univ := Set.ssubset_univ_iff.mpr hYne
+    have hlt := Cardinal.card_lt_card_of_right_finite Set.finite_univ hss
+    rw [Cardinal.mk_univ, hYX] at hlt
+    exact lt_irrefl _ hlt
 
 /-- Exercise 8.1.6 -/
 example (A: Type) : AtMostCountable A ↔ ∃ f : A → ℕ, Function.Injective f := by
