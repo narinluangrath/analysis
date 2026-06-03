@@ -397,12 +397,36 @@ theorem Sequence.limit_point_between_liminf_limsup {a:Sequence} {c:ℝ} (h: a.Li
 /-- Proposition 6.4.12(e) / Exercise 6.4.3 -/
 theorem Sequence.limit_point_of_limsup {a:Sequence} {L_plus:ℝ} (h: a.limsup = L_plus) :
     a.LimitPoint L_plus := by
-  sorry
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  have hup : (↑(L_plus + ε):EReal) > a.limsup := by
+    rw [h]; exact_mod_cast show L_plus < L_plus + ε by linarith
+  obtain ⟨N', hN', hbU⟩ := a.gt_limsup_bounds hup
+  have hlow : (↑(L_plus - ε):EReal) < a.limsup := by
+    rw [h]; exact_mod_cast show L_plus - ε < L_plus by linarith
+  obtain ⟨n, hn, hbL⟩ := a.lt_limsup_bounds hlow (N := max N N') (le_trans hN (le_max_left _ _))
+  refine ⟨n, le_trans (le_max_left _ _) hn, ?_⟩
+  have hUn := hbU n (le_trans (le_max_right _ _) hn)
+  rw [EReal.coe_lt_coe_iff] at hUn
+  rw [gt_iff_lt, EReal.coe_lt_coe_iff] at hbL
+  rw [abs_le]; constructor <;> linarith
 
 /-- Proposition 6.4.12(e) / Exercise 6.4.3 -/
 theorem Sequence.limit_point_of_liminf {a:Sequence} {L_minus:ℝ} (h: a.liminf = L_minus) :
     a.LimitPoint L_minus := by
-  sorry
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  have hlow : (↑(L_minus - ε):EReal) < a.liminf := by
+    rw [h]; exact_mod_cast show L_minus - ε < L_minus by linarith
+  obtain ⟨N', hN', hbL⟩ := a.lt_liminf_bounds hlow
+  have hup : (↑(L_minus + ε):EReal) > a.liminf := by
+    rw [h]; exact_mod_cast show L_minus < L_minus + ε by linarith
+  obtain ⟨n, hn, hbU⟩ := a.gt_liminf_bounds hup (N := max N N') (le_trans hN (le_max_left _ _))
+  refine ⟨n, le_trans (le_max_left _ _) hn, ?_⟩
+  have hLn := hbL n (le_trans (le_max_right _ _) hn)
+  rw [gt_iff_lt, EReal.coe_lt_coe_iff] at hLn
+  rw [EReal.coe_lt_coe_iff] at hbU
+  rw [abs_le]; constructor <;> linarith
 
 /-- Proposition 6.4.12(f) / Exercise 6.4.3 -/
 theorem Sequence.tendsTo_iff_eq_limsup_liminf {a:Sequence} (c:ℝ) :
