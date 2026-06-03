@@ -527,7 +527,12 @@ abbrev Sequence.abs (a:Sequence) : Sequence where
 /-- Corollary 6.4.17 (Zero test for sequences) / Exercise 6.4.7 -/
 theorem Sequence.tendsTo_zero_iff (a:Sequence) :
   a.TendsTo (0:ℝ) ↔ a.abs.TendsTo (0:ℝ) := by
-  sorry
+  rw [Sequence.tendsTo_iff, Sequence.tendsTo_iff]
+  have key : ∀ n:ℤ, |a.abs n - 0| = |a n - 0| := by
+    intro n
+    show |(|a n|) - 0| = |a n - 0|
+    rw [sub_zero, sub_zero, abs_abs]
+  simp only [key]
 
 /--
   This helper lemma, implicit in the textbook proofs of Theorem 6.4.18 and Theorem 6.6.8, is made
