@@ -181,14 +181,22 @@ theorem Nat.monotone_enum_of_infinite (X : Set ℕ) [Infinite X] : ∃! f : ℕ 
   let a : ℕ → ℕ := Nat.strongRec (fun n a ↦ min { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m h })
   have ha : ∀ n, a n = min { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m } := Nat.strongRec.eq_def _
   have ha_infinite (n:ℕ) : Infinite { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m } := by
-    sorry
+    rw [Set.infinite_coe_iff]
+    have hXinf : (X:Set ℕ).Infinite := Set.infinite_coe_iff.mp inferInstance
+    have hfin : {y | ∃ m, m < n ∧ y = a m}.Finite := by
+      apply Set.Finite.subset ((Set.finite_Iio n).image a)
+      rintro y ⟨m, hm, rfl⟩; exact ⟨m, hm, rfl⟩
+    have heq : { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m } = X \ {y | ∃ m, m < n ∧ y = a m} := by
+      ext x; simp only [Set.mem_sep_iff, Set.mem_diff, Set.mem_setOf_eq, not_exists, not_and]
+    rw [heq]; exact hXinf.diff hfin
   have ha_nonempty (n:ℕ) : { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m }.Nonempty := Set.Nonempty.of_subtype
   have ha_mono : StrictMono a := by
     sorry
-  have ha_injective : Function.Injective a := by
-    sorry
+  have ha_injective : Function.Injective a := ha_mono.injective
   have haX (n:ℕ) : a n ∈ X := by
-    sorry
+    have hm := (min_spec (ha_nonempty n)).1
+    rw [← ha n] at hm
+    exact (Set.mem_sep_iff.mp hm).1
   set f : ℕ → X := fun n ↦ ⟨ a n, haX n ⟩
   have hf_injective : Function.Injective f := by
     intro x y hxy; simp [f] at hxy; solve_by_elim
