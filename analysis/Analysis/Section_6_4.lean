@@ -296,14 +296,62 @@ theorem Sequence.gt_liminf_bounds {a:Sequence} {x:EReal} (h: x > a.liminf) {N:�
   choose n hn hxn _ using exists_between_gt_inf hx
   grind
 
-/-- Proposition 6.4.12(c) / Exercise 6.4.3 -/
-theorem Sequence.inf_le_liminf (a:Sequence) : a.inf ≤ a.liminf := by sorry
+/-- The value set of `a.from a.m` is the same as that of `a`. -/
+private theorem from_self_value_set (a:Sequence) :
+    {x:EReal | ∃ n ≥ (a.from a.m).m, x = (a.from a.m) n} = {x:EReal | ∃ n ≥ a.m, x = a n} := by
+  have hm : (a.from a.m).m = a.m := by show max a.m a.m = a.m; omega
+  ext x
+  constructor
+  · rintro ⟨n, hn, rfl⟩
+    rw [hm] at hn
+    exact ⟨n, hn, by rw [Sequence.from_eval a hn]⟩
+  · rintro ⟨n, hn, rfl⟩
+    exact ⟨n, by rw [hm]; exact hn, by rw [Sequence.from_eval a hn]⟩
+
+private theorem from_self_inf (a:Sequence) : (a.from a.m).inf = a.inf := by
+  unfold Sequence.inf; rw [from_self_value_set]
+
+private theorem from_self_sup (a:Sequence) : (a.from a.m).sup = a.sup := by
+  unfold Sequence.sup; rw [from_self_value_set]
 
 /-- Proposition 6.4.12(c) / Exercise 6.4.3 -/
-theorem Sequence.liminf_le_limsup (a:Sequence) : a.liminf ≤ a.limsup := by sorry
+theorem Sequence.inf_le_liminf (a:Sequence) : a.inf ≤ a.liminf := by
+  apply le_sSup
+  exact ⟨a.m, le_refl _, (from_self_inf a).symm⟩
+
+/-- The value set of a later tail is contained in that of an earlier tail. -/
+private theorem from_tail_subset {a:Sequence} {N K:ℤ} (hN: a.m ≤ N) (hNK: N ≤ K) :
+    {x:EReal | ∃ n ≥ (a.from K).m, x = (a.from K) n}
+    ⊆ {x:EReal | ∃ n ≥ (a.from N).m, x = (a.from N) n} := by
+  have hmK : (a.from K).m = K := by show max a.m K = K; omega
+  have hmN : (a.from N).m = N := by show max a.m N = N; omega
+  rintro x ⟨n, hn, rfl⟩
+  rw [hmK] at hn
+  refine ⟨n, by rw [hmN]; omega, ?_⟩
+  rw [Sequence.from_eval a (show n ≥ K by omega), Sequence.from_eval a (show n ≥ N by omega)]
 
 /-- Proposition 6.4.12(c) / Exercise 6.4.3 -/
-theorem Sequence.limsup_le_sup (a:Sequence) : a.limsup ≤ a.sup := by sorry
+theorem Sequence.liminf_le_limsup (a:Sequence) : a.liminf ≤ a.limsup := by
+  apply sSup_le
+  rintro l ⟨N, hN, rfl⟩
+  apply le_sInf
+  rintro u ⟨M, hM, rfl⟩
+  show (a.from N).inf ≤ (a.from M).sup
+  set K := max N M with hK
+  have hNK : N ≤ K := le_max_left _ _
+  have hMK : M ≤ K := le_max_right _ _
+  have hmid : (a.from K).inf ≤ (a.from K).sup := by
+    have hmem : ((a.from K) ((a.from K).m) : EReal)
+        ∈ {x:EReal | ∃ n ≥ (a.from K).m, x = (a.from K) n} := ⟨(a.from K).m, le_refl _, rfl⟩
+    exact le_trans (sInf_le hmem) (le_sSup hmem)
+  calc (a.from N).inf ≤ (a.from K).inf := sInf_le_sInf (from_tail_subset hN hNK)
+    _ ≤ (a.from K).sup := hmid
+    _ ≤ (a.from M).sup := sSup_le_sSup (from_tail_subset hM hMK)
+
+/-- Proposition 6.4.12(c) / Exercise 6.4.3 -/
+theorem Sequence.limsup_le_sup (a:Sequence) : a.limsup ≤ a.sup := by
+  apply sInf_le
+  exact ⟨a.m, le_refl _, (from_self_sup a).symm⟩
 
 /-- Proposition 6.4.12(d) / Exercise 6.4.3 -/
 theorem Sequence.limit_point_between_liminf_limsup {a:Sequence} {c:ℝ} (h: a.LimitPoint c) :
