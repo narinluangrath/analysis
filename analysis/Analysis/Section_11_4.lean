@@ -133,10 +133,12 @@ theorem IntegrableOn.max {I: BoundedInterval} {f g:ℝ → ℝ} (hf: IntegrableO
     have hinteg_le : integ h I ≤ 4 * ε := by linarith
     have hf''g''_const := hf''const.max hg''const
     have hf''g''_maj : MajorizesOn (f'' ⊔ g'') (f ⊔ g) I := by
-      sorry
+      intro x hx; simp only [Pi.sup_apply]
+      exact max_le_max (hf''max x hx) (hg''max x hx)
     have hf'g'_const := hf'const.max hg'const
     have hf'g'_maj : MinorizesOn (f' ⊔ g') (f ⊔ g) I := by
-      sorry
+      intro x hx; simp only [Pi.sup_apply]
+      exact max_le_max (hf'min x hx) (hg'min x hx)
     have hff'g''_ge := upper_integral_le_integ hmax_bound hf''g''_maj hf''g''_const
     have hf'g'_le := integ_le_lower_integral hmax_bound hf'g'_maj hf'g'_const
     have : MinorizesOn (f'' ⊔ g'') (f' ⊔ g' + h) I := by
