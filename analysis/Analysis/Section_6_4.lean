@@ -289,9 +289,38 @@ example (n:ℕ) :
 
 example : Example_6_4_7.liminf = -1 := by sorry
 
-example : Example_6_4_7.sup = (1.1:ℝ) := by sorry
+private theorem E7_eval {n:ℤ} (hn: 0 ≤ n) :
+    Example_6_4_7 n = (-1:ℝ)^n.toNat * (1 + (10:ℝ)^(-(n.toNat:ℤ)-1)) := by
+  simp only [Example_6_4_7, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
 
-example : Example_6_4_7.inf = (-1.01:ℝ) := by sorry
+example : Example_6_4_7.sup = (1.1:ℝ) := by
+  apply IsGreatest.csSup_eq
+  refine ⟨⟨0, le_refl _, by rw [E7_eval (le_refl 0)]; norm_num⟩, ?_⟩
+  rintro x ⟨n, hn, rfl⟩
+  rw [E7_eval hn, show ((1.1:ℝ):EReal) = ((1.1:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+  have ht : (0:ℝ) < 10^(-(n.toNat:ℤ)-1) := by positivity
+  have ht1 : (10:ℝ)^(-(n.toNat:ℤ)-1) ≤ 0.1 := by
+    rw [show (0.1:ℝ) = (10:ℝ)^(-1:ℤ) by norm_num]
+    apply zpow_le_zpow_right₀ (by norm_num); omega
+  rcases Nat.even_or_odd n.toNat with he | ho
+  · rw [Even.neg_one_pow he, one_mul]; linarith
+  · rw [Odd.neg_one_pow ho, neg_one_mul]; linarith
+
+example : Example_6_4_7.inf = (-1.01:ℝ) := by
+  apply IsLeast.csInf_eq
+  refine ⟨⟨1, by norm_num, by rw [E7_eval (by norm_num)]; norm_num⟩, ?_⟩
+  rintro x ⟨n, hn, rfl⟩
+  rw [E7_eval hn, show ((-1.01:ℝ):EReal) = ((-1.01:ℝ):EReal) from rfl, EReal.coe_le_coe_iff]
+  have ht : (0:ℝ) < 10^(-(n.toNat:ℤ)-1) := by positivity
+  rcases Nat.even_or_odd n.toNat with he | ho
+  · rw [Even.neg_one_pow he, one_mul]; linarith
+  · rw [Odd.neg_one_pow ho, neg_one_mul]
+    have ht2 : (10:ℝ)^(-(n.toNat:ℤ)-1) ≤ 0.01 := by
+      rw [show (0.01:ℝ) = (10:ℝ)^(-2:ℤ) by norm_num]
+      apply zpow_le_zpow_right₀ (by norm_num)
+      obtain ⟨m, hm⟩ := ho; omega
+    linarith
 
 noncomputable abbrev Example_6_4_8 : Sequence := (fun (n:ℕ) ↦ if Even n then (n+1:ℝ) else -(n:ℝ)-1)
 
