@@ -871,7 +871,17 @@ theorem Sequence.extended_limit_point_ge_liminf {a:Sequence} {L:EReal} (h:a.Exte
 theorem Sequence.exists_three_limit_points : ∃ a:Sequence, ∀ L:EReal, a.ExtendedLimitPoint L ↔ L = ⊥ ∨ L = 0 ∨ L = ⊤ := by sorry
 
 /-- Exercise 6.4.10 -/
-theorem Sequence.limit_points_of_limit_points {a b:Sequence} {c:ℝ} (hab: ∀ n ≥ b.m, a.LimitPoint (b n)) (hbc: b.LimitPoint c) : a.LimitPoint c := by sorry
+theorem Sequence.limit_points_of_limit_points {a b:Sequence} {c:ℝ} (hab: ∀ n ≥ b.m, a.LimitPoint (b n)) (hbc: b.LimitPoint c) : a.LimitPoint c := by
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  rw [Sequence.limit_point_def] at hbc
+  obtain ⟨k, hk, hbk⟩ := hbc (ε/2) (by linarith) b.m (le_refl _)
+  have hlpk := hab k hk
+  rw [Sequence.limit_point_def] at hlpk
+  obtain ⟨n, hn, han⟩ := hlpk (ε/2) (by linarith) N hN
+  refine ⟨n, hn, ?_⟩
+  calc |a n - c| ≤ |a n - b k| + |b k - c| := abs_sub_le _ _ _
+    _ ≤ ε := by linarith
 
 
 end Chapter6
