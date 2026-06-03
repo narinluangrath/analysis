@@ -344,7 +344,12 @@ theorem Rat.countablyInfinite : CountablyInfinite ℚ := by
   let f : ℤ × { n:ℤ | n ≠ 0 } → ℚ := fun (a,b) ↦ (a/b:ℚ)
   replace := AtMostCountable.image this f
   have h : f '' .univ = .univ := by
-    sorry
+    rw [Set.eq_univ_iff_forall]
+    intro q
+    refine ⟨(q.num, ⟨(q.den:ℤ), by simp [q.den_nz]⟩), Set.mem_univ _, ?_⟩
+    show (q.num : ℚ) / ((q.den:ℤ):ℚ) = q
+    push_cast
+    exact Rat.num_div_den q
   rcases this with h1 | h2
   · have h1' : CountablyInfinite (Set.univ : Set ℚ) := h ▸ h1
     rwa [CountablyInfinite.equiv (EqualCard.univ _)] at h1'
