@@ -374,13 +374,25 @@ theorem PiecewiseConstantOn.RS_integ_mono {f g: ℝ → ℝ} {I: BoundedInterval
 /-- Theorem 11.8.8 (f) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_const (c: ℝ) (I: BoundedInterval) {α:ℝ → ℝ} (hα: Monotone α) :
   RS_integ (fun _ ↦ c) I α = c * α[I]ₗ := by
-  sorry
+  have hpc : PiecewiseConstantWith (fun _:ℝ ↦ c) (⊥:Partition I) := fun J hJ => by
+    have hmem : J ∈ (⊥:Partition I).intervals := hJ
+    rw [Partition.intervals_of_bot, Finset.mem_singleton] at hmem; subst hmem
+    exact ConstantOn.of_const' c _
+  rw [RS_integ_def hpc α]
+  simp only [PiecewiseConstantWith.RS_integ, Partition.intervals_of_bot, Finset.sum_singleton]
+  by_cases hne : (I:Set ℝ).Nonempty
+  · rw [ConstantOn.const_eq hne (fun x _ => rfl)]
+  · rw [Set.not_nonempty_iff_eq_empty] at hne; rw [α_length_of_empty α hne]; ring
 
 /-- Theorem 11.8.8 (f) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_const' {f:ℝ → ℝ} {I: BoundedInterval}
   {α:ℝ → ℝ} (hα: Monotone α) (h: ConstantOn f I) :
   RS_integ f I α = (constant_value_on f I) * α[I]ₗ := by
-  sorry
+  have hpc : PiecewiseConstantWith f (⊥:Partition I) := fun J hJ => by
+    have hmem : J ∈ (⊥:Partition I).intervals := hJ
+    rw [Partition.intervals_of_bot, Finset.mem_singleton] at hmem; subst hmem; exact h
+  rw [RS_integ_def hpc α]
+  simp only [PiecewiseConstantWith.RS_integ, Partition.intervals_of_bot, Finset.sum_singleton]
 
 open Classical in
 /-- Theorem 11.8.8 (g) (Laws of RS integration) / Exercise 11.8.8 -/
