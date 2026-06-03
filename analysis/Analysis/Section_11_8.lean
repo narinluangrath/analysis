@@ -293,21 +293,67 @@ theorem α_length_nonneg_of_monotone {α:ℝ → ℝ}  (hα: Monotone α) (I: Bo
 theorem PiecewiseConstantOn.RS_integ_add {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) {α:ℝ → ℝ} (hα: Monotone α):
   RS_integ (f + g) I α = RS_integ f I α + RS_integ g I α := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  have hfR : PiecewiseConstantWith f (P ⊔ Q) := hP.mono (BoundedInterval.le_max P Q).1
+  have hgR : PiecewiseConstantWith g (P ⊔ Q) := hQ.mono (BoundedInterval.le_max P Q).2
+  have hfgR : PiecewiseConstantWith (f + g) (P ⊔ Q) := fun J hJ => by
+    obtain ⟨vf, hvf⟩ := hfR J hJ; obtain ⟨vg, hvg⟩ := hgR J hJ
+    exact ⟨vf + vg, fun y => by show f ↑y + g ↑y = vf + vg; simp only [hvf, hvg]⟩
+  rw [RS_integ_def hfgR α, RS_integ_def hfR α, RS_integ_def hgR α]
+  simp only [PiecewiseConstantWith.RS_integ, ← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro J hJ
+  by_cases hJne : (J:Set ℝ).Nonempty
+  · rw [show constant_value_on (f + g) ↑J = constant_value_on f ↑J + constant_value_on g ↑J from by
+      apply ConstantOn.const_eq hJne; intro x hx
+      show f x + g x = _; rw [(hfR J hJ).eq hx, (hgR J hJ).eq hx]]
+    ring
+  · rw [Set.not_nonempty_iff_eq_empty] at hJne
+    rw [α_length_of_empty α hJne]; ring
 
 /-- Analogue of Theorem 11.2.16 (b) (Laws of integration) / Exercise 11.8.3 -/
 theorem PiecewiseConstantOn.RS_integ_smul {f: ℝ → ℝ} {I: BoundedInterval} (c:ℝ)
   (hf: PiecewiseConstantOn f I) {α:ℝ → ℝ} (hα: Monotone α) :
   RS_integ (c • f) I α = c * RS_integ f I α
    := by
-  sorry
+  obtain ⟨P, hP⟩ := hf
+  have hcf : PiecewiseConstantWith (c • f) P := fun J hJ => by
+    obtain ⟨v, hv⟩ := hP J hJ
+    exact ⟨c • v, fun y => by show c • f ↑y = c • v; simp only [hv]⟩
+  rw [RS_integ_def hcf α, RS_integ_def hP α]
+  simp only [PiecewiseConstantWith.RS_integ, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro J hJ
+  by_cases hJne : (J:Set ℝ).Nonempty
+  · rw [show constant_value_on (c • f) ↑J = c * constant_value_on f ↑J from by
+      apply ConstantOn.const_eq hJne; intro x hx
+      show c • f x = _; rw [(hP J hJ).eq hx, smul_eq_mul]]
+    ring
+  · rw [Set.not_nonempty_iff_eq_empty] at hJne
+    rw [α_length_of_empty α hJne]; ring
 
 /-- Theorem 11.8.8 (c) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_sub {f g: ℝ → ℝ} {I: BoundedInterval}
   {α:ℝ → ℝ} (hα: Monotone α)
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) :
   RS_integ (f - g) I α = RS_integ f I α - RS_integ g I α := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  have hfR : PiecewiseConstantWith f (P ⊔ Q) := hP.mono (BoundedInterval.le_max P Q).1
+  have hgR : PiecewiseConstantWith g (P ⊔ Q) := hQ.mono (BoundedInterval.le_max P Q).2
+  have hfgR : PiecewiseConstantWith (f - g) (P ⊔ Q) := fun J hJ => by
+    obtain ⟨vf, hvf⟩ := hfR J hJ; obtain ⟨vg, hvg⟩ := hgR J hJ
+    exact ⟨vf - vg, fun y => by show f ↑y - g ↑y = vf - vg; simp only [hvf, hvg]⟩
+  rw [RS_integ_def hfgR α, RS_integ_def hfR α, RS_integ_def hgR α]
+  simp only [PiecewiseConstantWith.RS_integ, ← Finset.sum_sub_distrib]
+  apply Finset.sum_congr rfl
+  intro J hJ
+  by_cases hJne : (J:Set ℝ).Nonempty
+  · rw [show constant_value_on (f - g) ↑J = constant_value_on f ↑J - constant_value_on g ↑J from by
+      apply ConstantOn.const_eq hJne; intro x hx
+      show f x - g x = _; rw [(hfR J hJ).eq hx, (hgR J hJ).eq hx]]
+    ring
+  · rw [Set.not_nonempty_iff_eq_empty] at hJne
+    rw [α_length_of_empty α hJne]; ring
 
 /-- Theorem 11.8.8 (d) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_of_nonneg {f: ℝ → ℝ} {I: BoundedInterval}
