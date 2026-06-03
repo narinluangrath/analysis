@@ -263,17 +263,60 @@ theorem Sequence.lim_of_monotone {a:Sequence} (hbound: a.BddAbove) (hmono: a.IsM
   rw [(lim_eq.mp htends).2]
   exact EReal.coe_toReal hne_top hne_bot
 
+/-- An antitone sequence is decreasing over its whole range. -/
+private theorem Sequence.anti_ge {a:Sequence} (hmono: a.IsAntitone) {j k:ℤ}
+    (hj: a.m ≤ j) (hjk: j ≤ k) : a k ≤ a j := by
+  induction k, hjk using Int.le_induction with
+  | base => exact le_refl _
+  | succ k hk ih => exact le_trans (hmono k (le_trans hj hk)) ih
+
+private theorem Sequence.tendsTo_toReal_inf {a:Sequence} (hbound: a.BddBelow)
+    (hmono: a.IsAntitone) :
+    a.inf ≠ ⊤ ∧ a.inf ≠ ⊥ ∧ a.TendsTo a.inf.toReal := by
+  obtain ⟨M, hM⟩ := hbound
+  have hinf_ne_bot : a.inf ≠ ⊥ := by
+    intro h
+    have hge : (M:EReal) ≤ a.inf := by
+      apply le_sInf; rintro x ⟨n, hn, rfl⟩; exact_mod_cast hM n hn
+    rw [h] at hge; exact absurd hge (not_le.mpr (EReal.bot_lt_coe M))
+  have hinf_ne_top : a.inf ≠ ⊤ := by
+    intro h
+    have hle : a.inf ≤ (a a.m : EReal) := sInf_le ⟨a.m, le_refl _, rfl⟩
+    rw [h] at hle; exact absurd hle (not_le.mpr (EReal.coe_lt_top _))
+  refine ⟨hinf_ne_top, hinf_ne_bot, ?_⟩
+  set L := a.inf.toReal with hLdef
+  have hLinf : (L:EReal) = a.inf := EReal.coe_toReal hinf_ne_top hinf_ne_bot
+  rw [tendsTo_iff]
+  intro ε hε
+  have hgt : a.inf < ((L + ε:ℝ):EReal) := by
+    rw [← hLinf]; exact_mod_cast (by linarith : L < L + ε)
+  obtain ⟨N, hNm, hN1, hN2⟩ := exists_between_gt_inf hgt
+  refine ⟨N, fun n hn => ?_⟩
+  have han : a n ≤ a N := anti_ge hmono hNm hn
+  have hlb : L ≤ a n := by
+    have hge : a.inf ≤ (a n : EReal) := sInf_le ⟨n, le_trans hNm hn, rfl⟩
+    rw [← hLinf] at hge; exact_mod_cast hge
+  have hub : a n < L + ε := by
+    rw [gt_iff_lt, EReal.coe_lt_coe_iff] at hN1
+    linarith
+  rw [abs_le]; constructor <;> linarith
+
 theorem Sequence.convergent_of_antitone {a:Sequence} (hbound: a.BddBelow) (hmono: a.IsAntitone) :
-    a.Convergent := by sorry
+    a.Convergent := ⟨_, (tendsTo_toReal_inf hbound hmono).2.2⟩
 
 theorem Sequence.lim_of_antitone {a:Sequence} (hbound: a.BddBelow) (hmono: a.IsAntitone) :
-    lim a = a.inf := by sorry
+    lim a = a.inf := by
+  obtain ⟨hne_top, hne_bot, htends⟩ := tendsTo_toReal_inf hbound hmono
+  rw [(lim_eq.mp htends).2]
+  exact EReal.coe_toReal hne_top hne_bot
 
 theorem Sequence.convergent_iff_bounded_of_monotone {a:Sequence} (ha: a.IsMonotone) :
-    a.Convergent ↔ a.IsBounded := by sorry
+    a.Convergent ↔ a.IsBounded :=
+  ⟨bounded_of_convergent, fun h => convergent_of_monotone ((bounded_iff _).mp h).1 ha⟩
 
 theorem Sequence.bounded_iff_convergent_of_antitone {a:Sequence} (ha: a.IsAntitone) :
-    a.Convergent ↔ a.IsBounded := by sorry
+    a.Convergent ↔ a.IsBounded :=
+  ⟨bounded_of_convergent, fun h => convergent_of_antitone ((bounded_iff _).mp h).2 ha⟩
 
 /-- Example 6.3.9 -/
 noncomputable abbrev Example_6_3_9 (n:ℕ) := ⌊ Real.pi * 10^n ⌋ / (10:ℝ)^n
