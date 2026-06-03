@@ -757,9 +757,81 @@ theorem Sequence.extended_limit_point_of_liminf (a:Sequence) : a.ExtendedLimitPo
     rw [h2] at hge; exact absurd hge (not_le.mpr (EReal.bot_lt_coe M))
   · exact limit_point_of_liminf (EReal.coe_toReal h1 h2).symm
 
-theorem Sequence.extended_limit_point_le_limsup {a:Sequence} {L:EReal} (h:a.ExtendedLimitPoint L): L ≤ a.limsup := by sorry
+private theorem tail_unbounded_above {a:Sequence} (hnb: ¬a.BddAbove) {N:ℤ} (hN: N ≥ a.m) (M:ℝ) :
+    ∃ n ≥ N, a n > M := by
+  obtain ⟨K, hK⟩ : ∃ K:ℝ, ∀ n ∈ Finset.Ico a.m N, a n ≤ K := by
+    rcases (Finset.Ico a.m N).eq_empty_or_nonempty with he | hne
+    · exact ⟨0, fun n hn => by simp [he] at hn⟩
+    · obtain ⟨n0, _, hmax⟩ := (Finset.Ico a.m N).exists_max_image a hne
+      exact ⟨a n0, fun n hn => hmax n hn⟩
+  simp only [Sequence.BddAbove, Sequence.BddAboveBy, not_exists, not_forall, not_le] at hnb
+  obtain ⟨n, hnm, hgt⟩ := hnb (max M K)
+  refine ⟨n, ?_, lt_of_le_of_lt (le_max_left _ _) hgt⟩
+  by_contra hlt; push_neg at hlt
+  exact absurd (le_trans (hK n (Finset.mem_Ico.mpr ⟨hnm, hlt⟩)) (le_max_right _ _)) (not_le.mpr hgt)
 
-theorem Sequence.extended_limit_point_ge_liminf {a:Sequence} {L:EReal} (h:a.ExtendedLimitPoint L): L ≥ a.liminf := by sorry
+private theorem tail_unbounded_below {a:Sequence} (hnb: ¬a.BddBelow) {N:ℤ} (hN: N ≥ a.m) (M:ℝ) :
+    ∃ n ≥ N, a n < M := by
+  obtain ⟨K, hK⟩ : ∃ K:ℝ, ∀ n ∈ Finset.Ico a.m N, K ≤ a n := by
+    rcases (Finset.Ico a.m N).eq_empty_or_nonempty with he | hne
+    · exact ⟨0, fun n hn => by simp [he] at hn⟩
+    · obtain ⟨n0, _, hmin⟩ := (Finset.Ico a.m N).exists_min_image a hne
+      exact ⟨a n0, fun n hn => hmin n hn⟩
+  simp only [Sequence.BddBelow, Sequence.BddBelowBy, not_exists, not_forall, not_le, ge_iff_le] at hnb
+  obtain ⟨n, hnm, hlt⟩ := hnb (min M K)
+  refine ⟨n, ?_, lt_of_lt_of_le hlt (min_le_left _ _)⟩
+  by_contra hN'; push_neg at hN'
+  exact absurd (le_trans (min_le_right _ _) (hK n (Finset.mem_Ico.mpr ⟨hnm, hN'⟩))) (not_le.mpr hlt)
+
+private theorem limsup_top_of_not_bddAbove {a:Sequence} (hnb: ¬a.BddAbove) : a.limsup = ⊤ := by
+  unfold Sequence.limsup
+  apply sInf_eq_top.mpr
+  rintro x ⟨N, hN, rfl⟩
+  show (a.from N).sup = ⊤
+  unfold Sequence.sup
+  apply sSup_eq_top.mpr
+  intro b hb
+  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+  · obtain ⟨n, hn, hgt⟩ := tail_unbounded_above hnb hN y
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      by exact_mod_cast hgt⟩
+  · exact absurd hb (lt_irrefl _)
+  · obtain ⟨n, hn, _⟩ := tail_unbounded_above hnb hN 0
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      bot_lt_coe _⟩
+
+private theorem liminf_bot_of_not_bddBelow {a:Sequence} (hnb: ¬a.BddBelow) : a.liminf = ⊥ := by
+  unfold Sequence.liminf
+  apply sSup_eq_bot.mpr
+  rintro x ⟨N, hN, rfl⟩
+  show (a.from N).inf = ⊥
+  unfold Sequence.inf
+  apply sInf_eq_bot.mpr
+  intro b hb
+  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+  · obtain ⟨n, hn, hlt⟩ := tail_unbounded_below hnb hN y
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      by exact_mod_cast hlt⟩
+  · obtain ⟨n, hn, _⟩ := tail_unbounded_below hnb hN 0
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      coe_lt_top _⟩
+  · exact absurd hb (lt_irrefl _)
+
+theorem Sequence.extended_limit_point_le_limsup {a:Sequence} {L:EReal} (h:a.ExtendedLimitPoint L): L ≤ a.limsup := by
+  unfold Sequence.ExtendedLimitPoint at h
+  split_ifs at h with h1 h2
+  · rw [h1, limsup_top_of_not_bddAbove h]
+  · rw [h2]; exact bot_le
+  · obtain ⟨_, hub⟩ := a.limit_point_between_liminf_limsup h
+    rw [← EReal.coe_toReal h1 h2]; exact hub
+
+theorem Sequence.extended_limit_point_ge_liminf {a:Sequence} {L:EReal} (h:a.ExtendedLimitPoint L): L ≥ a.liminf := by
+  unfold Sequence.ExtendedLimitPoint at h
+  split_ifs at h with h1 h2
+  · rw [h1]; exact le_top
+  · rw [h2, liminf_bot_of_not_bddBelow h]
+  · obtain ⟨hlb, _⟩ := a.limit_point_between_liminf_limsup h
+    rw [ge_iff_le, ← EReal.coe_toReal h1 h2]; exact hlb
 
 /-- Exercise 6.4.9 -/
 theorem Sequence.exists_three_limit_points : ∃ a:Sequence, ∀ L:EReal, a.ExtendedLimitPoint L ↔ L = ⊥ ∨ L = 0 ∨ L = ⊤ := by sorry
