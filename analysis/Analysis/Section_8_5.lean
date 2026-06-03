@@ -197,7 +197,7 @@ theorem WellFoundedLT.subset {X:Type} [PartialOrder X] {A B: Set X} (hA: IsTotal
 /-- Proposition 8.5.10 / Exercise 8.5.10 -/
 theorem WellFoundedLT.strong_induction {X:Type} [LinearOrder X] [WellFoundedLT X] {P:X → Prop}
   (h: ∀ n, (∀ m < n, P m) → P n) : ∀ n, P n := by
-  sorry
+  intro n; exact wellFounded_lt.induction n h
 
 /-- Definition 8.5.12 (Upper bounds and strict upper bounds) -/
 abbrev IsUpperBound {X:Type} [PartialOrder X] (A:Set X) (x:X) : Prop :=
@@ -211,17 +211,24 @@ abbrev IsStrictUpperBound {X:Type} [PartialOrder X] (A:Set X) (x:X) : Prop :=
   IsUpperBound A x ∧ x ∉ A
 
 theorem IsStrictUpperBound.iff {X:Type} [PartialOrder X] (A:Set X) (x:X) :
-  IsStrictUpperBound A x ↔ ∀ y ∈ A, y < x := by sorry
+  IsStrictUpperBound A x ↔ ∀ y ∈ A, y < x := by
+  constructor
+  · rintro ⟨hub, hni⟩ y hy
+    exact lt_of_le_of_ne (hub y hy) (fun heq => hni (heq ▸ hy))
+  · intro h
+    exact ⟨fun y hy => (h y hy).le, fun hx => lt_irrefl x (h x hx)⟩
 
 theorem IsStrictUpperBound.iff' {X:Type} [PartialOrder X] (A:Set X) (x:X) :
   IsStrictUpperBound A x ↔ x ∈ upperBounds A \ A := by
   simp [IsStrictUpperBound, IsUpperBound.iff]
 
-example : IsUpperBound (.Icc 1 2: Set ℝ) 2 := by sorry
+example : IsUpperBound (.Icc 1 2: Set ℝ) 2 := fun y hy => hy.2
 
-example : ¬ IsStrictUpperBound (.Icc 1 2: Set ℝ) 2 := by sorry
+example : ¬ IsStrictUpperBound (.Icc 1 2: Set ℝ) 2 := by
+  rintro ⟨_, hni⟩; exact hni (by norm_num [Set.mem_Icc])
 
-example : IsStrictUpperBound (.Icc 1 2: Set ℝ) 3 := by sorry
+example : IsStrictUpperBound (.Icc 1 2: Set ℝ) 3 :=
+  ⟨fun y hy => by simp only [Set.mem_Icc] at hy; linarith [hy.2], by norm_num [Set.mem_Icc]⟩
 
 /-- A convenient way to simplify the notion of having `x₀` as a minimal element.-/
 theorem IsMin.iff_lowerbound {X:Type} [PartialOrder X] {Y: Set X} (hY: IsTotal Y) (x₀ : X) : (∃ hx₀ : x₀ ∈ Y, IsMin (⟨ x₀, hx₀ ⟩:Y)) ↔ x₀ ∈ Y ∧ ∀ x ∈ Y, x₀ ≤ x := by
