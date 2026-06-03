@@ -454,13 +454,21 @@ instance Partition.instLE (I: BoundedInterval) : LE (Partition I) where
 
 instance Partition.instPreOrder (I: BoundedInterval) : Preorder (Partition I) where
   le_refl P := by
-    sorry
+    intro J hJ; exact ⟨J, hJ, by rw [subset_iff]⟩
   le_trans P P' P'' hP hP' := by
-    sorry
+    intro J hJ
+    obtain ⟨K', hK', hJK'⟩ := hP' J hJ
+    obtain ⟨K, hK, hK'K⟩ := hP K' hK'
+    refine ⟨K, hK, ?_⟩
+    rw [subset_iff] at hJK' hK'K ⊢
+    exact subset_trans hJK' hK'K
 
 instance Partition.instOrderBot (I: BoundedInterval) : OrderBot (Partition I) where
   bot_le := by
-    sorry
+    intro P J hJ
+    refine ⟨I, ?_, P.contains J hJ⟩
+    show I ∈ (⊥:Partition I).intervals
+    rw [Partition.intervals_of_bot]; exact Finset.mem_singleton_self I
 
 /-- Example 11.1.15 -/
 example : ∃ P P' : Partition (Icc 1 4),
