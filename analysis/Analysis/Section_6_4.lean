@@ -206,6 +206,74 @@ noncomputable abbrev Sequence.lowerseq (a:Sequence) : ℤ → EReal := fun N ↦
 noncomputable abbrev Sequence.liminf (a:Sequence) : EReal :=
   sSup { x | ∃ N ≥ a.m, x = a.lowerseq N }
 
+private theorem tail_unbounded_above {a:Sequence} (hnb: ¬a.BddAbove) {N:ℤ} (hN: N ≥ a.m) (M:ℝ) :
+    ∃ n ≥ N, a n > M := by
+  obtain ⟨K, hK⟩ : ∃ K:ℝ, ∀ n ∈ Finset.Ico a.m N, a n ≤ K := by
+    rcases (Finset.Ico a.m N).eq_empty_or_nonempty with he | hne
+    · exact ⟨0, fun n hn => by simp [he] at hn⟩
+    · obtain ⟨n0, _, hmax⟩ := (Finset.Ico a.m N).exists_max_image a hne
+      exact ⟨a n0, fun n hn => hmax n hn⟩
+  simp only [Sequence.BddAbove, Sequence.BddAboveBy, not_exists, not_forall, not_le] at hnb
+  obtain ⟨n, hnm, hgt⟩ := hnb (max M K)
+  refine ⟨n, ?_, lt_of_le_of_lt (le_max_left _ _) hgt⟩
+  by_contra hlt; push_neg at hlt
+  exact absurd (le_trans (hK n (Finset.mem_Ico.mpr ⟨hnm, hlt⟩)) (le_max_right _ _)) (not_le.mpr hgt)
+
+private theorem tail_unbounded_below {a:Sequence} (hnb: ¬a.BddBelow) {N:ℤ} (hN: N ≥ a.m) (M:ℝ) :
+    ∃ n ≥ N, a n < M := by
+  obtain ⟨K, hK⟩ : ∃ K:ℝ, ∀ n ∈ Finset.Ico a.m N, K ≤ a n := by
+    rcases (Finset.Ico a.m N).eq_empty_or_nonempty with he | hne
+    · exact ⟨0, fun n hn => by simp [he] at hn⟩
+    · obtain ⟨n0, _, hmin⟩ := (Finset.Ico a.m N).exists_min_image a hne
+      exact ⟨a n0, fun n hn => hmin n hn⟩
+  simp only [Sequence.BddBelow, Sequence.BddBelowBy, not_exists, not_forall, not_le, ge_iff_le] at hnb
+  obtain ⟨n, hnm, hlt⟩ := hnb (min M K)
+  refine ⟨n, ?_, lt_of_lt_of_le hlt (min_le_left _ _)⟩
+  by_contra hN'; push_neg at hN'
+  exact absurd (le_trans (min_le_right _ _) (hK n (Finset.mem_Ico.mpr ⟨hnm, hN'⟩))) (not_le.mpr hlt)
+
+/-- If `a` is unbounded above, every tail has supremum `⊤`. -/
+private theorem tail_sup_top {a:Sequence} (hnb: ¬a.BddAbove) {N:ℤ} (hN: N ≥ a.m) :
+    (a.from N).sup = ⊤ := by
+  unfold Sequence.sup
+  apply sSup_eq_top.mpr
+  intro b hb
+  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+  · obtain ⟨n, hn, hgt⟩ := tail_unbounded_above hnb hN y
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      by exact_mod_cast hgt⟩
+  · exact absurd hb (lt_irrefl _)
+  · obtain ⟨n, hn, _⟩ := tail_unbounded_above hnb hN 0
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      bot_lt_coe _⟩
+
+/-- If `a` is unbounded below, every tail has infimum `⊥`. -/
+private theorem tail_inf_bot {a:Sequence} (hnb: ¬a.BddBelow) {N:ℤ} (hN: N ≥ a.m) :
+    (a.from N).inf = ⊥ := by
+  unfold Sequence.inf
+  apply sInf_eq_bot.mpr
+  intro b hb
+  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
+  · obtain ⟨n, hn, hlt⟩ := tail_unbounded_below hnb hN y
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      by exact_mod_cast hlt⟩
+  · obtain ⟨n, hn, _⟩ := tail_unbounded_below hnb hN 0
+    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
+      coe_lt_top _⟩
+  · exact absurd hb (lt_irrefl _)
+
+private theorem limsup_top_of_not_bddAbove {a:Sequence} (hnb: ¬a.BddAbove) : a.limsup = ⊤ := by
+  unfold Sequence.limsup
+  apply sInf_eq_top.mpr
+  rintro x ⟨N, hN, rfl⟩
+  exact tail_sup_top hnb hN
+
+private theorem liminf_bot_of_not_bddBelow {a:Sequence} (hnb: ¬a.BddBelow) : a.liminf = ⊥ := by
+  unfold Sequence.liminf
+  apply sSup_eq_bot.mpr
+  rintro x ⟨N, hN, rfl⟩
+  exact tail_inf_bot hnb hN
+
 noncomputable abbrev Example_6_4_7 : Sequence := (fun (n:ℕ) ↦ (-1:ℝ)^n * (1 + (10:ℝ)^(-(n:ℤ)-1)))
 
 example (n:ℕ) :
@@ -227,13 +295,30 @@ example : Example_6_4_7.inf = (-1.01:ℝ) := by sorry
 
 noncomputable abbrev Example_6_4_8 : Sequence := (fun (n:ℕ) ↦ if Even n then (n+1:ℝ) else -(n:ℝ)-1)
 
-example (n:ℕ) : Example_6_4_8.upperseq n = ⊤ := by sorry
+private theorem E8_not_bddAbove : ¬ Example_6_4_8.BddAbove := by
+  rintro ⟨M, hM⟩
+  obtain ⟨j, hj⟩ := exists_nat_gt M
+  have hev := hM (2*j : ℤ) (by positivity)
+  simp only [Example_6_4_8, Sequence.instCoeFun, Sequence.ofNatFun] at hev
+  rw [if_pos (by positivity), show ((2*(j:ℤ)).toNat) = 2*j by omega, if_pos (even_two_mul j)] at hev
+  push_cast at hev; linarith
 
-example : Example_6_4_8.limsup = ⊤ := by sorry
+private theorem E8_not_bddBelow : ¬ Example_6_4_8.BddBelow := by
+  rintro ⟨M, hM⟩
+  obtain ⟨j, hj⟩ := exists_nat_gt (-M)
+  have hev := hM (2*j+1 : ℤ) (by positivity)
+  simp only [Example_6_4_8, Sequence.instCoeFun, Sequence.ofNatFun] at hev
+  rw [if_pos (by positivity), show ((2*(j:ℤ)+1).toNat) = 2*j+1 by omega,
+    if_neg (by simp [Nat.even_add_one, parity_simps])] at hev
+  push_cast at hev; linarith
 
-example (n:ℕ) : Example_6_4_8.lowerseq n = ⊥ := by sorry
+example (n:ℕ) : Example_6_4_8.upperseq n = ⊤ := tail_sup_top E8_not_bddAbove (by positivity)
 
-example : Example_6_4_8.liminf = ⊥ := by sorry
+example : Example_6_4_8.limsup = ⊤ := limsup_top_of_not_bddAbove E8_not_bddAbove
+
+example (n:ℕ) : Example_6_4_8.lowerseq n = ⊥ := tail_inf_bot E8_not_bddBelow (by positivity)
+
+example : Example_6_4_8.liminf = ⊥ := liminf_bot_of_not_bddBelow E8_not_bddBelow
 
 noncomputable abbrev Example_6_4_9 : Sequence :=
   (fun (n:ℕ) ↦ if Even n then (n+1:ℝ)⁻¹ else -(n+1:ℝ)⁻¹)
@@ -248,7 +333,15 @@ example : Example_6_4_9.liminf = 0 := by sorry
 
 noncomputable abbrev Example_6_4_10 : Sequence := (fun (n:ℕ) ↦ (n+1:ℝ))
 
-example (n:ℕ) : Example_6_4_10.upperseq n = ⊤ := by sorry
+private theorem E10_not_bddAbove : ¬ Example_6_4_10.BddAbove := by
+  rintro ⟨M, hM⟩
+  obtain ⟨j, hj⟩ := exists_nat_gt M
+  have hev := hM (j : ℤ) (by positivity)
+  simp only [Example_6_4_10, Sequence.instCoeFun, Sequence.ofNatFun] at hev
+  rw [if_pos (by positivity), show ((j:ℤ).toNat) = j by omega] at hev
+  push_cast at hev; linarith
+
+example (n:ℕ) : Example_6_4_10.upperseq n = ⊤ := tail_sup_top E10_not_bddAbove (by positivity)
 
 example : Example_6_4_9.limsup = ⊤ := by sorry
 
@@ -757,65 +850,6 @@ theorem Sequence.extended_limit_point_of_liminf (a:Sequence) : a.ExtendedLimitPo
     rw [h2] at hge; exact absurd hge (not_le.mpr (EReal.bot_lt_coe M))
   · exact limit_point_of_liminf (EReal.coe_toReal h1 h2).symm
 
-private theorem tail_unbounded_above {a:Sequence} (hnb: ¬a.BddAbove) {N:ℤ} (hN: N ≥ a.m) (M:ℝ) :
-    ∃ n ≥ N, a n > M := by
-  obtain ⟨K, hK⟩ : ∃ K:ℝ, ∀ n ∈ Finset.Ico a.m N, a n ≤ K := by
-    rcases (Finset.Ico a.m N).eq_empty_or_nonempty with he | hne
-    · exact ⟨0, fun n hn => by simp [he] at hn⟩
-    · obtain ⟨n0, _, hmax⟩ := (Finset.Ico a.m N).exists_max_image a hne
-      exact ⟨a n0, fun n hn => hmax n hn⟩
-  simp only [Sequence.BddAbove, Sequence.BddAboveBy, not_exists, not_forall, not_le] at hnb
-  obtain ⟨n, hnm, hgt⟩ := hnb (max M K)
-  refine ⟨n, ?_, lt_of_le_of_lt (le_max_left _ _) hgt⟩
-  by_contra hlt; push_neg at hlt
-  exact absurd (le_trans (hK n (Finset.mem_Ico.mpr ⟨hnm, hlt⟩)) (le_max_right _ _)) (not_le.mpr hgt)
-
-private theorem tail_unbounded_below {a:Sequence} (hnb: ¬a.BddBelow) {N:ℤ} (hN: N ≥ a.m) (M:ℝ) :
-    ∃ n ≥ N, a n < M := by
-  obtain ⟨K, hK⟩ : ∃ K:ℝ, ∀ n ∈ Finset.Ico a.m N, K ≤ a n := by
-    rcases (Finset.Ico a.m N).eq_empty_or_nonempty with he | hne
-    · exact ⟨0, fun n hn => by simp [he] at hn⟩
-    · obtain ⟨n0, _, hmin⟩ := (Finset.Ico a.m N).exists_min_image a hne
-      exact ⟨a n0, fun n hn => hmin n hn⟩
-  simp only [Sequence.BddBelow, Sequence.BddBelowBy, not_exists, not_forall, not_le, ge_iff_le] at hnb
-  obtain ⟨n, hnm, hlt⟩ := hnb (min M K)
-  refine ⟨n, ?_, lt_of_lt_of_le hlt (min_le_left _ _)⟩
-  by_contra hN'; push_neg at hN'
-  exact absurd (le_trans (min_le_right _ _) (hK n (Finset.mem_Ico.mpr ⟨hnm, hN'⟩))) (not_le.mpr hlt)
-
-private theorem limsup_top_of_not_bddAbove {a:Sequence} (hnb: ¬a.BddAbove) : a.limsup = ⊤ := by
-  unfold Sequence.limsup
-  apply sInf_eq_top.mpr
-  rintro x ⟨N, hN, rfl⟩
-  show (a.from N).sup = ⊤
-  unfold Sequence.sup
-  apply sSup_eq_top.mpr
-  intro b hb
-  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
-  · obtain ⟨n, hn, hgt⟩ := tail_unbounded_above hnb hN y
-    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
-      by exact_mod_cast hgt⟩
-  · exact absurd hb (lt_irrefl _)
-  · obtain ⟨n, hn, _⟩ := tail_unbounded_above hnb hN 0
-    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
-      bot_lt_coe _⟩
-
-private theorem liminf_bot_of_not_bddBelow {a:Sequence} (hnb: ¬a.BddBelow) : a.liminf = ⊥ := by
-  unfold Sequence.liminf
-  apply sSup_eq_bot.mpr
-  rintro x ⟨N, hN, rfl⟩
-  show (a.from N).inf = ⊥
-  unfold Sequence.inf
-  apply sInf_eq_bot.mpr
-  intro b hb
-  obtain ⟨y, rfl⟩ | rfl | rfl := EReal.def b
-  · obtain ⟨n, hn, hlt⟩ := tail_unbounded_below hnb hN y
-    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
-      by exact_mod_cast hlt⟩
-  · obtain ⟨n, hn, _⟩ := tail_unbounded_below hnb hN 0
-    exact ⟨((a n:ℝ):EReal), ⟨n, max_le (le_trans hN hn) hn, by rw [Sequence.from_eval a hn]⟩,
-      coe_lt_top _⟩
-  · exact absurd hb (lt_irrefl _)
 
 theorem Sequence.extended_limit_point_le_limsup {a:Sequence} {L:EReal} (h:a.ExtendedLimitPoint L): L ≤ a.limsup := by
   unfold Sequence.ExtendedLimitPoint at h
