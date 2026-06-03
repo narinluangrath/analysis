@@ -299,7 +299,51 @@ private theorem E7_eval {n:ℤ} (hn: 0 ≤ n) :
 
 example (n:ℕ) :
     Example_6_4_7.upperseq n = if Even n then 1 + (10:ℝ)^(-(n:ℤ)-1) else 1 + (10:ℝ)^(-(n:ℤ)-2) := by
-  sorry
+  show (Example_6_4_7.from n).sup = _
+  have hmem_m : (Example_6_4_7.from ↑n).m = (n:ℤ) := by
+    show max Example_6_4_7.m ↑n = ↑n; simp
+  rcases Nat.even_or_odd n with hn | hn
+  · rw [if_pos hn]
+    apply IsGreatest.csSup_eq
+    refine ⟨⟨(n:ℤ), by rw [hmem_m], ?_⟩, ?_⟩
+    · rw [Sequence.from_eval Example_6_4_7 (le_refl _), E7_eval (by positivity),
+        show ((n:ℤ).toNat) = n by simp, Even.neg_one_pow hn, one_mul]
+    · rintro x ⟨k, hk, rfl⟩
+      rw [hmem_m] at hk
+      have hk0 : 0 ≤ k := le_trans (by positivity) hk
+      rw [Sequence.from_eval Example_6_4_7 hk, E7_eval hk0, EReal.coe_le_coe_iff]
+      have hkt : (k.toNat:ℤ) = k := Int.toNat_of_nonneg hk0
+      rcases Nat.even_or_odd k.toNat with he | ho
+      · rw [Even.neg_one_pow he, one_mul]
+        have : (10:ℝ)^(-(k.toNat:ℤ)-1) ≤ (10:ℝ)^(-(n:ℤ)-1) := by
+          apply zpow_le_zpow_right₀ (by norm_num); omega
+        linarith
+      · rw [Odd.neg_one_pow ho, neg_one_mul]
+        have h1 : (0:ℝ) < 10^(-(k.toNat:ℤ)-1) := by positivity
+        have h2 : (0:ℝ) < (10:ℝ)^(-(n:ℤ)-1) := by positivity
+        linarith
+  · rw [if_neg (Nat.not_even_iff_odd.mpr hn)]
+    apply IsGreatest.csSup_eq
+    refine ⟨⟨(n:ℤ)+1, by rw [hmem_m]; omega, ?_⟩, ?_⟩
+    · have hev : Even ((n:ℤ)+1).toNat := by obtain ⟨b, hb⟩ := hn; exact ⟨b+1, by omega⟩
+      rw [Sequence.from_eval Example_6_4_7 (by omega), E7_eval (by positivity),
+        Even.neg_one_pow hev, one_mul, show ((n:ℤ)+1).toNat = n+1 from by omega]
+      congr 2; push_cast; ring
+    · rintro x ⟨k, hk, rfl⟩
+      rw [hmem_m] at hk
+      have hk0 : 0 ≤ k := le_trans (by positivity) hk
+      rw [Sequence.from_eval Example_6_4_7 hk, E7_eval hk0, EReal.coe_le_coe_iff]
+      have hkt : (k.toNat:ℤ) = k := Int.toNat_of_nonneg hk0
+      rcases Nat.even_or_odd k.toNat with he | ho
+      · rw [Even.neg_one_pow he, one_mul]
+        have : (10:ℝ)^(-(k.toNat:ℤ)-1) ≤ (10:ℝ)^(-(n:ℤ)-2) := by
+          apply zpow_le_zpow_right₀ (by norm_num)
+          obtain ⟨a, ha⟩ := he; obtain ⟨b, hb⟩ := hn; omega
+        linarith
+      · rw [Odd.neg_one_pow ho, neg_one_mul]
+        have h1 : (0:ℝ) < 10^(-(k.toNat:ℤ)-1) := by positivity
+        have h2 : (0:ℝ) < (10:ℝ)^(-(n:ℤ)-2) := by positivity
+        linarith
 
 example : Example_6_4_7.limsup = 1 := by
   have hub : ∀ N:ℤ, 0 ≤ N → Example_6_4_7.upperseq N ≤ ((1 + (10:ℝ)^(-N-1):ℝ):EReal) := by
