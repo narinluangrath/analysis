@@ -85,7 +85,17 @@ theorem integ_of_cts {a b:ℝ} {f:ℝ → ℝ} (hf: ContinuousOn f (Icc a b)) :
 
 example : ContinuousOn (fun x:ℝ ↦ 1/x) (Icc 0 1) := by sorry
 
-example : ¬ IntegrableOn (fun x:ℝ ↦ 1/x) (Icc 0 1) := by sorry
+example : ¬ IntegrableOn (fun x:ℝ ↦ 1/x) (Icc 0 1) := by
+  rintro ⟨⟨M, hM⟩, _⟩
+  have hx : (1/(|M|+2):ℝ) ∈ ((Icc 0 1 : BoundedInterval):Set ℝ) := by
+    rw [BoundedInterval.set_Icc, Set.mem_Icc]
+    refine ⟨by positivity, ?_⟩
+    rw [div_le_one (by positivity)]; have := abs_nonneg M; linarith
+  have hbound := hM _ hx
+  rw [show (fun x:ℝ ↦ 1/x) (1/(|M|+2)) = |M|+2 by simp [one_div_one_div],
+    abs_of_pos (by positivity)] at hbound
+  have := le_abs_self M
+  linarith
 
 open PiecewiseConstantOn ConstantOn in
 set_option maxHeartbeats 300000 in
