@@ -75,7 +75,10 @@ theorem IsTotal.subset {X:Type} [PartialOrder X] {A B: Set X} (hA: IsTotal A) (h
   specialize hA ⟨ x, hAB hx ⟩ ⟨ y, hAB hy ⟩; simp_all
 
 abbrev X_8_5_4 : Set (Set ℕ) := { {1,2}, {2}, {2,3}, {2,3,4}, {5} }
-example : ¬ IsTotal X_8_5_4 := by sorry
+example : ¬ IsTotal X_8_5_4 := by
+  intro h
+  rcases h ⟨{2}, by aesop⟩ ⟨{5}, by aesop⟩ with hle | hle <;>
+    simp_all [Subtype.mk_le_mk, Set.subset_def]
 
 /-- Definition 8.5.5 (Maximal and minimal elements).  Here we use Mathlib's `IsMax` and `IsMin`. -/
 theorem IsMax.iff {X:Type} [PartialOrder X] (x:X) :
@@ -85,11 +88,41 @@ theorem IsMin.iff {X:Type} [PartialOrder X] (x:X) :
   IsMin x ↔ ¬ ∃ y, x > y := by rw [isMin_iff_forall_not_lt]; grind
 
 /-- Examples 8.5.6 -/
-example : IsMin (⟨ {2}, by aesop ⟩ : X_8_5_4) := by sorry
-example : IsMax (⟨ {1,2}, by aesop ⟩ : X_8_5_4) := by sorry
-example : IsMax (⟨ {2,3,4}, by aesop ⟩ : X_8_5_4) := by sorry
-example : IsMin (⟨ {5}, by aesop ⟩ : X_8_5_4) ∧ IsMax (⟨ {5}, by aesop ⟩ : X_8_5_4) := by sorry
-example : ¬ IsMin (⟨ {2,3}, by aesop ⟩ : X_8_5_4) ∧ ¬ IsMax (⟨ {2,3}, by aesop ⟩ : X_8_5_4) := by sorry
+example : IsMin (⟨ {2}, by aesop ⟩ : X_8_5_4) := by
+  rintro ⟨b, hb⟩ hle
+  simp only [X_8_5_4, Set.mem_insert_iff, Set.mem_singleton_iff] at hb
+  simp only [Subtype.mk_le_mk, Set.le_eq_subset, Set.subset_def] at hle ⊢
+  rcases hb with rfl|rfl|rfl|rfl|rfl <;> simp_all
+
+example : IsMax (⟨ {1,2}, by aesop ⟩ : X_8_5_4) := by
+  rintro ⟨b, hb⟩ hle
+  simp only [X_8_5_4, Set.mem_insert_iff, Set.mem_singleton_iff] at hb
+  simp only [Subtype.mk_le_mk, Set.le_eq_subset, Set.subset_def] at hle ⊢
+  rcases hb with rfl|rfl|rfl|rfl|rfl <;> simp_all
+
+example : IsMax (⟨ {2,3,4}, by aesop ⟩ : X_8_5_4) := by
+  rintro ⟨b, hb⟩ hle
+  simp only [X_8_5_4, Set.mem_insert_iff, Set.mem_singleton_iff] at hb
+  simp only [Subtype.mk_le_mk, Set.le_eq_subset, Set.subset_def] at hle ⊢
+  rcases hb with rfl|rfl|rfl|rfl|rfl <;> simp_all
+
+example : IsMin (⟨ {5}, by aesop ⟩ : X_8_5_4) ∧ IsMax (⟨ {5}, by aesop ⟩ : X_8_5_4) := by
+  constructor <;>
+  · rintro ⟨b, hb⟩ hle
+    simp only [X_8_5_4, Set.mem_insert_iff, Set.mem_singleton_iff] at hb
+    simp only [Subtype.mk_le_mk, Set.le_eq_subset, Set.subset_def] at hle ⊢
+    rcases hb with rfl|rfl|rfl|rfl|rfl <;> simp_all
+
+example : ¬ IsMin (⟨ {2,3}, by aesop ⟩ : X_8_5_4) ∧ ¬ IsMax (⟨ {2,3}, by aesop ⟩ : X_8_5_4) := by
+  constructor
+  · intro h
+    have := h (show (⟨{2}, by aesop⟩ : X_8_5_4) ≤ ⟨{2,3}, by aesop⟩ by
+      simp [Subtype.mk_le_mk, Set.subset_def])
+    simp_all [Subtype.mk_le_mk, Set.subset_def]
+  · intro h
+    have := h (show (⟨{2,3}, by aesop⟩ : X_8_5_4) ≤ ⟨{2,3,4}, by aesop⟩ by
+      simp [Subtype.mk_le_mk, Set.subset_def])
+    simp_all [Subtype.mk_le_mk, Set.subset_def]
 
 /-- Example 8.5.7 -/
 example : IsMin (0:ℕ) := by intro b _; exact Nat.zero_le b
