@@ -391,19 +391,54 @@ theorem PiecewiseConstantOn.integ_smul {f: ℝ → ℝ} {I: BoundedInterval} (c:
 theorem PiecewiseConstantOn.integ_sub {f g: ℝ → ℝ} {I: BoundedInterval}
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) :
   integ (f - g) I = integ f I - integ g I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf; obtain ⟨Q, hQ⟩ := hg
+  have hfR : PiecewiseConstantWith f (P ⊔ Q) := hP.mono (BoundedInterval.le_max P Q).1
+  have hgR : PiecewiseConstantWith g (P ⊔ Q) := hQ.mono (BoundedInterval.le_max P Q).2
+  have hfgR : PiecewiseConstantWith (f - g) (P ⊔ Q) := fun J hJ => by
+    obtain ⟨vf, hvf⟩ := hfR J hJ; obtain ⟨vg, hvg⟩ := hgR J hJ
+    exact ⟨vf - vg, fun y => by show f ↑y - g ↑y = vf - vg; simp only [hvf, hvg]⟩
+  rw [integ_def hfgR, integ_def hfR, integ_def hgR]
+  simp only [PiecewiseConstantWith.integ, ← Finset.sum_sub_distrib]
+  apply Finset.sum_congr rfl
+  intro J hJ
+  by_cases hlen : |J|ₗ = 0
+  · rw [hlen]; ring
+  · have hJne : (J:Set ℝ).Nonempty := by
+      by_contra hemp; rw [Set.not_nonempty_iff_eq_empty] at hemp
+      exact hlen (BoundedInterval.length_of_empty hemp)
+    rw [show constant_value_on (f - g) ↑J = constant_value_on f ↑J - constant_value_on g ↑J from by
+      apply ConstantOn.const_eq hJne; intro x hx
+      show f x - g x = _; rw [(hfR J hJ).eq hx, (hgR J hJ).eq hx]]
+    ring
 
 /-- Theorem 11.2.16 (d) (Laws of integration) / Exercise 11.2.4 -/
 theorem PiecewiseConstantOn.integ_of_nonneg {f: ℝ → ℝ} {I: BoundedInterval} (h: ∀ x ∈ I, 0 ≤ f x)
   (hf: PiecewiseConstantOn f I) :
   0 ≤ integ f I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf
+  rw [integ_def hP]
+  simp only [PiecewiseConstantWith.integ]
+  apply Finset.sum_nonneg
+  intro J hJ
+  by_cases hlen : |J|ₗ = 0
+  · rw [hlen, mul_zero]
+  · have hJne : (J:Set ℝ).Nonempty := by
+      by_contra hemp; rw [Set.not_nonempty_iff_eq_empty] at hemp
+      exact hlen (BoundedInterval.length_of_empty hemp)
+    apply mul_nonneg _ (BoundedInterval.length_nonneg J)
+    obtain ⟨x, hx⟩ := hJne
+    have hxI : x ∈ I := by
+      rw [mem_iff]; have hsub := P.contains J hJ; rw [subset_iff] at hsub; exact hsub hx
+    rw [← (hP J hJ).eq hx]; exact h x hxI
 
 /-- Theorem 11.2.16 (e) (Laws of integration) / Exercise 11.2.4 -/
 theorem PiecewiseConstantOn.integ_mono {f g: ℝ → ℝ} {I: BoundedInterval} (h: ∀ x ∈ I, f x ≤ g x)
   (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) :
   integ f I ≤ integ g I := by
-  sorry
+  have hnn := integ_of_nonneg (f := g - f) (I := I)
+    (fun x hx => by show 0 ≤ g x - f x; linarith [h x hx]) (hg.sub hf)
+  rw [integ_sub hg hf] at hnn
+  linarith
 
 
 /-- Theorem 11.2.16 (f) (Laws of integration) / Exercise 11.2.4 -/
