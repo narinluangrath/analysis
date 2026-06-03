@@ -353,10 +353,46 @@ theorem Sequence.limsup_le_sup (a:Sequence) : a.limsup ≤ a.sup := by
   apply sInf_le
   exact ⟨a.m, le_refl _, (from_self_sup a).symm⟩
 
+private lemma ereal_lt_coe_exists_real {L:EReal} {c:ℝ} (h: L < (c:EReal)) :
+    ∃ d:ℝ, L < (d:EReal) ∧ d < c := by
+  obtain ⟨z, hz1, hz2⟩ := exists_between h
+  have hzt : z ≠ ⊤ := ne_top_of_lt hz2
+  have hzb : z ≠ ⊥ := by rintro rfl; exact not_lt_bot hz1
+  exact ⟨z.toReal, by rwa [EReal.coe_toReal hzt hzb],
+    by rw [← EReal.coe_lt_coe_iff, EReal.coe_toReal hzt hzb]; exact hz2⟩
+
+private lemma ereal_coe_lt_exists_real {L:EReal} {c:ℝ} (h: (c:EReal) < L) :
+    ∃ d:ℝ, c < d ∧ (d:EReal) < L := by
+  obtain ⟨z, hz1, hz2⟩ := exists_between h
+  have hzt : z ≠ ⊤ := by rintro rfl; exact not_top_lt hz2
+  have hzb : z ≠ ⊥ := ne_bot_of_gt hz1
+  exact ⟨z.toReal, by rw [← EReal.coe_lt_coe_iff, EReal.coe_toReal hzt hzb]; exact hz1,
+    by rwa [EReal.coe_toReal hzt hzb]⟩
+
 /-- Proposition 6.4.12(d) / Exercise 6.4.3 -/
 theorem Sequence.limit_point_between_liminf_limsup {a:Sequence} {c:ℝ} (h: a.LimitPoint c) :
   a.liminf ≤ c ∧ c ≤ a.limsup := by
-  sorry
+  refine ⟨?_, ?_⟩
+  · by_contra hcon
+    rw [not_le] at hcon
+    obtain ⟨d, hcd, hdL⟩ := ereal_coe_lt_exists_real hcon
+    obtain ⟨N, hN, hbnd⟩ := a.lt_liminf_bounds hdL
+    rw [Sequence.limit_point_def] at h
+    obtain ⟨n, hn, hclose⟩ := h (d - c) (by linarith) N hN
+    have hgt := hbnd n hn
+    rw [gt_iff_lt, EReal.coe_lt_coe_iff] at hgt
+    rw [abs_le] at hclose
+    linarith [hclose.2]
+  · by_contra hcon
+    rw [not_le] at hcon
+    obtain ⟨d, hLd, hdc⟩ := ereal_lt_coe_exists_real hcon
+    obtain ⟨N, hN, hbnd⟩ := a.gt_limsup_bounds hLd
+    rw [Sequence.limit_point_def] at h
+    obtain ⟨n, hn, hclose⟩ := h (c - d) (by linarith) N hN
+    have hlt := hbnd n hn
+    rw [EReal.coe_lt_coe_iff] at hlt
+    rw [abs_le] at hclose
+    linarith [hclose.1]
 
 /-- Proposition 6.4.12(e) / Exercise 6.4.3 -/
 theorem Sequence.limit_point_of_limsup {a:Sequence} {L_plus:ℝ} (h: a.limsup = L_plus) :
