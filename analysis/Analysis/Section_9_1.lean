@@ -111,19 +111,24 @@ theorem AdherentPt_def (x:ℝ) (X:Set ℝ) : AdherentPt x X = ClusterPt x (.prin
   rw [←closure_def', mem_closure_iff_clusterPt]
 
 /-- Lemma 9.1.11 / Exercise 9.1.2 -/
-theorem subset_closure (X:Set ℝ): X ⊆ closure X := by sorry
+theorem subset_closure (X:Set ℝ): X ⊆ closure X := _root_.subset_closure
 
 /-- Lemma 9.1.11 / Exercise 9.1.2 -/
-theorem closure_union (X Y:Set ℝ): closure (X ∪ Y) = closure X ∪ closure Y := by sorry
+theorem closure_union (X Y:Set ℝ): closure (X ∪ Y) = closure X ∪ closure Y := _root_.closure_union
 
 /-- Lemma 9.1.11 / Exercise 9.1.2 -/
-theorem closure_inter (X Y:Set ℝ): closure (X ∩ Y) ⊆ closure X ∩ closure Y := by sorry
+theorem closure_inter (X Y:Set ℝ): closure (X ∩ Y) ⊆ closure X ∩ closure Y :=
+  closure_inter_subset_inter_closure X Y
 
 /-- Lemma 9.1.11 / Exercise 9.1.2 -/
-theorem closure_subset {X Y:Set ℝ} (h: X ⊆ Y): closure X ⊆ closure Y := by sorry
+theorem closure_subset {X Y:Set ℝ} (h: X ⊆ Y): closure X ⊆ closure Y := closure_mono h
 
 /-- Exercise 9.1.1 -/
-theorem closure_of_subset_closure {X Y:Set ℝ} (h: X ⊆ Y) (h' : Y ⊆ closure X): closure Y = closure X := by sorry
+theorem closure_of_subset_closure {X Y:Set ℝ} (h: X ⊆ Y) (h' : Y ⊆ closure X): closure Y = closure X := by
+  apply Set.Subset.antisymm
+  · calc closure Y ⊆ closure (closure X) := closure_mono h'
+      _ = closure X := closure_closure
+  · exact closure_mono h
 
 /-- Lemma 9.1.12 -/
 theorem closure_of_Ioo {a b:ℝ} (h:a < b) : closure (.Ioo a b) = .Icc a b := by
@@ -165,7 +170,7 @@ theorem closure_of_Iio {a:ℝ} : closure (.Iio a) = .Iic a := by
 theorem closure_of_Iic {a:ℝ} : closure (.Iic a) = .Iic a := by
   sorry
 
-theorem closure_of_R : closure (.univ: Set ℝ) = .univ := by sorry
+theorem closure_of_R : closure (.univ: Set ℝ) = .univ := closure_univ
 
 /-- Lemma 9.1.13 / Exercise 9.1.3 -/
 theorem closure_of_N :
@@ -198,31 +203,56 @@ theorem isClosed_def' (X:Set ℝ): IsClosed X ↔ ∀ x, AdherentPt x X → x �
   simp [isClosed_def, subset_antisymm_iff, subset_closure]; simp [closure_def]; rfl
 
 /-- Examples 9.1.16 -/
-theorem Icc_closed {a b:ℝ} : IsClosed (.Icc a b) := by sorry
+theorem Icc_closed {a b:ℝ} : IsClosed (.Icc a b) := isClosed_Icc
 
 /-- Examples 9.1.16 -/
-theorem Ici_closed (a:ℝ) : IsClosed (.Ici a) := by sorry
+theorem Ici_closed (a:ℝ) : IsClosed (.Ici a) := isClosed_Ici
 
 /-- Examples 9.1.16 -/
-theorem Iic_closed (a:ℝ) : IsClosed (.Iic a) := by sorry
+theorem Iic_closed (a:ℝ) : IsClosed (.Iic a) := isClosed_Iic
 
 /-- Examples 9.1.16 -/
-theorem R_closed : IsClosed (.univ : Set ℝ) := by sorry
+theorem R_closed : IsClosed (.univ : Set ℝ) := isClosed_univ
 
 /-- Examples 9.1.16 -/
-theorem Ico_not_closed {a b:ℝ} (h: a < b) : ¬ IsClosed (.Ico a b) := by sorry
+theorem Ico_not_closed {a b:ℝ} (h: a < b) : ¬ IsClosed (.Ico a b) := by
+  intro hcl
+  have h2 := hcl.closure_eq
+  rw [closure_Ico (ne_of_lt h)] at h2
+  have hb : b ∈ Set.Ico a b := h2 ▸ Set.right_mem_Icc.mpr h.le
+  exact absurd hb.2 (lt_irrefl b)
 
 /-- Examples 9.1.16 -/
-theorem Ioc_not_closed {a b:ℝ} (h: a < b) : ¬ IsClosed (.Ioc a b) := by sorry
+theorem Ioc_not_closed {a b:ℝ} (h: a < b) : ¬ IsClosed (.Ioc a b) := by
+  intro hcl
+  have h2 := hcl.closure_eq
+  rw [closure_Ioc (ne_of_lt h)] at h2
+  have ha : a ∈ Set.Ioc a b := h2 ▸ Set.left_mem_Icc.mpr h.le
+  exact absurd ha.1 (lt_irrefl a)
 
 /-- Examples 9.1.16 -/
-theorem Ioo_not_closed {a b:ℝ} (h: a < b) : ¬ IsClosed (.Ioo a b) := by sorry
+theorem Ioo_not_closed {a b:ℝ} (h: a < b) : ¬ IsClosed (.Ioo a b) := by
+  intro hcl
+  have h2 := hcl.closure_eq
+  rw [closure_Ioo (ne_of_lt h)] at h2
+  have ha : a ∈ Set.Ioo a b := h2 ▸ Set.left_mem_Icc.mpr h.le
+  exact absurd ha.1 (lt_irrefl a)
 
 /-- Examples 9.1.16 -/
-theorem Ioi_not_closed (a:ℝ) : ¬ IsClosed (.Ioi a) := by sorry
+theorem Ioi_not_closed (a:ℝ) : ¬ IsClosed (.Ioi a) := by
+  intro hcl
+  have h2 := hcl.closure_eq
+  rw [closure_Ioi] at h2
+  have ha : a ∈ Set.Ioi a := h2 ▸ Set.left_mem_Ici
+  exact absurd ha (lt_irrefl a)
 
 /-- Examples 9.1.16 -/
-theorem Iio_not_closed (a:ℝ) : ¬ IsClosed (.Iio a) := by sorry
+theorem Iio_not_closed (a:ℝ) : ¬ IsClosed (.Iio a) := by
+  intro hcl
+  have h2 := hcl.closure_eq
+  rw [closure_Iio] at h2
+  have ha : a ∈ Set.Iio a := h2 ▸ Set.right_mem_Iic
+  exact absurd ha (lt_irrefl a)
 
 /-- Examples 9.1.16 -/
 theorem N_closed : IsClosed ((fun n:ℕ ↦ (n:ℝ)) '' .univ) := by sorry
