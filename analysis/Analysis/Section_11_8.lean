@@ -394,14 +394,29 @@ theorem PiecewiseConstantOn.RS_integ_of_nonneg {f: ℝ → ℝ} {I: BoundedInter
   {α:ℝ → ℝ} (hα: Monotone α)
   (h: ∀ x ∈ I, 0 ≤ f x) (hf: PiecewiseConstantOn f I) :
   0 ≤ RS_integ f I α := by
-  sorry
+  obtain ⟨P, hP⟩ := hf
+  rw [RS_integ_def hP α]
+  simp only [PiecewiseConstantWith.RS_integ]
+  apply Finset.sum_nonneg
+  intro J hJ
+  by_cases hJne : (J:Set ℝ).Nonempty
+  · apply mul_nonneg _ (α_length_nonneg_of_monotone hα J)
+    obtain ⟨x, hx⟩ := hJne
+    have hxI : x ∈ I := by
+      rw [mem_iff]; have hsub := P.contains J hJ; rw [subset_iff] at hsub; exact hsub hx
+    rw [← (hP J hJ).eq hx]; exact h x hxI
+  · rw [Set.not_nonempty_iff_eq_empty] at hJne
+    rw [α_length_of_empty α hJne]; simp
 
 /-- Theorem 11.8.8 (e) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_mono {f g: ℝ → ℝ} {I: BoundedInterval}
   {α:ℝ → ℝ} (hα: Monotone α)
   (h: ∀ x ∈ I, f x ≤ g x) (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) :
   RS_integ f I α ≤ RS_integ g I α := by
-  sorry
+  have hnn := RS_integ_of_nonneg (f := g - f) hα
+    (fun x hx => by show 0 ≤ g x - f x; linarith [h x hx]) (hg.sub hf)
+  rw [RS_integ_sub hα hg hf] at hnn
+  linarith
 
 /-- Theorem 11.8.8 (f) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_const (c: ℝ) (I: BoundedInterval) {α:ℝ → ℝ} (hα: Monotone α) :
