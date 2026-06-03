@@ -34,7 +34,17 @@ abbrev Sequence.LimitPoint (a:Sequence) (x:ℝ) : Prop :=
 theorem Sequence.limit_point_def (a:Sequence) (x:ℝ) :
   a.LimitPoint x ↔ ∀ ε > 0, ∀ N ≥ a.m, ∃ n ≥ N, |a n - x| ≤ ε := by
     unfold LimitPoint Real.ContinuallyAdherent Real.Adherent
-    sorry
+    constructor
+    · intro h ε hε N hN
+      obtain ⟨n, hn, hclose⟩ := h ε hε N hN
+      have hnN : n ≥ N := le_trans (le_max_right _ _) hn
+      refine ⟨n, hnN, ?_⟩
+      rwa [Sequence.from_eval a hnN, Real.Close, Real.dist_eq] at hclose
+    · intro h ε hε N hN
+      obtain ⟨n, hnN, hbound⟩ := h ε hε N hN
+      refine ⟨n, max_le (le_trans hN hnN) hnN, ?_⟩
+      rw [Sequence.from_eval a hnN, Real.Close, Real.dist_eq]
+      exact hbound
 
 noncomputable abbrev Example_6_4_3 : Sequence := (fun (n:ℕ) ↦ 1 - (10:ℝ)^(-(n:ℤ)-1))
 
