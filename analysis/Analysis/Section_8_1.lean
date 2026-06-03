@@ -241,16 +241,24 @@ theorem AtMostCountable.subset' {A: Type} {X Y: Set A} (hX: AtMostCountable X) (
 
 /-- Proposition 8.1.8 / Exercise 8.1.4 -/
 theorem AtMostCountable.image_nat (Y: Type) (f: ℕ → Y) : AtMostCountable (f '' .univ) := by
-  sorry
+  rw [AtMostCountable.iff, Set.countable_coe_iff, Set.image_univ]
+  exact Set.countable_range f
 
 /-- Corollary 8.1.9 / Exercise 8.1.5 -/
 theorem AtMostCountable.image {X:Type} (hX: CountablyInfinite X) {Y: Type} (f: X → Y) : AtMostCountable (f '' .univ) := by
-  sorry
+  haveI : Countable X := hX.toCountable
+  rw [AtMostCountable.iff, Set.countable_coe_iff, Set.image_univ]
+  exact Set.countable_range f
 
 /-- Proposition 8.1.10 / Exercise 8.1.7 -/
 theorem CountablyInfinite.union {A:Type} {X Y: Set A} (hX: CountablyInfinite X) (hY: CountablyInfinite Y) :
   CountablyInfinite (X ∪ Y: Set A) := by
-  sorry
+  rw [CountablyInfinite.iff'] at hX hY ⊢
+  have hXc : X.Countable := Set.countable_coe_iff.mp hX.1
+  have hYc : Y.Countable := Set.countable_coe_iff.mp hY.1
+  have hXi : X.Infinite := Set.infinite_coe_iff.mp hX.2
+  exact ⟨Set.countable_coe_iff.mpr (hXc.union hYc),
+    Set.infinite_coe_iff.mpr (hXi.mono Set.subset_union_left)⟩
 
 /-- Corollary 8.1.11 --/
 theorem Int.countablyInfinite : CountablyInfinite ℤ := by
