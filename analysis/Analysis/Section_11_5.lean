@@ -248,7 +248,22 @@ example : ContinuousOn f_11_5_5 (Ioc 2 3) := by
   intro x hx; simp only [Set.mem_Ioc] at hx
   simp only [f_11_5_5, if_neg (by linarith [hx.1] : ¬ x < 2), if_neg (by linarith [hx.1] : x ≠ 2)]
 
-example : PiecewiseContinuousOn f_11_5_5 (Icc 1 3) := by sorry
+example : PiecewiseContinuousOn f_11_5_5 (Icc 1 3) := by
+  set P1 : Partition (Ico 1 2) := ⊥
+  set P2 : Partition (Icc 1 2) := P1.join (⊥:Partition (Icc 2 2)) (join_Ico_Icc (by norm_num) (by norm_num))
+  set P3 : Partition (Icc 1 3) := P2.join (⊥:Partition (Ioc 2 3)) (join_Icc_Ioc (by norm_num) (by norm_num))
+  refine ⟨P3, fun J hJ => ?_⟩
+  simp only [P3, P2, P1, Partition.intervals_of_join, Partition.intervals_of_bot,
+    Finset.mem_union, Finset.mem_singleton] at hJ
+  rcases hJ with (rfl | rfl) | rfl
+  · rw [BoundedInterval.set_Ico]
+    apply (continuous_pow 2).continuousOn.congr
+    intro x hx; simp only [Set.mem_Ico] at hx; simp only [f_11_5_5, if_pos hx.2]
+  · rw [BoundedInterval.set_Icc, Set.Icc_self]; exact continuousOn_singleton f_11_5_5 2
+  · rw [BoundedInterval.set_Ioc]
+    apply (continuous_pow 3).continuousOn.congr
+    intro x hx; simp only [Set.mem_Ioc] at hx
+    simp only [f_11_5_5, if_neg (by linarith [hx.1] : ¬ x < 2), if_neg (by linarith [hx.1] : x ≠ 2)]
 
 /-- Proposition 11.5.6 / Exercise 11.5.1 -/
 theorem integ_of_bdd_piecewise_cts {I: BoundedInterval} {f:ℝ → ℝ}
