@@ -196,7 +196,16 @@ theorem Real.ratPow_neg {x:ℝ} (hx: x > 0) (q:ℝ) : rpow x (-q) = 1 / rpow x q
       exact one_ne_zero hadd
   rw [eq_div_iff (ne_of_gt hpos), ← ratPow_add hx (-q) q, neg_add_cancel, h0]
 
-/-- Proposition 6.7.3(d) / Exercise 6.7.1 -/
+/-- Proposition 6.7.3(f) / Exercise 6.7.1 -/
+theorem Real.ratPow_mul {x y:ℝ} (hx: x > 0) (hy: y > 0) (q:ℝ) : rpow (x*y) q = rpow x q * rpow y q := by
+  choose q' hq' using eq_lim_of_rat q
+  have h1 := ratPow_continuous hx hq'
+  have h2 := ratPow_continuous hy hq'
+  rw [rpow_eq_lim_ratPow hx hq', rpow_eq_lim_ratPow hy hq',
+    rpow_eq_lim_ratPow (mul_pos hx hy) hq', ←(lim_mul h1 h2).2, mul_coe]
+  rcongr n
+  rw [← Real.mul_rpow (le_of_lt hx) (le_of_lt hy)]
+
 private lemma Real.rpow_zero' {x:ℝ} (hx: x > 0) : rpow x 0 = 1 := by
   have := rpow_of_rat_eq_ratPow hx (q := (0:ℚ)); simpa using this
 
@@ -250,7 +259,22 @@ private lemma Real.rpow_gt_one_iff' {x s:ℝ} (hx: x > 1) : rpow x s > 1 ↔ s >
   · exact rpow_gt_one' hx
 
 theorem Real.ratPow_mono {x y:ℝ} (hx: x > 0) (hy: y > 0) {q:ℝ} (h: q > 0) : x > y ↔ rpow x q > rpow y q := by
-  sorry
+  have hy0 : rpow y q > 0 := rpow_pos' hy q
+  have hx0 : rpow x q > 0 := rpow_pos' hx q
+  constructor
+  · intro hxy
+    have hgt : rpow (x/y) q > 1 := rpow_gt_one' (by rw [gt_iff_lt, lt_div_iff₀ hy]; linarith) h
+    have he : rpow x q = rpow (x/y) q * rpow y q := by
+      rw [← ratPow_mul (by positivity) hy q, div_mul_cancel₀ _ (ne_of_gt hy)]
+    rw [he]; nlinarith [hgt, hy0]
+  · intro hgt
+    by_contra hle; push_neg at hle
+    rcases lt_or_eq_of_le hle with hlt | heq
+    · have hgt2 : rpow (y/x) q > 1 := rpow_gt_one' (by rw [gt_iff_lt, lt_div_iff₀ hx]; linarith) h
+      have he : rpow y q = rpow (y/x) q * rpow x q := by
+        rw [← ratPow_mul (by positivity) hx q, div_mul_cancel₀ _ (ne_of_gt hx)]
+      rw [he] at hgt; nlinarith [hgt2, hx0, hgt]
+    · rw [heq] at hgt; linarith
 
 /-- Proposition 6.7.3(e) / Exercise 6.7.1 -/
 theorem Real.ratPow_mono_of_gt_one {x:ℝ} (hx: x > 1) {q r:ℝ} : rpow x q > rpow x r ↔ q > r := by
@@ -266,15 +290,5 @@ theorem Real.ratPow_mono_of_gt_one {x:ℝ} (hx: x > 1) {q r:ℝ} : rpow x q > rp
 /-- Proposition 6.7.3(e) / Exercise 6.7.1 -/
 theorem Real.ratPow_mono_of_lt_one {x:ℝ} (hx0: 0 < x) (hx: x < 1) {q r:ℝ} : rpow x q > rpow x r ↔ q < r := by
   sorry
-
-/-- Proposition 6.7.3(f) / Exercise 6.7.1 -/
-theorem Real.ratPow_mul {x y:ℝ} (hx: x > 0) (hy: y > 0) (q:ℝ) : rpow (x*y) q = rpow x q * rpow y q := by
-  choose q' hq' using eq_lim_of_rat q
-  have h1 := ratPow_continuous hx hq'
-  have h2 := ratPow_continuous hy hq'
-  rw [rpow_eq_lim_ratPow hx hq', rpow_eq_lim_ratPow hy hq',
-    rpow_eq_lim_ratPow (mul_pos hx hy) hq', ←(lim_mul h1 h2).2, mul_coe]
-  rcongr n
-  rw [← Real.mul_rpow (le_of_lt hx) (le_of_lt hy)]
 
 end Chapter6
