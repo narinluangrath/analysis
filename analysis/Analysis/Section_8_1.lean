@@ -191,7 +191,17 @@ theorem Nat.monotone_enum_of_infinite (X : Set ℕ) [Infinite X] : ∃! f : ℕ 
     rw [heq]; exact hXinf.diff hfin
   have ha_nonempty (n:ℕ) : { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m }.Nonempty := Set.Nonempty.of_subtype
   have ha_mono : StrictMono a := by
-    sorry
+    apply strictMono_nat_of_lt_succ
+    intro n
+    have hs := (min_spec (ha_nonempty (n+1))).1
+    rw [← ha (n+1), Set.mem_sep_iff] at hs
+    have hmem : a (n+1) ∈ {x ∈ X | ∀ (m:ℕ) (_:m < n), x ≠ a m} := by
+      rw [Set.mem_sep_iff]
+      exact ⟨hs.1, fun m hm => hs.2 m (by omega)⟩
+    have hge : a n ≤ a (n+1) := by
+      rw [ha n]; exact (min_spec (ha_nonempty n)).2 _ hmem
+    have hne : a (n+1) ≠ a n := hs.2 n (by omega)
+    omega
   have ha_injective : Function.Injective a := ha_mono.injective
   have haX (n:ℕ) : a n ∈ X := by
     have hm := (min_spec (ha_nonempty n)).1
