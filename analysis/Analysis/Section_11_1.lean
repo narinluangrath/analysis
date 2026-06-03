@@ -372,12 +372,19 @@ theorem Partition.sum_of_length  (I: BoundedInterval) (P: Partition I) :
   revert I; induction' n with n hn <;> intro I P hcard
   . rw [Finset.card_eq_zero] at hcard
     have : (I:Set ℝ) = ∅ := by
-      sorry
+      rw [Set.eq_empty_iff_forall_notMem]
+      intro x hx
+      obtain ⟨J, ⟨hJ, _⟩, _⟩ := P.exists_unique x ((mem_iff I x).mpr hx)
+      rw [hcard] at hJ
+      simp at hJ
     grind [length_of_empty]
   -- the proof in the book treats the n=1 case separately, but this is unnecessary
   by_cases h : Subsingleton (I:Set ℝ)
   . have (J: BoundedInterval) (hJ: J ∈ P) : Subsingleton (J:Set ℝ) := by
-      sorry
+      rw [Set.subsingleton_coe] at h ⊢
+      have hsub := P.contains J hJ
+      rw [subset_iff] at hsub
+      exact h.anti hsub
     simp_rw [length_of_subsingleton] at *
     convert Finset.sum_eq_zero this
   simp [length_of_subsingleton, length, -Set.subsingleton_coe] at h
