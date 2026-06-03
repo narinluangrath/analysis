@@ -469,6 +469,15 @@ example (I: Finset ℝ) : IsClosed (I:Set ℝ) ∧ Bornology.IsBounded (I:Set �
 
 /-- Exercise 9.1.15 -/
 example {E:Set ℝ} (hE: Bornology.IsBounded E) (hnon: E.Nonempty): AdherentPt (sSup E) E ∧ AdherentPt (sSup E) Eᶜ := by
-  sorry
+  constructor
+  · intro ε hε
+    obtain ⟨y, hyE, hy⟩ := exists_lt_of_lt_csSup hnon (show sSup E - ε < sSup E by linarith)
+    have hle : y ≤ sSup E := le_csSup hE.bddAbove hyE
+    exact ⟨y, hyE, by rw [abs_le]; constructor <;> linarith⟩
+  · intro ε hε
+    refine ⟨sSup E + ε/2, ?_, by rw [abs_le]; constructor <;> linarith⟩
+    intro hmem
+    have := le_csSup hE.bddAbove hmem
+    linarith
 
 end Chapter9
