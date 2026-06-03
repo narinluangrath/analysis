@@ -289,7 +289,39 @@ theorem PiecewiseConstantOn.RS_integ_def {f:ℝ → ℝ} {I: BoundedInterval} {P
 /-- α-length non-negative when α monotone -/
 theorem α_length_nonneg_of_monotone {α:ℝ → ℝ}  (hα: Monotone α) (I: BoundedInterval):
   0 ≤ α[I]ₗ := by
-  sorry
+  have hl_le : ∀ x, left_lim α x ≤ α x := fun x => by
+    rw [left_lim_of_monotone' x hα]; apply csSup_le (by simp); rintro y ⟨z, hz, rfl⟩; exact hα hz.le
+  have hr_ge : ∀ x, α x ≤ right_lim α x := fun x => by
+    rw [right_lim_of_monotone' x hα]; apply le_csInf (by simp); rintro y ⟨z, hz, rfl⟩; exact hα hz.le
+  have hl_mono : ∀ {x y:ℝ}, x ≤ y → left_lim α x ≤ left_lim α y := fun {x y} h => by
+    rw [left_lim_of_monotone' x hα, left_lim_of_monotone' y hα]
+    apply csSup_le_csSup ⟨α y, by rintro w ⟨z, hz, rfl⟩; exact hα hz.le⟩
+      ((Set.nonempty_Iio).image α) (Set.image_mono (Set.Iio_subset_Iio h))
+  have hr_mono : ∀ {x y:ℝ}, x ≤ y → right_lim α x ≤ right_lim α y := fun {x y} h => by
+    rw [right_lim_of_monotone' x hα, right_lim_of_monotone' y hα]
+    apply csInf_le_csInf ⟨α x, by rintro w ⟨z, hz, rfl⟩; exact hα hz.le⟩
+      ((Set.nonempty_Ioi).image α) (Set.image_mono (Set.Ioi_subset_Ioi h))
+  cases I with
+  | Icc a b =>
+    simp only [α_length]
+    split_ifs with hab
+    · linarith [hl_le a, hα hab, hr_ge b]
+    · exact le_refl 0
+  | Ico a b =>
+    simp only [α_length]
+    split_ifs with hab
+    · linarith [hl_mono hab]
+    · exact le_refl 0
+  | Ioc a b =>
+    simp only [α_length]
+    split_ifs with hab
+    · linarith [hr_mono hab]
+    · exact le_refl 0
+  | Ioo a b =>
+    simp only [α_length]
+    split_ifs with hab
+    · linarith [right_lim_le_left_lim_of_monotone hab hα]
+    · exact le_refl 0
 
 /-- Analogue of Theorem 11.2.16 (a) (Laws of integration) / Exercise 11.8.3 -/
 theorem PiecewiseConstantOn.RS_integ_add {f g: ℝ → ℝ} {I: BoundedInterval}
