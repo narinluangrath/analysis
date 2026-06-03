@@ -407,10 +407,33 @@ example : ∃ (h₀: PartialOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x
 example : ¬ ∃ (h₀: LinearOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by sorry
 
 /-- Exercise 8.5.4 -/
-example : ¬ ∃ x : {x:ℝ| x > 0}, IsMin x := by sorry
+example : ¬ ∃ x : {x:ℝ| x > 0}, IsMin x := by
+  rintro ⟨⟨x, hx⟩, hmin⟩
+  have hx' : x > 0 := hx
+  have hmem : x/2 ∈ {x:ℝ | x > 0} := by simp only [Set.mem_setOf_eq]; linarith
+  have hle : (⟨x/2, hmem⟩ : {x:ℝ|x>0}) ≤ ⟨x, hx⟩ := by rw [Subtype.mk_le_mk]; linarith
+  have := hmin hle
+  rw [Subtype.mk_le_mk] at this
+  linarith
 
 /-- Exercise 8.5.5 -/
-example {X Y:Type} [PartialOrder Y] (f:X → Y) : ∃ h₀: PartialOrder X, h₀.le = (fun x y ↦ f x < f y ∨ x = y) := by sorry
+example {X Y:Type} [PartialOrder Y] (f:X → Y) : ∃ h₀: PartialOrder X, h₀.le = (fun x y ↦ f x < f y ∨ x = y) := by
+  refine ⟨{ le := fun x y => f x < f y ∨ x = y
+            le_refl := fun x => Or.inr rfl
+            le_trans := ?_
+            le_antisymm := ?_ }, rfl⟩
+  · intro a b c hab hbc
+    rcases hab with h1|rfl <;> rcases hbc with h2|rfl
+    · exact Or.inl (lt_trans h1 h2)
+    · exact Or.inl h1
+    · exact Or.inl h2
+    · exact Or.inr rfl
+  · intro a b hab hba
+    rcases hab with h1|h
+    · rcases hba with h2|h
+      · exact absurd h1 (lt_asymm h2)
+      · exact h.symm
+    · exact h
 
 def Ex_8_5_5_b : Decidable (∀ (X Y:Type) (h: LinearOrder Y) (f:X → Y), ∃ h₀: LinearOrder X, h₀.le = (fun x y ↦ f x < f y ∨ x = y)) := by
   sorry
