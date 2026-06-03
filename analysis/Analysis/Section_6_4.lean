@@ -421,7 +421,21 @@ theorem Sequence.liminf_mono {a b:Sequence} (hm: a.m = b.m) (hab: ∀ n ≥ a.m,
 /-- Corollary 6.4.14 (Squeeze test) / Exercise 6.4.5 -/
 theorem Sequence.lim_of_between {a b c:Sequence} {L:ℝ} (hm: b.m = a.m ∧ c.m = a.m)
   (hab: ∀ n ≥ a.m, a n ≤ b n ∧ b n ≤ c n) (ha: a.TendsTo L) (hb: c.TendsTo L) :
-    b.TendsTo L := by sorry
+    b.TendsTo L := by
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  rw [Sequence.tendsTo_iff] at ha hb
+  obtain ⟨Na, hA⟩ := ha ε hε
+  obtain ⟨Nc, hC⟩ := hb ε hε
+  refine ⟨max (max Na Nc) a.m, fun n hn => ?_⟩
+  have hna : n ≥ Na := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hn
+  have hnc : n ≥ Nc := le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) hn
+  have hnm : n ≥ a.m := le_trans (le_max_right _ _) hn
+  have h1 := hA n hna
+  have h2 := hC n hnc
+  obtain ⟨hab1, hab2⟩ := hab n hnm
+  rw [abs_le] at h1 h2 ⊢
+  exact ⟨by linarith [h1.1], by linarith [h2.2]⟩
 
 /-- Example 6.4.15 -/
 example : ((fun (n:ℕ) ↦ 2/(n+1:ℝ)):Sequence).TendsTo 0 := by
