@@ -107,20 +107,81 @@ example : Example_6_4_3.LimitPoint 1 := by
 noncomputable abbrev Example_6_4_4 : Sequence :=
   (fun (n:ℕ) ↦ (-1:ℝ)^n * (1 + (10:ℝ)^(-(n:ℤ)-1)))
 
-/-- Example 6.4.4 -/
-example : (0.1:ℝ).Adherent Example_6_4_4 1 := by sorry
+private theorem E4_eval {n:ℤ} (hn: 0 ≤ n) :
+    Example_6_4_4 n = (-1:ℝ)^n.toNat * (1 + (10:ℝ)^(-(n.toNat:ℤ)-1)) := by
+  simp only [Example_6_4_4, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
+
+/-- For any `ε > 0`, the tail `10^(-m-1)` is eventually below `ε`. -/
+private theorem tail_le {ε:ℝ} (hε: 0 < ε) : ∃ k:ℕ, ∀ m:ℕ, k ≤ m → (10:ℝ)^(-(m:ℤ)-1) ≤ ε := by
+  obtain ⟨k, hk⟩ := exists_pow_lt_of_lt_one hε (by norm_num : (1:ℝ)/10 < 1)
+  refine ⟨k, fun m hm => ?_⟩
+  have hbound : (10:ℝ)^(-(m:ℤ)-1) ≤ (1/10:ℝ)^m := by
+    have e : (1/10:ℝ)^m = (10:ℝ)^(-(m:ℤ)) := by
+      rw [div_pow, one_pow, one_div, ← zpow_natCast, ← zpow_neg]
+    rw [e]; apply zpow_le_zpow_right₀ (by norm_num); omega
+  have hmono : (1/10:ℝ)^m ≤ (1/10:ℝ)^k := pow_le_pow_of_le_one (by norm_num) (by norm_num) hm
+  linarith
 
 /-- Example 6.4.4 -/
-example : (0.1:ℝ).ContinuallyAdherent Example_6_4_4 1 := by sorry
+example : (0.1:ℝ).Adherent Example_6_4_4 1 := by
+  refine ⟨0, le_refl _, ?_⟩
+  rw [Real.Close, Real.dist_eq, E4_eval (le_refl 0)]
+  norm_num
 
 /-- Example 6.4.4 -/
-example : Example_6_4_4.LimitPoint 1 := by sorry
+example : (0.1:ℝ).ContinuallyAdherent Example_6_4_4 1 := by
+  intro N hN
+  have hN0 : (0:ℤ) ≤ N := hN
+  refine ⟨2*N, ?_, ?_⟩
+  · rw [show (Example_6_4_4.from N).m = max Example_6_4_4.m N from rfl, max_eq_right hN0]; omega
+  · have h2N : (0:ℤ) ≤ 2*N := by omega
+    rw [Sequence.from_eval Example_6_4_4 (by omega : 2*N ≥ N), Real.Close, Real.dist_eq, E4_eval h2N]
+    have heven : Even (2*N).toNat := ⟨N.toNat, by omega⟩
+    rw [Even.neg_one_pow heven, one_mul,
+      show (1:ℝ) + 10^(-((2*N).toNat:ℤ)-1) - 1 = 10^(-((2*N).toNat:ℤ)-1) by ring,
+      abs_of_pos (by positivity), show (0.1:ℝ) = (10:ℝ)^(-1:ℤ) by norm_num]
+    apply zpow_le_zpow_right₀ (by norm_num); omega
 
 /-- Example 6.4.4 -/
-example : Example_6_4_4.LimitPoint (-1) := by sorry
+example : Example_6_4_4.LimitPoint 1 := by
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  have hNt : (N.toNat:ℤ) = N := Int.toNat_of_nonneg hN
+  obtain ⟨k, hk⟩ := tail_le hε
+  set n := 2 * (max N.toNat k : ℤ) with hndef
+  have hn0 : 0 ≤ n := by positivity
+  refine ⟨n, by omega, ?_⟩
+  rw [E4_eval hn0]
+  have heven : Even n.toNat := ⟨max N.toNat k, by omega⟩
+  rw [Even.neg_one_pow heven, one_mul,
+    show (1:ℝ) + 10^(-(n.toNat:ℤ)-1) - 1 = 10^(-(n.toNat:ℤ)-1) by ring, abs_of_pos (by positivity)]
+  apply hk; omega
 
 /-- Example 6.4.4 -/
-example : ¬ Example_6_4_4.LimitPoint 0 := by sorry
+example : Example_6_4_4.LimitPoint (-1) := by
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  have hNt : (N.toNat:ℤ) = N := Int.toNat_of_nonneg hN
+  obtain ⟨k, hk⟩ := tail_le hε
+  set n := 2 * (max N.toNat k : ℤ) + 1 with hndef
+  have hn0 : 0 ≤ n := by positivity
+  have hodd : Odd n.toNat := ⟨max N.toNat k, by omega⟩
+  refine ⟨n, by omega, ?_⟩
+  have hval : Example_6_4_4 n - (-1) = -(10^(-(n.toNat:ℤ)-1)) := by
+    rw [E4_eval hn0, Odd.neg_one_pow hodd]; ring
+  rw [hval, abs_neg, abs_of_pos (by positivity)]
+  apply hk; omega
+
+/-- Example 6.4.4 -/
+example : ¬ Example_6_4_4.LimitPoint 0 := by
+  rw [Sequence.limit_point_def]; push_neg
+  refine ⟨0.5, by norm_num, 0, le_refl _, fun n hn => ?_⟩
+  rw [sub_zero, E4_eval hn]
+  have ht : (0:ℝ) < 10^(-(n.toNat:ℤ)-1) := by positivity
+  rcases Nat.even_or_odd n.toNat with he | ho
+  · rw [Even.neg_one_pow he, one_mul, abs_of_pos (by linarith)]; linarith
+  · rw [Odd.neg_one_pow ho, neg_one_mul, abs_neg, abs_of_pos (by linarith)]; linarith
 
 /-- Proposition 6.4.5 / Exercise 6.4.1 -/
 theorem Sequence.limit_point_of_limit {a:Sequence} {x:ℝ} (h: a.TendsTo x) : a.LimitPoint x := by
