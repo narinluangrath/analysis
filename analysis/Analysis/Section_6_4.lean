@@ -272,7 +272,14 @@ theorem Sequence.gt_limsup_bounds {a:Sequence} {x:EReal} (h: x > a.limsup) :
 /-- Proposition 6.4.12(a) -/
 theorem Sequence.lt_liminf_bounds {a:Sequence} {y:EReal} (h: y < a.liminf) :
     ∃ N ≥ a.m, ∀ n ≥ N, a n > y := by
-  sorry
+  simp only [liminf, lt_sSup_iff] at h
+  obtain ⟨z, hz, ha⟩ := h
+  obtain ⟨N, hN, hNz⟩ := hz
+  rw [hNz] at ha; use N
+  simp [hN, lowerseq] at ha ⊢; intro n _
+  have hn' : n ≥ (a.from N).m := by grind
+  convert lt_of_lt_of_le ha ((a.from N).ge_inf hn') using 1
+  grind
 
 /-- Proposition 6.4.12(b) -/
 theorem Sequence.lt_limsup_bounds {a:Sequence} {x:EReal} (h: x < a.limsup) {N:ℤ} (hN: N ≥ a.m) :
@@ -285,7 +292,9 @@ theorem Sequence.lt_limsup_bounds {a:Sequence} {x:EReal} (h: x < a.limsup) {N:�
 /-- Proposition 6.4.12(b) -/
 theorem Sequence.gt_liminf_bounds {a:Sequence} {x:EReal} (h: x > a.liminf) {N:ℤ} (hN: N ≥ a.m) :
     ∃ n ≥ N, a n < x := by
-  sorry
+  have hx : a.lowerseq N < x := by apply lt_of_le_of_lt (le_sSup _) h; simp; use N
+  choose n hn hxn _ using exists_between_gt_inf hx
+  grind
 
 /-- Proposition 6.4.12(c) / Exercise 6.4.3 -/
 theorem Sequence.inf_le_liminf (a:Sequence) : a.inf ≤ a.liminf := by sorry
