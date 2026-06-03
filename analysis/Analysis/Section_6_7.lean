@@ -258,6 +258,12 @@ private lemma Real.rpow_gt_one_iff' {x s:ℝ} (hx: x > 1) : rpow x s > 1 ↔ s >
     · rw [heq, rpow_zero' hx0] at h; linarith
   · exact rpow_gt_one' hx
 
+private lemma Real.rpow_one_base' (s:ℝ) : rpow (1:ℝ) s = 1 := by
+  choose s' hs' using eq_lim_of_rat s
+  rw [rpow_eq_lim_ratPow (by norm_num) hs']
+  simp only [Real.one_rpow]
+  exact (lim_eq.mp (lim_of_const 1)).2
+
 theorem Real.ratPow_mono {x y:ℝ} (hx: x > 0) (hy: y > 0) {q:ℝ} (h: q > 0) : x > y ↔ rpow x q > rpow y q := by
   have hy0 : rpow y q > 0 := rpow_pos' hy q
   have hx0 : rpow x q > 0 := rpow_pos' hx q
@@ -289,6 +295,15 @@ theorem Real.ratPow_mono_of_gt_one {x:ℝ} (hx: x > 1) {q r:ℝ} : rpow x q > rp
 
 /-- Proposition 6.7.3(e) / Exercise 6.7.1 -/
 theorem Real.ratPow_mono_of_lt_one {x:ℝ} (hx0: 0 < x) (hx: x < 1) {q r:ℝ} : rpow x q > rpow x r ↔ q < r := by
-  sorry
+  have hinvpos : (0:ℝ) < 1/x := by positivity
+  have hinv1 : (1/x) > 1 := by rw [gt_iff_lt, lt_div_iff₀ hx0]; linarith
+  have hpq : rpow (1/x) q > 0 := rpow_pos' hinvpos q
+  have hpr : rpow (1/x) r > 0 := rpow_pos' hinvpos r
+  have hrel : ∀ s, rpow x s * rpow (1/x) s = 1 := by
+    intro s
+    rw [← ratPow_mul hx0 hinvpos, mul_one_div_cancel (ne_of_gt hx0), rpow_one_base']
+  have hxq : rpow x q = 1 / rpow (1/x) q := by rw [eq_div_iff (ne_of_gt hpq)]; linarith [hrel q]
+  have hxr : rpow x r = 1 / rpow (1/x) r := by rw [eq_div_iff (ne_of_gt hpr)]; linarith [hrel r]
+  rw [hxq, hxr, gt_iff_lt, one_div_lt_one_div hpr hpq, ← gt_iff_lt, ratPow_mono_of_gt_one hinv1]
 
 end Chapter6
