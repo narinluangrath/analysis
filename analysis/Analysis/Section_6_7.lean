@@ -197,12 +197,71 @@ theorem Real.ratPow_neg {x:ℝ} (hx: x > 0) (q:ℝ) : rpow x (-q) = 1 / rpow x q
   rw [eq_div_iff (ne_of_gt hpos), ← ratPow_add hx (-q) q, neg_add_cancel, h0]
 
 /-- Proposition 6.7.3(d) / Exercise 6.7.1 -/
+private lemma Real.rpow_zero' {x:ℝ} (hx: x > 0) : rpow x 0 = 1 := by
+  have := rpow_of_rat_eq_ratPow hx (q := (0:ℚ)); simpa using this
+
+private lemma Real.rpow_pos' {x:ℝ} (hx: x > 0) (q:ℝ) : rpow x q > 0 := by
+  rcases lt_or_eq_of_le (ratPow_nonneg hx q) with h | h
+  · exact h
+  · exfalso
+    have hadd := ratPow_add hx q (-q)
+    rw [add_neg_cancel, rpow_zero' hx, ← h, zero_mul] at hadd
+    exact one_ne_zero hadd
+
+private lemma Real.rpow_gt_one' {x s:ℝ} (hx: x > 1) (hs: s > 0) : rpow x s > 1 := by
+  have hx0 : (0:ℝ) < x := by linarith
+  choose s' hs' using eq_lim_of_rat s
+  rw [rpow_eq_lim_ratPow hx0 hs']
+  set b : Sequence := ((fun n ↦ x^(s' n:ℝ)):Sequence) with hb
+  have hconv : b.Convergent := ratPow_continuous hx0 hs'
+  set c : ℝ := x^(s/2) with hc
+  have hc1 : c > 1 := by rw [hc]; exact Real.one_lt_rpow_iff_of_pos hx0 |>.mpr (Or.inl ⟨hx, by linarith⟩)
+  have hs'2 := hs'
+  rw [Sequence.tendsTo_iff] at hs'2
+  obtain ⟨M, hM⟩ := hs'2 (s/2) (by linarith)
+  by_contra hlt; rw [gt_iff_lt, not_lt] at hlt
+  have htend := lim_def hconv
+  rw [Sequence.tendsTo_iff] at htend
+  obtain ⟨N, hN⟩ := htend ((c - 1)/2) (by linarith)
+  set n := max (max N M) 0 with hn
+  have hbn := hN n (le_trans (le_max_left _ _) (le_max_left _ _))
+  have hn0 : (0:ℤ) ≤ n := le_max_right _ _
+  have hbge : b n ≥ c := by
+    rw [hb]; simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos hn0]
+    apply Real.rpow_le_rpow_of_exponent_le (le_of_lt hx)
+    have hMn := hM n (le_trans (le_max_right _ _) (le_max_left _ _))
+    simp only [Sequence.instCoeFun, Sequence.ofNatFun] at hMn
+    rw [if_pos hn0, abs_le] at hMn
+    linarith [hMn.1]
+  rw [abs_le] at hbn
+  linarith [hbn.2, hbge]
+
+private lemma Real.rpow_gt_one_iff' {x s:ℝ} (hx: x > 1) : rpow x s > 1 ↔ s > 0 := by
+  have hx0 : x > 0 := by linarith
+  constructor
+  · intro h; by_contra hs; push_neg at hs
+    rcases lt_or_eq_of_le hs with hlt | heq
+    · have hneg : rpow x (-s) > 1 := rpow_gt_one' hx (by linarith)
+      have he := ratPow_neg hx0 (-s); rw [neg_neg] at he
+      rw [he, gt_iff_lt, lt_div_iff₀ (by linarith)] at h
+      linarith
+    · rw [heq, rpow_zero' hx0] at h; linarith
+  · exact rpow_gt_one' hx
+
 theorem Real.ratPow_mono {x y:ℝ} (hx: x > 0) (hy: y > 0) {q:ℝ} (h: q > 0) : x > y ↔ rpow x q > rpow y q := by
   sorry
 
 /-- Proposition 6.7.3(e) / Exercise 6.7.1 -/
 theorem Real.ratPow_mono_of_gt_one {x:ℝ} (hx: x > 1) {q r:ℝ} : rpow x q > rpow x r ↔ q > r := by
-  sorry
+  have hx0 : x > 0 := by linarith
+  have hr0 : rpow x r > 0 := rpow_pos' hx0 r
+  have hqr : rpow x q = rpow x (q-r) * rpow x r := by
+    rw [← ratPow_add hx0 (q-r) r, sub_add_cancel]
+  rw [hqr, gt_iff_lt, lt_mul_iff_one_lt_left hr0]
+  constructor
+  · intro hh; have := (rpow_gt_one_iff' hx).mp hh; linarith
+  · intro hh; exact (rpow_gt_one_iff' hx).mpr (by linarith)
 
 /-- Proposition 6.7.3(e) / Exercise 6.7.1 -/
 theorem Real.ratPow_mono_of_lt_one {x:ℝ} (hx0: 0 < x) (hx: x < 1) {q r:ℝ} : rpow x q > rpow x r ↔ q < r := by
