@@ -211,13 +211,13 @@ theorem Nat.monotone_enum_of_infinite (X : Set ℕ) [Infinite X] : ∃! f : ℕ 
   have hf_injective : Function.Injective f := by
     intro x y hxy; simp [f] at hxy; solve_by_elim
   have hf_surjective : Function.Surjective f := by
-    intro ⟨ x, hx ⟩; simp [f]; by_contra
+    intro ⟨ x, hx ⟩; simp [f]; by_contra hcon
     have h1 (n:ℕ) : x ∈ { x ∈ X | ∀ (m:ℕ) (h:m < n), x ≠ a m } := by
-      sorry
+      rw [Set.mem_sep_iff]
+      exact ⟨hx, fun m _ heq => hcon ⟨m, heq.symm⟩⟩
     have h2 (n:ℕ) : x ≥ a n := by
       rw [ha n]; exact ge_iff_le.mpr ((min_spec (ha_nonempty n)).2 _ (h1 n))
-    have h3 (n:ℕ) : a n ≥ n := by
-      sorry
+    have h3 (n:ℕ) : a n ≥ n := ha_mono.le_apply
     have h4 (n:ℕ) : x ≥ n := (h3 n).trans (h2 n)
     linarith [h4 (x+1)]
   apply ExistsUnique.intro _ ⟨ ⟨ hf_injective, hf_surjective ⟩, ha_mono ⟩
