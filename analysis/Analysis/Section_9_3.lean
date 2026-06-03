@@ -294,7 +294,10 @@ theorem Convergesto.squeeze {E:Set ℝ} {f g h: ℝ → ℝ} {L:ℝ} {x₀:ℝ} 
   (hfg: ∀ x ∈ E, f x ≤ g x) (hgh: ∀ x ∈ E, g x ≤ h x)
   (hf: Convergesto E f L x₀) (hh: Convergesto E h L x₀) :
   Convergesto E g L x₀ := by
-    sorry
+    rw [Convergesto.iff] at hf hh ⊢
+    apply tendsto_of_tendsto_of_tendsto_of_le_of_le' hf hh
+    · filter_upwards [self_mem_nhdsWithin] with x hx using hfg x hx
+    · filter_upwards [self_mem_nhdsWithin] with x hx using hgh x hx
 
 
 end Chapter9
