@@ -215,11 +215,21 @@ noncomputable abbrev f_11_5_5 : ℝ → ℝ := fun x ↦
 
 example : ¬ ContinuousOn f_11_5_5 (Icc 1 3) := by sorry
 
-example : ContinuousOn f_11_5_5 (Ico 1 2) := by sorry
+example : ContinuousOn f_11_5_5 (Ico 1 2) := by
+  rw [BoundedInterval.set_Ico]
+  apply (continuous_pow 2).continuousOn.congr
+  intro x hx; simp only [Set.mem_Ico] at hx
+  simp only [f_11_5_5, if_pos hx.2]
 
-example : ContinuousOn f_11_5_5 (Icc 2 2) := by sorry
+example : ContinuousOn f_11_5_5 (Icc 2 2) := by
+  rw [BoundedInterval.set_Icc, Set.Icc_self]
+  exact continuousOn_singleton f_11_5_5 2
 
-example : ContinuousOn f_11_5_5 (Ioc 2 3) := by sorry
+example : ContinuousOn f_11_5_5 (Ioc 2 3) := by
+  rw [BoundedInterval.set_Ioc]
+  apply (continuous_pow 3).continuousOn.congr
+  intro x hx; simp only [Set.mem_Ioc] at hx
+  simp only [f_11_5_5, if_neg (by linarith [hx.1] : ¬ x < 2), if_neg (by linarith [hx.1] : x ≠ 2)]
 
 example : PiecewiseContinuousOn f_11_5_5 (Icc 1 3) := by sorry
 
