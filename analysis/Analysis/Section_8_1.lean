@@ -343,11 +343,17 @@ example (X: Type) : Infinite X ↔ ∃ Y : Set X, Y ≠ .univ ∧ EqualCard Y X 
 
 /-- Exercise 8.1.6 -/
 example (A: Type) : AtMostCountable A ↔ ∃ f : A → ℕ, Function.Injective f := by
-  sorry
+  rw [AtMostCountable.iff, countable_iff_exists_injective]
 
 /-- Exercise 8.1.9 -/
 example {I X:Type} (hI: AtMostCountable I) (A: I → Set X) (hA: ∀ i, AtMostCountable (A i)) :
-  AtMostCountable (⋃ i, A i) := by sorry
+  AtMostCountable (⋃ i, A i) := by
+  rw [AtMostCountable.iff, Set.countable_coe_iff]
+  haveI : Countable I := (AtMostCountable.iff I).mp hI
+  apply Set.countable_iUnion
+  intro i
+  rw [← Set.countable_coe_iff]
+  exact (AtMostCountable.iff (A i)).mp (hA i)
 
 /-- Exercise 8.1.10.  Note the lack of the `noncomputable` keyword in the `abbrev`. -/
 abbrev explicit_bijection : ℕ → ℚ := sorry
