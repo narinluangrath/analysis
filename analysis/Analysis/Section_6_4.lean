@@ -431,7 +431,43 @@ theorem Sequence.limit_point_of_liminf {a:Sequence} {L_minus:ℝ} (h: a.liminf =
 /-- Proposition 6.4.12(f) / Exercise 6.4.3 -/
 theorem Sequence.tendsTo_iff_eq_limsup_liminf {a:Sequence} (c:ℝ) :
   a.TendsTo c ↔ a.liminf = c ∧ a.limsup = c := by
-  sorry
+  constructor
+  · intro hconv
+    have hlp : a.LimitPoint c := Sequence.limit_point_of_limit hconv
+    obtain ⟨hli, hls⟩ := Sequence.limit_point_between_liminf_limsup hlp
+    rw [Sequence.tendsTo_iff] at hconv
+    have hls2 : a.limsup ≤ (c:EReal) := by
+      by_contra hcon; rw [not_le] at hcon
+      obtain ⟨d, hcd, hdL⟩ := ereal_coe_lt_exists_real hcon
+      obtain ⟨Nc, hNc⟩ := hconv ((d-c)/2) (by linarith)
+      obtain ⟨n, hn, hgt⟩ := a.lt_limsup_bounds hdL (N := max Nc a.m) (le_max_right _ _)
+      have hUn := hNc n (le_trans (le_max_left _ _) hn)
+      rw [gt_iff_lt, EReal.coe_lt_coe_iff] at hgt
+      rw [abs_le] at hUn; linarith [hUn.2]
+    have hli2 : (c:EReal) ≤ a.liminf := by
+      by_contra hcon; rw [not_le] at hcon
+      obtain ⟨d, hLd, hdc⟩ := ereal_lt_coe_exists_real hcon
+      obtain ⟨Nc, hNc⟩ := hconv ((c-d)/2) (by linarith)
+      obtain ⟨n, hn, hlt⟩ := a.gt_liminf_bounds hLd (N := max Nc a.m) (le_max_right _ _)
+      have hLn := hNc n (le_trans (le_max_left _ _) hn)
+      rw [EReal.coe_lt_coe_iff] at hlt
+      rw [abs_le] at hLn; linarith [hLn.1]
+    exact ⟨le_antisymm hli hli2, le_antisymm hls2 hls⟩
+  · rintro ⟨hli, hls⟩
+    rw [Sequence.tendsTo_iff]
+    intro ε hε
+    have hup : (↑(c + ε):EReal) > a.limsup := by
+      rw [hls]; exact_mod_cast show c < c + ε by linarith
+    obtain ⟨N1, hN1, hbU⟩ := a.gt_limsup_bounds hup
+    have hlow : (↑(c - ε):EReal) < a.liminf := by
+      rw [hli]; exact_mod_cast show c - ε < c by linarith
+    obtain ⟨N2, hN2, hbL⟩ := a.lt_liminf_bounds hlow
+    refine ⟨max N1 N2, fun n hn => ?_⟩
+    have hUn := hbU n (le_trans (le_max_left _ _) hn)
+    have hLn := hbL n (le_trans (le_max_right _ _) hn)
+    rw [EReal.coe_lt_coe_iff] at hUn
+    rw [gt_iff_lt, EReal.coe_lt_coe_iff] at hLn
+    rw [abs_le]; constructor <;> linarith
 
 /-- Lemma 6.4.13 (Comparison principle) / Exercise 6.4.4 -/
 theorem Sequence.sup_mono {a b:Sequence} (hm: a.m = b.m) (hab: ∀ n ≥ a.m, a n ≤ b n) :
