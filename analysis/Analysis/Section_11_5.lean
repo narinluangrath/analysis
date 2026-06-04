@@ -268,7 +268,14 @@ example : PiecewiseContinuousOn f_11_5_5 (Icc 1 3) := by
 /-- Proposition 11.5.6 / Exercise 11.5.1 -/
 theorem integ_of_bdd_piecewise_cts {I: BoundedInterval} {f:ℝ → ℝ}
   (hbound: BddOn f I) (hf: PiecewiseContinuousOn f I) : IntegrableOn f I := by
-  sorry
+  obtain ⟨P, hP⟩ := hf
+  apply IntegrableOn.of_partition hbound P
+  intro J hJ
+  have hbJ : BddOn f J := by
+    obtain ⟨M, hM⟩ := hbound
+    refine ⟨M, fun x hx => hM x ?_⟩
+    have := P.contains J hJ; rw [BoundedInterval.subset_iff] at this; exact this hx
+  exact integ_of_bdd_cts hbJ (hP J hJ)
 
 /-- Exercise 11.5.2 -/
 theorem integ_zero {a b:ℝ} (hab: a ≤ b) (f: ℝ → ℝ) (hf: ContinuousOn f (Icc a b))

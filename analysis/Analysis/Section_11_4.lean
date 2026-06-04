@@ -742,4 +742,88 @@ theorem IntegrableOn.split {I: BoundedInterval} {f: ℝ → ℝ} (hf: Integrable
       rw [hjeq, hLsum, hP', add_comm]
       exact Finset.add_sum_erase _ _ hK
 
+open Classical in
+/-- The converse of `IntegrableOn.join`: integrability on the two pieces of a join,
+together with boundedness, gives integrability on the whole. -/
+theorem IntegrableOn.combine {L K I: BoundedInterval} (hIJK: I.joins L K)
+    {f: ℝ → ℝ} (hbI: BddOn f I) (hL: IntegrableOn f L) (hK: IntegrableOn f K) :
+    IntegrableOn f I := by
+  refine ⟨hbI, ?_⟩
+  have hmemI : ∀ x ∈ (I:Set ℝ), x ∈ (L:Set ℝ) ∨ x ∈ (K:Set ℝ) := by
+    intro x hx; rw [hIJK.2.1] at hx; exact hx
+  have hdisj : ∀ x ∈ (K:Set ℝ), x ∉ (L:Set ℝ) := by
+    intro x hxK hxL
+    have : x ∈ (L:Set ℝ) ∩ (K:Set ℝ) := ⟨hxL, hxK⟩
+    rw [hIJK.1] at this; exact this
+  have hfuL : integ f L = upper_integral f L := rfl
+  have hfuK : integ f K = upper_integral f K := rfl
+  have hle : upper_integral f I ≤ lower_integral f I := by
+    apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨gL, hgLmaj, hgLpc, hgLint⟩ := lt_of_gt_upper_integral hL.1 (X := integ f L + ε/4)
+      (by rw [hfuL]; linarith)
+    obtain ⟨gK, hgKmaj, hgKpc, hgKint⟩ := lt_of_gt_upper_integral hK.1 (X := integ f K + ε/4)
+      (by rw [hfuK]; linarith)
+    obtain ⟨hL', hL'min, hL'pc, hL'int⟩ := gt_of_lt_lower_integral hL.1 (X := integ f L - ε/4)
+      (by rw [hfuL]; linarith [hL.2])
+    obtain ⟨hK', hK'min, hK'pc, hK'int⟩ := gt_of_lt_lower_integral hK.1 (X := integ f K - ε/4)
+      (by rw [hfuK]; linarith [hK.2])
+    set g := fun x => if x ∈ (L:Set ℝ) then gL x else gK x with hgdef
+    set h := fun x => if x ∈ (L:Set ℝ) then hL' x else hK' x with hhdef
+    have hgL_eq : ∀ x ∈ (L:Set ℝ), g x = gL x := fun x hx => by simp only [hgdef, if_pos hx]
+    have hgK_eq : ∀ x ∈ (K:Set ℝ), g x = gK x := fun x hx => by simp only [hgdef, if_neg (hdisj x hx)]
+    have hhL_eq : ∀ x ∈ (L:Set ℝ), h x = hL' x := fun x hx => by simp only [hhdef, if_pos hx]
+    have hhK_eq : ∀ x ∈ (K:Set ℝ), h x = hK' x := fun x hx => by simp only [hhdef, if_neg (hdisj x hx)]
+    have hgpcI : PiecewiseConstantOn g I := (PiecewiseConstantOn.of_join hIJK g).mpr
+      ⟨hgLpc.congr' (fun x hx => (hgL_eq x hx).symm), hgKpc.congr' (fun x hx => (hgK_eq x hx).symm)⟩
+    have hhpcI : PiecewiseConstantOn h I := (PiecewiseConstantOn.of_join hIJK h).mpr
+      ⟨hL'pc.congr' (fun x hx => (hhL_eq x hx).symm), hK'pc.congr' (fun x hx => (hhK_eq x hx).symm)⟩
+    have hgmaj : MajorizesOn g f I := by
+      intro x hx; rcases hmemI x hx with hxL | hxK
+      · rw [hgL_eq x hxL]; exact hgLmaj x hxL
+      · rw [hgK_eq x hxK]; exact hgKmaj x hxK
+    have hhmin : MinorizesOn h f I := by
+      intro x hx; rcases hmemI x hx with hxL | hxK
+      · rw [hhL_eq x hxL]; exact hL'min x hxL
+      · rw [hhK_eq x hxK]; exact hK'min x hxK
+    have hupI := upper_integral_le_integ hbI hgmaj hgpcI
+    have hlowI := integ_le_lower_integral hbI hhmin hhpcI
+    rw [show hgpcI.integ' = PiecewiseConstantOn.integ g I from rfl,
+      PiecewiseConstantOn.integ_of_join hIJK hgpcI,
+      PiecewiseConstantOn.integ_congr hgL_eq, PiecewiseConstantOn.integ_congr hgK_eq] at hupI
+    rw [show hhpcI.integ' = PiecewiseConstantOn.integ h I from rfl,
+      PiecewiseConstantOn.integ_of_join hIJK hhpcI,
+      PiecewiseConstantOn.integ_congr hhL_eq, PiecewiseConstantOn.integ_congr hhK_eq] at hlowI
+    linarith [hgLint, hgKint, hL'int, hK'int]
+  exact le_antisymm (lower_integral_le_upper hbI) hle
+
+/-- Integrability on every piece of a partition (plus boundedness) implies integrability
+on the whole interval. -/
+theorem IntegrableOn.of_partition {I: BoundedInterval} {f: ℝ → ℝ} (hbI: BddOn f I)
+    (P: Partition I) (hpieces: ∀ J ∈ P.intervals, IntegrableOn f J) : IntegrableOn f I := by
+  generalize hcard : P.intervals.card = n
+  revert I
+  induction' n with n hn <;> intro I hbI P hpieces hcard
+  · rw [Finset.card_eq_zero] at hcard
+    have hIe : (I:Set ℝ) = ∅ := by
+      rw [Set.eq_empty_iff_forall_notMem]; intro x hx
+      obtain ⟨J, ⟨hJ, _⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [hcard] at hJ; simp at hJ
+    exact (integ_on_subsingleton (BoundedInterval.length_of_empty hIe)).1
+  · by_cases hss : Subsingleton (I:Set ℝ)
+    · exact (integ_on_subsingleton (BoundedInterval.length_of_subsingleton.mp hss)).1
+    · have hlt : I.a < I.b := by
+        simp [BoundedInterval.length_of_subsingleton, BoundedInterval.length,
+          -Set.subsingleton_coe] at hss
+        exact hss
+      obtain ⟨K, L, P', hK, hjoin, hP'⟩ := P.exists_peel hlt
+      have hbL : BddOn f L := by
+        obtain ⟨M, hM⟩ := hbI
+        refine ⟨M, fun x hx => hM x ?_⟩
+        have hLI : (L:Set ℝ) ⊆ (I:Set ℝ) := by rw [hjoin.2.1]; exact Set.subset_union_left
+        exact hLI hx
+      have hcardL : P'.intervals.card = n := by rw [hP', Finset.card_erase_of_mem hK]; omega
+      have hpiecesL : ∀ J ∈ P'.intervals, IntegrableOn f J := by
+        intro J hJ; rw [hP'] at hJ; exact hpieces J (Finset.mem_of_mem_erase hJ)
+      exact IntegrableOn.combine hjoin hbI (hn hbL P' hpiecesL hcardL) (hpieces K hK)
+
 end Chapter11
