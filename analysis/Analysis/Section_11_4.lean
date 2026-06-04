@@ -215,10 +215,145 @@ theorem IntegrableOn.join {I J K: BoundedInterval} (hIJK: K.joins I J)
   IntegrableOn f I ∧ IntegrableOn f J ∧ integ f K = integ f I + integ f J := by
   sorry
 
+/-- A nonnegative piecewise constant function integrates to no more over a subinterval. -/
+theorem PiecewiseConstantOn.integ_le_of_subset {I J: BoundedInterval} (hJI: J ⊆ I)
+    {φ: ℝ → ℝ} (hφ: PiecewiseConstantOn φ I) (hnn: ∀ x ∈ I, 0 ≤ φ x) :
+    integ φ J ≤ integ φ I := by
+  classical
+  obtain ⟨P, hP⟩ := hφ
+  -- build the restriction partition Q of J: each piece L of P becomes L ∩ J
+  have hQ : ∃ Q : Partition J, Q.intervals = P.intervals.image (fun L => L ∩ J) := by
+    refine ⟨⟨P.intervals.image (fun L => L ∩ J), ?_, ?_⟩, rfl⟩
+    · intro x hx
+      have hxI : x ∈ (I:Set ℝ) := by
+        have := hJI; rw [BoundedInterval.subset_iff] at this
+        exact this ((BoundedInterval.mem_iff J x).mp hx)
+      obtain ⟨L, ⟨hLmem, hxL⟩, hLuniq⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)
+      refine ⟨L ∩ J, ⟨Finset.mem_image_of_mem _ hLmem, ?_⟩, ?_⟩
+      · rw [BoundedInterval.mem_iff, BoundedInterval.inter_eq]
+        exact ⟨(BoundedInterval.mem_iff L x).mp hxL, (BoundedInterval.mem_iff J x).mp hx⟩
+      · rintro M ⟨hMmem, hxM⟩
+        obtain ⟨L', hL'mem, rfl⟩ := Finset.mem_image.mp hMmem
+        rw [BoundedInterval.mem_iff, BoundedInterval.inter_eq] at hxM
+        rw [hLuniq L' ⟨hL'mem, (BoundedInterval.mem_iff L' x).mpr hxM.1⟩]
+    · intro M hMmem
+      obtain ⟨L', hL'mem, rfl⟩ := Finset.mem_image.mp hMmem
+      rw [BoundedInterval.subset_iff, BoundedInterval.inter_eq]
+      exact Set.inter_subset_right
+  obtain ⟨Q, hQint⟩ := hQ
+  have hQpc : PiecewiseConstantWith φ Q := by
+    intro M hM
+    rw [show (M ∈ Q) = (M ∈ Q.intervals) from rfl, hQint] at hM
+    obtain ⟨L', hL'mem, rfl⟩ := Finset.mem_image.mp hM
+    rw [BoundedInterval.inter_eq]
+    exact ConstantOn.of_const (fun y hy => ConstantOn.eq (hP L' hL'mem) hy.1)
+  -- value on a nonempty piece L ∩ J equals the value on L
+  have hcval : ∀ L ∈ P.intervals, (↑(L ∩ J):Set ℝ).Nonempty →
+      constant_value_on φ ↑(L ∩ J) = constant_value_on φ ↑L := by
+    intro L hL hne
+    obtain ⟨x, hx⟩ := hne
+    rw [BoundedInterval.inter_eq] at hx
+    have hcK : ConstantOn φ ↑(L ∩ J) :=
+      ConstantOn.of_const (fun y hy => ConstantOn.eq (hP L hL)
+        (by rw [BoundedInterval.inter_eq] at hy; exact hy.1))
+    rw [← ConstantOn.eq hcK (by rw [BoundedInterval.inter_eq]; exact hx),
+      ← ConstantOn.eq (hP L hL) hx.1]
+  -- nonnegativity of each value
+  have hval_nn : ∀ L ∈ P.intervals, (↑(L ∩ J):Set ℝ).Nonempty → 0 ≤ constant_value_on φ ↑(L ∩ J) := by
+    intro L hL hne
+    obtain ⟨x, hx⟩ := hne
+    have hxI : x ∈ (I:Set ℝ) := by
+      rw [BoundedInterval.inter_eq] at hx
+      have := P.contains L hL; rw [BoundedInterval.subset_iff] at this; exact this hx.1
+    rw [hcval L hL ⟨x, hx⟩, ← ConstantOn.eq (hP L hL)
+      (by rw [BoundedInterval.inter_eq] at hx; exact hx.1)]
+    exact hnn x hxI
+  rw [PiecewiseConstantOn.integ_def hQpc, PiecewiseConstantOn.integ_def hP]
+  simp only [PiecewiseConstantWith.integ, hQint]
+  calc ∑ M ∈ P.intervals.image (fun L => L ∩ J), constant_value_on φ ↑M * |M|ₗ
+      ≤ ∑ L ∈ P.intervals, constant_value_on φ ↑(L ∩ J) * |L ∩ J|ₗ := by
+        apply Finset.sum_image_le_of_nonneg
+        intro u hu
+        obtain ⟨L, hLmem, rfl⟩ := Finset.mem_image.mp hu
+        rcases eq_or_ne (↑(L ∩ J):Set ℝ) ∅ with he | hne
+        · rw [BoundedInterval.length_of_empty he, mul_zero]
+        · exact mul_nonneg (hval_nn L hLmem (Set.nonempty_iff_ne_empty.mpr hne))
+            (BoundedInterval.length_nonneg _)
+    _ ≤ ∑ L ∈ P.intervals, constant_value_on φ ↑L * |L|ₗ := by
+        apply Finset.sum_le_sum
+        intro L hL
+        rcases eq_or_ne (↑(L ∩ J):Set ℝ) ∅ with he | hne
+        · rw [BoundedInterval.length_of_empty he, mul_zero]
+          rcases eq_or_ne (↑L:Set ℝ) ∅ with heL | hneL
+          · rw [BoundedInterval.length_of_empty heL, mul_zero]
+          · have hxL : (↑L:Set ℝ).Nonempty := Set.nonempty_iff_ne_empty.mpr hneL
+            obtain ⟨x, hx⟩ := hxL
+            have hxI : x ∈ (I:Set ℝ) := by
+              have := P.contains L hL; rw [BoundedInterval.subset_iff] at this; exact this hx
+            apply mul_nonneg _ (BoundedInterval.length_nonneg _)
+            rw [← ConstantOn.eq (hP L hL) hx]; exact hnn x hxI
+        · have hneU : (↑(L ∩ J):Set ℝ).Nonempty := Set.nonempty_iff_ne_empty.mpr hne
+          rw [hcval L hL hneU]
+          have hLJ : (↑(L ∩ J):Set ℝ) ⊆ ↑L := by
+            rw [BoundedInterval.inter_eq]; exact Set.inter_subset_left
+          apply mul_le_mul_of_nonneg_left (BoundedInterval.length_mono hLJ)
+          obtain ⟨x, hx⟩ := hneU
+          have hxI : x ∈ (I:Set ℝ) := by
+            rw [BoundedInterval.inter_eq] at hx
+            have := P.contains L hL; rw [BoundedInterval.subset_iff] at this; exact this hx.1
+          rw [← ConstantOn.eq (hP L hL) (by rw [BoundedInterval.inter_eq] at hx; exact hx.1)]
+          exact hnn x hxI
+
 /-- A variant of Theorem 11.4.1(h) that will be useful in later sections. -/
 theorem IntegrableOn.mono' {I J: BoundedInterval} (hIJ: J ⊆ I)
   {f: ℝ → ℝ} (h: IntegrableOn f I) : IntegrableOn f J := by
-  sorry
+  obtain ⟨hbddI, heqI⟩ := h
+  -- f is bounded on J since J ⊆ I
+  have hbddJ : BddOn f J := by
+    obtain ⟨M, hM⟩ := hbddI
+    refine ⟨M, fun x hx => hM x ?_⟩
+    have hs := hIJ; rw [BoundedInterval.subset_iff] at hs; exact hs hx
+  refine ⟨hbddJ, ?_⟩
+  -- show upper_integral f J ≤ lower_integral f J via epsilon of room
+  have hlu := lower_integral_le_upper hbddJ
+  rcases eq_or_lt_of_le hlu with heq | hlt
+  · exact heq
+  exfalso
+  set ε := upper_integral f J - lower_integral f J with hεdef
+  have hε : 0 < ε := by rw [hεdef]; linarith
+  -- pc majorant g of f on I with integ g I close to upper = integ f I
+  have hfuI : integ f I = upper_integral f I := rfl
+  obtain ⟨g, hgmaj, hgpc, hgint⟩ := lt_of_gt_upper_integral hbddI (X := integ f I + ε/3)
+    (by rw [hfuI]; linarith)
+  obtain ⟨k, hkmin, hkpc, hkint⟩ := gt_of_lt_lower_integral hbddI (X := integ f I - ε/3)
+    (by rw [hfuI]; linarith [lower_integral_le_upper hbddI])
+  -- g - k is nonnegative pc on I; restrict to J
+  have hsubnn : ∀ x ∈ I, 0 ≤ (g - k) x := by
+    intro x hx; simp only [Pi.sub_apply]
+    linarith [hgmaj x hx, hkmin x hx]
+  have hgkpc : PiecewiseConstantOn (g - k) I := hgpc.sub hkpc
+  -- integ (g-k) J ≤ integ (g-k) I
+  have hle := PiecewiseConstantOn.integ_le_of_subset hIJ hgkpc hsubnn
+  rw [PiecewiseConstantOn.integ_sub hgpc hkpc] at hle
+  -- restrict g, k to J as majorant / minorant of f on J
+  have hgpcJ : PiecewiseConstantOn g J := hgpc.restrict hIJ
+  have hkpcJ : PiecewiseConstantOn k J := hkpc.restrict hIJ
+  have hgmajJ : MajorizesOn g f J := fun x hx => hgmaj x (by
+    have hs := hIJ; rw [BoundedInterval.subset_iff] at hs; exact hs hx)
+  have hkminJ : MinorizesOn k f J := fun x hx => hkmin x (by
+    have hs := hIJ; rw [BoundedInterval.subset_iff] at hs; exact hs hx)
+  have hupJ : upper_integral f J ≤ PiecewiseConstantOn.integ g J :=
+    upper_integral_le_integ hbddJ hgmajJ hgpcJ
+  have hlowJ : PiecewiseConstantOn.integ k J ≤ lower_integral f J :=
+    integ_le_lower_integral hbddJ hkminJ hkpcJ
+  -- combine: ε = upper_J - lower_J ≤ integ g J - integ k J = integ (g-k) J ≤ integ (g-k) I < ε
+  have hgkI : PiecewiseConstantOn.integ (g - k) I < ε := by
+    rw [PiecewiseConstantOn.integ_sub hgpc hkpc]
+    linarith [hgint, hkint]
+  have hgkJ : PiecewiseConstantOn.integ (g - k) J =
+      PiecewiseConstantOn.integ g J - PiecewiseConstantOn.integ k J :=
+    PiecewiseConstantOn.integ_sub hgpcJ hkpcJ
+  linarith [hupJ, hlowJ, hle, hgkI, hgkJ]
 
 /-- A further variant of Theorem 11.4.1(h) that will be useful in later sections. -/
 theorem IntegrableOn.eq {I J: BoundedInterval} (hIJ: J ⊆ I)
