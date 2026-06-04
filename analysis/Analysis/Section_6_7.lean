@@ -26,6 +26,86 @@ namespace Chapter6
 
 open Sequence Real
 
+private lemma ratPow_continuous_gt_one {x α:ℝ} (hx: x > 1) {q: ℕ → ℚ}
+ (hq: ((fun n ↦ (q n:ℝ)):Sequence).TendsTo α) :
+ ((fun n ↦ x^(q n:ℝ)):Sequence).Convergent := by
+  have hx0 : x > 0 := by linarith
+  choose M hM hbound using bounded_of_convergent ⟨ α, hq ⟩
+  have h : x > 1 := hx
+  rw [←Cauchy_iff_convergent]
+  intro ε hε
+  choose K hK hclose using lim_of_roots hx0 (ε*x^(-M)) (by positivity)
+  choose N hN hq using IsCauchy.convergent ⟨ α, hq ⟩ (1/(K+1:ℝ)) (by positivity)
+  simp [CloseSeq, dist_eq] at hclose hK hN
+  lift N to ℕ using hN
+  lift K to ℕ using hK
+  specialize hclose K (by simp) (by simp); simp at hclose
+  use N, by simp
+  intro n hn m hm; simp at hn hm
+  specialize hq n (by simp [hn]) m (by simp [hm])
+  simp [Close, hn, hm, dist_eq] at hq ⊢
+  have : 0 ≤ (N:ℤ) := by simp
+  lift n to ℕ using by linarith
+  lift m to ℕ using by linarith
+  simp at hn hm hq ⊢
+  obtain hqq | hqq := le_or_gt (q m) (q n)
+  . replace : x^(q m:ℝ) ≤ x^(q n:ℝ) := by rw [rpow_le_rpow_left_iff h]; norm_cast
+    rw [abs_of_nonneg (by linarith)]
+    calc
+      _ = x^(q m:ℝ) * (x^(q n - q m:ℝ) - 1) := by ring_nf; rw [←rpow_add (by linarith)]; ring_nf
+      _ ≤ x^M * (x^(1/(K+1:ℝ)) - 1) := by
+        gcongr <;> try exact (le_of_lt h)
+        . rw [sub_nonneg]; apply one_le_rpow (le_of_lt h); norm_cast; linarith
+        . specialize hbound m; simp_all [abs_le']
+        grind [abs_le']
+      _ ≤ x^M * (ε * x^(-M)) := by gcongr; grind [abs_le']
+      _ = ε := by rw [mul_comm, mul_assoc, ←rpow_add]; simp; linarith
+  replace : x^(q n:ℝ) ≤ x^(q m:ℝ) := by rw [rpow_le_rpow_left_iff h]; norm_cast; linarith
+  rw [abs_of_nonpos (by linarith)]
+  calc
+    _ = x^(q n:ℝ) * (x^(q m - q n:ℝ) - 1) := by ring_nf; rw [←rpow_add]; ring_nf; positivity
+    _ ≤ x^M * (x^(1/(K+1:ℝ)) - 1) := by
+      gcongr <;> try exact (le_of_lt h)
+      . rw [sub_nonneg]; apply one_le_rpow (le_of_lt h); norm_cast; linarith
+      . specialize hbound n; simp_all [abs_le']
+      grind [abs_le']
+    _ ≤ x^M * (ε * x^(-M)) := by gcongr; simp_all [abs_le']
+    _ = ε := by rw [mul_comm, mul_assoc, ←rpow_add]; simp; positivity
+
+private lemma ratPow_continuous_lt_one {x α:ℝ} (hx: x > 0) (h: x < 1) {q: ℕ → ℚ}
+ (hq: ((fun n ↦ (q n:ℝ)):Sequence).TendsTo α) :
+ ((fun n ↦ x^(q n:ℝ)):Sequence).Convergent := by
+  have hinv : (1/x) > 1 := by rw [gt_iff_lt, lt_div_iff₀ hx]; linarith
+  have hinv0 : (1/x) > 0 := by positivity
+  set b : Sequence := ((fun n ↦ (1/x)^(q n:ℝ)):Sequence) with hb
+  have hconv : b.Convergent := ratPow_continuous_gt_one hinv hq
+  choose M hM hbound using bounded_of_convergent ⟨ α, hq ⟩
+  have hlb : ∀ n:ℕ, b n ≥ (1/x)^(-M:ℝ) := by
+    intro n
+    rw [hb]; simp only [Sequence.instCoeFun, Sequence.ofNatFun]
+    rw [if_pos (by positivity)]
+    apply Real.rpow_le_rpow_of_exponent_le (le_of_lt hinv)
+    specialize hbound n; simp only [Sequence.instCoeFun, Sequence.ofNatFun] at hbound
+    rw [if_pos (by positivity)] at hbound; rw [abs_le] at hbound; linarith [hbound.1]
+  have hlb0 : (1/x)^(-M:ℝ) > 0 := by positivity
+  have hLpos : lim b > 0 := by
+    have htend := lim_def hconv
+    rw [Sequence.tendsTo_iff] at htend
+    by_contra hle; push_neg at hle
+    obtain ⟨N, hN⟩ := htend ((1/x)^(-M:ℝ)/2) (by linarith)
+    have hbn := hN (max N 0) (le_max_left _ _)
+    have hge := hlb (max N 0).toNat
+    rw [abs_le] at hbn
+    have : (b (max N 0)) = b ((max N 0).toNat) := by
+      rw [Int.toNat_of_nonneg (le_max_right _ _)]
+    rw [this] at hbn
+    linarith [hbn.2, hge]
+  have heq : ((fun n ↦ x^(q n:ℝ)):Sequence) = b⁻¹ := by
+    rw [hb, inv_coe]; rcongr n
+    rw [one_div, inv_rpow (le_of_lt hx), inv_inv]
+  rw [heq]
+  exact (lim_inv hconv (ne_of_gt hLpos)).1
+
 /-- Lemma 6.7.1 (Continuity of exponentiation) -/
 lemma ratPow_continuous {x α:ℝ} (hx: x > 0) {q: ℕ → ℚ}
  (hq: ((fun n ↦ (q n:ℝ)):Sequence).TendsTo α) :
@@ -33,7 +113,7 @@ lemma ratPow_continuous {x α:ℝ} (hx: x > 0) {q: ℕ → ℚ}
   -- This proof is rearranged slightly from the original text.
   choose M hM hbound using bounded_of_convergent ⟨ α, hq ⟩
   obtain h | rfl | h := lt_trichotomy x 1
-  . sorry
+  . exact ratPow_continuous_lt_one hx h hq
   . simp; exact ⟨ 1, lim_of_const 1 ⟩
   have h': 1 ≤ x := by linarith
   rw [←Cauchy_iff_convergent]
@@ -111,7 +191,15 @@ lemma ratPow_lim_uniq {x α:ℝ} (hx: x > 0) {q q': ℕ → ℚ}
   specialize hr n (by simp [hn])
   simp [Close, hn, abs_le'] at hr
   obtain h | rfl | h := lt_trichotomy x 1
-  . sorry
+  . have hrval : (r n.toNat:ℝ) = (q n.toNat:ℝ) - (q' n.toNat:ℝ) := by simp [r]
+    have hupper : x ^ (r n.toNat:ℝ) ≤ (x^(K + 1:ℝ)⁻¹)⁻¹ := by
+      rw [←rpow_neg (by linarith)]
+      apply (rpow_le_rpow_left_iff_of_base_lt_one hx h).mpr
+      rw [hrval]; linarith [hr.2]
+    have hlower : x^(K + 1:ℝ)⁻¹ ≤ x ^ (r n.toNat:ℝ) := by
+      apply (rpow_le_rpow_left_iff_of_base_lt_one hx h).mpr
+      rw [hrval]; linarith [hr.1]
+    split_ands <;> linarith [h3.2, h4.1]
   . simp; linarith
   have h5 : x ^ (r n.toNat:ℝ) ≤ x^(K + 1:ℝ)⁻¹ := by gcongr; linarith; simp_all [r]
   have h6 : (x^(K + 1:ℝ)⁻¹)⁻¹ ≤ x ^ (r n.toNat:ℝ) := by
@@ -179,9 +267,32 @@ theorem Real.ratPow_add {x:ℝ} (hx: x > 0) (q r:ℝ) : rpow x (q+r) = rpow x q 
   rcongr n; rw [←rpow_add]; simp; linarith
 
 
+private theorem tendsto_bridge (a: ℕ → ℝ) (L:ℝ) :
+    (a:Sequence).TendsTo L ↔ Filter.atTop.Tendsto a (nhds L) := by
+  rw [Metric.tendsto_atTop, Sequence.tendsTo_iff]
+  constructor <;> intro h ε hε
+  . have ⟨ N, hN ⟩ := h _ (half_pos hε); use N.toNat; intro n hn
+    specialize hN n (Int.toNat_le.mp hn); simp at hN
+    rw [Real.dist_eq]; linarith
+  have ⟨ N, hN ⟩ := h ε hε; use N; intro n hn
+  have hpos : n ≥ 0 := by grind
+  rw [ge_iff_le, ←Int.le_toNat hpos] at hn
+  simp [hpos, ←Real.dist_eq, le_of_lt (hN n.toNat hn)]
+
+private theorem Real.rpow_eq_rpow' {x:ℝ} (hx: x > 0) (α:ℝ) : rpow x α = x^α := by
+  obtain ⟨q, hq⟩ := eq_lim_of_rat α
+  rw [rpow_eq_lim_ratPow hx hq]
+  have htends : ((fun n ↦ x^(q n:ℝ)):Sequence).TendsTo (x^α) := by
+    rw [tendsto_bridge]
+    have hqα : Filter.atTop.Tendsto (fun n ↦ (q n:ℝ)) (nhds α) :=
+      (tendsto_bridge _ _).mp hq
+    exact (Real.continuousAt_const_rpow (ne_of_gt hx)).tendsto.comp hqα
+  exact (Sequence.lim_eq.mp htends).2
+
 /-- Proposition 6.7.3(b) / Exercise 6.7.1 -/
 theorem Real.ratPow_ratPow {x:ℝ} (hx: x > 0) (q r:ℝ) : rpow (rpow x q) r = rpow x (q*r) := by
-  sorry
+  have hpos : rpow x q > 0 := by rw [rpow_eq_rpow' hx]; positivity
+  rw [rpow_eq_rpow' hpos, rpow_eq_rpow' hx, rpow_eq_rpow' hx, ← Real.rpow_mul hx.le]
 
 /-- Proposition 6.7.3(c) / Exercise 6.7.1 -/
 theorem Real.ratPow_neg {x:ℝ} (hx: x > 0) (q:ℝ) : rpow x (-q) = 1 / rpow x q := by
