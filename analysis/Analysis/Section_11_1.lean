@@ -91,11 +91,65 @@ theorem Bornology.IsBounded.of_boundedInterval (I: BoundedInterval) : Bornology.
   | Ico a b => rw [BoundedInterval.set_Ico]; exact Metric.isBounded_Ico a b
 
 theorem BoundedInterval.ordConnected_iff (X:Set ℝ) : Bornology.IsBounded X ∧ X.OrdConnected ↔ ∃ I: BoundedInterval, X = I := by
-  sorry
+  constructor
+  · rintro ⟨hbdd, hconn⟩
+    rcases X.eq_empty_or_nonempty with rfl | hne
+    · exact ⟨Ioo 0 0, by rw [set_Ioo, Set.Ioo_self]⟩
+    · have hbb : BddBelow X := hbdd.bddBelow
+      have hba : BddAbove X := hbdd.bddAbove
+      have hsub : ∀ x ∈ X, sInf X ≤ x ∧ x ≤ sSup X := fun x hx => ⟨csInf_le hbb hx, le_csSup hba hx⟩
+      have hmid : ∀ x, sInf X < x → x < sSup X → x ∈ X := by
+        intro x hx1 hx2
+        obtain ⟨y, hy, hyx⟩ := exists_lt_of_csInf_lt hne hx1
+        obtain ⟨z, hz, hxz⟩ := exists_lt_of_lt_csSup hne hx2
+        exact hconn.out hy hz ⟨le_of_lt hyx, le_of_lt hxz⟩
+      by_cases haX : sInf X ∈ X <;> by_cases hbX : sSup X ∈ X
+      · refine ⟨Icc (sInf X) (sSup X), ?_⟩
+        rw [set_Icc]; ext x; simp only [Set.mem_Icc]
+        refine ⟨hsub x, ?_⟩
+        rintro ⟨h1, h2⟩
+        rcases h1.lt_or_eq with h1' | h1'
+        · rcases h2.lt_or_eq with h2' | h2'
+          · exact hmid x h1' h2'
+          · rw [h2']; exact hbX
+        · rw [← h1']; exact haX
+      · refine ⟨Ico (sInf X) (sSup X), ?_⟩
+        rw [set_Ico]; ext x; simp only [Set.mem_Ico]
+        constructor
+        · intro hx
+          exact ⟨(hsub x hx).1, lt_of_le_of_ne (hsub x hx).2 (fun h => hbX (h ▸ hx))⟩
+        · rintro ⟨h1, h2⟩
+          rcases h1.lt_or_eq with h1' | h1'
+          · exact hmid x h1' h2
+          · rw [← h1']; exact haX
+      · refine ⟨Ioc (sInf X) (sSup X), ?_⟩
+        rw [set_Ioc]; ext x; simp only [Set.mem_Ioc]
+        constructor
+        · intro hx
+          exact ⟨lt_of_le_of_ne (hsub x hx).1 (fun h => haX (h ▸ hx)), (hsub x hx).2⟩
+        · rintro ⟨h1, h2⟩
+          rcases h2.lt_or_eq with h2' | h2'
+          · exact hmid x h1 h2'
+          · rw [h2']; exact hbX
+      · refine ⟨Ioo (sInf X) (sSup X), ?_⟩
+        rw [set_Ioo]; ext x; simp only [Set.mem_Ioo]
+        constructor
+        · intro hx
+          exact ⟨lt_of_le_of_ne (hsub x hx).1 (fun h => haX (h ▸ hx)),
+                 lt_of_le_of_ne (hsub x hx).2 (fun h => hbX (h ▸ hx))⟩
+        · rintro ⟨h1, h2⟩; exact hmid x h1 h2
+  · rintro ⟨I, rfl⟩
+    cases I with
+    | Icc a b => exact ⟨Metric.isBounded_Icc a b, Set.ordConnected_Icc⟩
+    | Ico a b => exact ⟨Metric.isBounded_Ico a b, Set.ordConnected_Ico⟩
+    | Ioc a b => exact ⟨Metric.isBounded_Ioc a b, Set.ordConnected_Ioc⟩
+    | Ioo a b => exact ⟨Metric.isBounded_Ioo a b, Set.ordConnected_Ioo⟩
 
 /-- Corollary 11.1.6 / Exercise 11.1.2 -/
 theorem BoundedInterval.inter (I J: BoundedInterval) : ∃ K : BoundedInterval, (I:Set ℝ) ∩ (J:Set ℝ) = (K:Set ℝ) := by
-  sorry
+  obtain ⟨hIb, hIc⟩ := (ordConnected_iff (I:Set ℝ)).mpr ⟨I, rfl⟩
+  obtain ⟨hJb, hJc⟩ := (ordConnected_iff (J:Set ℝ)).mpr ⟨J, rfl⟩
+  exact (ordConnected_iff _).mp ⟨hIb.subset Set.inter_subset_left, hIc.inter hJc⟩
 
 noncomputable instance BoundedInterval.instInter : Inter BoundedInterval where
   inter I J := (inter I J).choose
