@@ -607,6 +607,23 @@ theorem RS_integ_with_sign (f:ℝ → ℝ) (hf: ContinuousOn f (.Icc (-1) 1)) : 
 theorem RS_integ_of_piecewise_const {f:ℝ → ℝ} {I: BoundedInterval} (hf: PiecewiseConstantOn f I)
   {α: ℝ → ℝ} (hα: Monotone α):
   RS_IntegrableOn f I α ∧ RS_integ f I α = PiecewiseConstantOn.RS_integ f I α := by
-  sorry
+  have hbdd : BddOn f I := by
+    obtain ⟨P, hP⟩ := hf
+    by_cases hne : P.intervals.Nonempty
+    · refine ⟨(P.intervals.image (fun K : BoundedInterval => |constant_value_on f (K:Set ℝ)|)).max' (hne.image _), fun x hx => ?_⟩
+      obtain ⟨J, ⟨hJmem, hxJ⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [(hP J hJmem).eq ((BoundedInterval.mem_iff J x).mp hxJ)]
+      apply Finset.le_max'
+      exact Finset.mem_image_of_mem (fun K : BoundedInterval => |constant_value_on f (K:Set ℝ)|) hJmem
+    · refine ⟨0, fun x hx => ?_⟩
+      obtain ⟨J, ⟨hJmem, _⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [Finset.not_nonempty_iff_eq_empty] at hne
+      exact absurd hJmem (hne ▸ Finset.notMem_empty J)
+  have hup := upper_RS_integral_le_integ hbdd (fun x _ => le_refl (f x)) hf hα
+  have hlow := integ_le_lower_RS_integral hbdd (fun x _ => le_refl (f x)) hf hα
+  have hlu := lower_RS_integral_le_upper hbdd hα
+  refine ⟨⟨hbdd, by linarith⟩, ?_⟩
+  show upper_RS_integral f I α = PiecewiseConstantOn.RS_integ f I α
+  linarith
 
 end Chapter11
