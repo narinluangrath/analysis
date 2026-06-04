@@ -313,10 +313,70 @@ example : PiecewiseConstantWith.integ f_11_2_12 P_11_2_12' = 10 := by
   rw [hv1, hv2, hv3, hv4]
   norm_num [BoundedInterval.length, show (∅:BoundedInterval) = Ioo 0 0 from rfl]
 
+/-- Refinement invariance: if `R` refines `Q` and `f` is piecewise constant with `Q`,
+then the integrals agree. -/
+theorem PiecewiseConstantWith.integ_eq_of_le {f:ℝ → ℝ} {I: BoundedInterval} {Q R: Partition I}
+  (hQR: Q ≤ R) (hQ: PiecewiseConstantWith f Q) : integ f Q = integ f R := by
+  classical
+  -- assign each fine piece K of R to a coarse piece g K of Q containing it
+  have hg : ∀ K ∈ R.intervals, ∃ J ∈ Q.intervals, (K:Set ℝ) ⊆ (J:Set ℝ) := by
+    intro K hK; obtain ⟨J, hJ, hsub⟩ := hQR K hK
+    rw [BoundedInterval.subset_iff] at hsub; exact ⟨J, hJ, hsub⟩
+  choose! g hgmem hgsub using hg
+  -- constant value on a (nonempty) fine piece equals that on its coarse piece
+  have hcval : ∀ J ∈ Q.intervals, ∀ K, (K:Set ℝ).Nonempty → (K:Set ℝ) ⊆ (J:Set ℝ) →
+      constant_value_on f (K:Set ℝ) = constant_value_on f (J:Set ℝ) := by
+    intro J hJ K hKne hKJ
+    obtain ⟨x, hx⟩ := hKne
+    have hcK : ConstantOn f (K:Set ℝ) :=
+      ConstantOn.of_const (fun y hy => ConstantOn.eq (hQ J hJ) (hKJ hy))
+    rw [← ConstantOn.eq hcK hx, ← ConstantOn.eq (hQ J hJ) (hKJ hx)]
+  -- each coarse piece's length is the sum of the lengths of its fine pieces
+  have hsumlen : ∀ J ∈ Q.intervals,
+      ∑ K ∈ R.intervals.filter (fun K => g K = J), |K|ₗ = |J|ₗ := by
+    intro J hJ
+    have hex : ∃ QJ : Partition J, QJ.intervals = R.intervals.filter (fun K => g K = J) := by
+      refine ⟨⟨R.intervals.filter (fun K => g K = J), ?_, ?_⟩, rfl⟩
+      · intro x hx
+        have hxI : x ∈ (I:Set ℝ) := by
+          have := Q.contains J hJ; rw [BoundedInterval.subset_iff] at this
+          exact this ((BoundedInterval.mem_iff J x).mp hx)
+        obtain ⟨K, ⟨hKmem, hxK⟩, hKuniq⟩ := R.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)
+        have hgKJ : g K = J := by
+          have hxgK : x ∈ (g K:Set ℝ) := hgsub K hKmem ((BoundedInterval.mem_iff K x).mp hxK)
+          exact (Q.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).unique
+            ⟨hgmem K hKmem, (BoundedInterval.mem_iff (g K) x).mpr hxgK⟩ ⟨hJ, hx⟩
+        refine ⟨K, ⟨Finset.mem_filter.mpr ⟨hKmem, hgKJ⟩, hxK⟩, ?_⟩
+        rintro K' ⟨hK'F, hxK'⟩
+        exact hKuniq K' ⟨(Finset.mem_filter.mp hK'F).1, hxK'⟩
+      · intro K hKF
+        have hKmem := (Finset.mem_filter.mp hKF).1
+        have hgKJ := (Finset.mem_filter.mp hKF).2
+        rw [BoundedInterval.subset_iff]; intro y hy
+        have := hgsub K hKmem hy; rw [hgKJ] at this; exact this
+    obtain ⟨QJ, hQJ⟩ := hex
+    have := Partition.sum_of_length J QJ; rw [hQJ] at this; exact this
+  -- assemble
+  show ∑ J ∈ Q.intervals, _ = ∑ K ∈ R.intervals, _
+  rw [← Finset.sum_fiberwise_of_maps_to hgmem (fun K => constant_value_on f (K:Set ℝ) * |K|ₗ)]
+  apply Finset.sum_congr rfl
+  intro J hJ
+  rw [← hsumlen J hJ, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro K hKF
+  have hKmem := (Finset.mem_filter.mp hKF).1
+  have hgKJ := (Finset.mem_filter.mp hKF).2
+  rcases eq_or_ne (K:Set ℝ) ∅ with hKe | hKne
+  · rw [BoundedInterval.length_of_empty hKe]; ring
+  · have hKsub : (K:Set ℝ) ⊆ (J:Set ℝ) := by
+      have := hgsub K hKmem; rw [hgKJ] at this; exact this
+    rw [hcval J hJ K (Set.nonempty_iff_ne_empty.mpr hKne) hKsub]
+
 /-- Proposition 11.2.13 (Piecewise constant integral is independent of partition) / Exercise 11.2.3 -/
 theorem PiecewiseConstantWith.integ_eq {f:ℝ → ℝ} {I: BoundedInterval} {P P': Partition I}
   (hP: PiecewiseConstantWith f P) (hP': PiecewiseConstantWith f P') : integ f P = integ f P' := by
-  sorry
+  rw [integ_eq_of_le (BoundedInterval.le_max P P').1 hP,
+      integ_eq_of_le (BoundedInterval.le_max P P').2 hP']
 
 open Classical in
 /-- Definition 11.2.14 (Piecewise constant integral II)  -/
