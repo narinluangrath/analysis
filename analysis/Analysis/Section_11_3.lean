@@ -134,7 +134,24 @@ noncomputable abbrev IntegrableOn (f:ℝ → ℝ) (I: BoundedInterval) : Prop :=
 /-- Lemma 11.3.7 / Exercise 11.3.3 -/
 theorem integ_of_piecewise_const {f:ℝ → ℝ} {I: BoundedInterval} (hf: PiecewiseConstantOn f I) :
   IntegrableOn f I ∧ integ f I = hf.integ' := by
-  sorry
+  have hbdd : BddOn f I := by
+    obtain ⟨P, hP⟩ := hf
+    by_cases hne : P.intervals.Nonempty
+    · refine ⟨(P.intervals.image (fun K : BoundedInterval => |constant_value_on f (K:Set ℝ)|)).max' (hne.image _), fun x hx => ?_⟩
+      obtain ⟨J, ⟨hJmem, hxJ⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [(hP J hJmem).eq ((BoundedInterval.mem_iff J x).mp hxJ)]
+      apply Finset.le_max'
+      exact Finset.mem_image_of_mem (fun K : BoundedInterval => |constant_value_on f (K:Set ℝ)|) hJmem
+    · refine ⟨0, fun x hx => ?_⟩
+      obtain ⟨J, ⟨hJmem, _⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [Finset.not_nonempty_iff_eq_empty] at hne
+      exact absurd hJmem (hne ▸ Finset.notMem_empty J)
+  have hup := upper_integral_le_integ hbdd (fun x _ => le_refl (f x)) hf
+  have hlow := integ_le_lower_integral hbdd (fun x _ => le_refl (f x)) hf
+  have hlu := lower_integral_le_upper hbdd
+  refine ⟨⟨hbdd, by linarith⟩, ?_⟩
+  show upper_integral f I = hf.integ'
+  linarith
 
 /-- Remark 11.3.8 -/
 theorem integ_on_subsingleton {f:ℝ → ℝ} {I: BoundedInterval} (hI: |I|ₗ = 0) :
