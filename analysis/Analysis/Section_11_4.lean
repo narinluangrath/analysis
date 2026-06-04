@@ -209,12 +209,6 @@ theorem IntegrableOn.of_extend' {I J: BoundedInterval} (hIJ: I ⊆ J)
   integ (fun x ↦ if x ∈ I then f x else 0) J = integ f I := by
   sorry
 
-/-- Theorem 11.4.1 (h) (Laws of integration) / Exercise 11.4.1 -/
-theorem IntegrableOn.join {I J K: BoundedInterval} (hIJK: K.joins I J)
-  {f: ℝ → ℝ} (h: IntegrableOn f K) :
-  IntegrableOn f I ∧ IntegrableOn f J ∧ integ f K = integ f I + integ f J := by
-  sorry
-
 /-- A nonnegative piecewise constant function integrates to no more over a subinterval. -/
 theorem PiecewiseConstantOn.integ_le_of_subset {I J: BoundedInterval} (hJI: J ⊆ I)
     {φ: ℝ → ℝ} (hφ: PiecewiseConstantOn φ I) (hnn: ∀ x ∈ I, 0 ≤ φ x) :
@@ -354,6 +348,87 @@ theorem IntegrableOn.mono' {I J: BoundedInterval} (hIJ: J ⊆ I)
       PiecewiseConstantOn.integ g J - PiecewiseConstantOn.integ k J :=
     PiecewiseConstantOn.integ_sub hgpcJ hkpcJ
   linarith [hupJ, hlowJ, hle, hgkI, hgkJ]
+
+open Classical in
+/-- Theorem 11.4.1 (h) (Laws of integration) / Exercise 11.4.1 -/
+theorem IntegrableOn.join {I J K: BoundedInterval} (hIJK: K.joins I J)
+  {f: ℝ → ℝ} (h: IntegrableOn f K) :
+  IntegrableOn f I ∧ IntegrableOn f J ∧ integ f K = integ f I + integ f J := by
+  have hIK : I ⊆ K := by
+    rw [BoundedInterval.subset_iff, hIJK.2.1]; exact Set.subset_union_left
+  have hJK : J ⊆ K := by
+    rw [BoundedInterval.subset_iff, hIJK.2.1]; exact Set.subset_union_right
+  have hI : IntegrableOn f I := h.mono' hIK
+  have hJ : IntegrableOn f J := h.mono' hJK
+  refine ⟨hI, hJ, ?_⟩
+  have hfuK : integ f K = upper_integral f K := rfl
+  have hfuI : integ f I = upper_integral f I := rfl
+  have hfuJ : integ f J = upper_integral f J := rfl
+  -- membership in K splits into I or J
+  have hmemK : ∀ x ∈ (K:Set ℝ), x ∈ (I:Set ℝ) ∨ x ∈ (J:Set ℝ) := by
+    intro x hx; rw [hIJK.2.1] at hx; exact hx
+  have hdisj : ∀ x ∈ (J:Set ℝ), x ∉ (I:Set ℝ) := by
+    intro x hxJ hxI
+    have : x ∈ (I:Set ℝ) ∩ (J:Set ℝ) := ⟨hxI, hxJ⟩
+    rw [hIJK.1] at this; exact this
+  -- upper: integ f K ≤ integ f I + integ f J
+  have hup : integ f K ≤ integ f I + integ f J := by
+    apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨gI, hgImaj, hgIpc, hgIint⟩ := lt_of_gt_upper_integral hI.1 (X := integ f I + ε/2)
+      (by rw [hfuI]; linarith)
+    obtain ⟨gJ, hgJmaj, hgJpc, hgJint⟩ := lt_of_gt_upper_integral hJ.1 (X := integ f J + ε/2)
+      (by rw [hfuJ]; linarith)
+    set g := fun x => if x ∈ (I:Set ℝ) then gI x else gJ x with hgdef
+    have hgI_eq : ∀ x ∈ (I:Set ℝ), g x = gI x := fun x hx => by simp only [hgdef, if_pos hx]
+    have hgJ_eq : ∀ x ∈ (J:Set ℝ), g x = gJ x := fun x hx => by
+      simp only [hgdef, if_neg (hdisj x hx)]
+    have hgpcI : PiecewiseConstantOn g I := hgIpc.congr' (fun x hx => (hgI_eq x hx).symm)
+    have hgpcJ : PiecewiseConstantOn g J := hgJpc.congr' (fun x hx => (hgJ_eq x hx).symm)
+    have hgpcK : PiecewiseConstantOn g K := (PiecewiseConstantOn.of_join hIJK g).mpr ⟨hgpcI, hgpcJ⟩
+    have hgmaj : MajorizesOn g f K := by
+      intro x hx
+      rcases hmemK x hx with hxI | hxJ
+      · rw [hgI_eq x hxI]; exact hgImaj x hxI
+      · rw [hgJ_eq x hxJ]; exact hgJmaj x hxJ
+    have hKle := upper_integral_le_integ h.1 hgmaj hgpcK
+    have hsplit := PiecewiseConstantOn.integ_of_join hIJK hgpcK
+    have hcgI : PiecewiseConstantOn.integ g I = PiecewiseConstantOn.integ gI I :=
+      PiecewiseConstantOn.integ_congr hgI_eq
+    have hcgJ : PiecewiseConstantOn.integ g J = PiecewiseConstantOn.integ gJ J :=
+      PiecewiseConstantOn.integ_congr hgJ_eq
+    rw [show hgpcK.integ' = PiecewiseConstantOn.integ g K from rfl] at hKle
+    rw [hsplit, hcgI, hcgJ] at hKle
+    rw [hfuK]; linarith [hgIint, hgJint]
+  -- lower: integ f I + integ f J ≤ integ f K
+  have hlow : integ f I + integ f J ≤ integ f K := by
+    apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨gI, hgImin, hgIpc, hgIint⟩ := gt_of_lt_lower_integral hI.1 (X := integ f I - ε/2)
+      (by rw [hfuI]; linarith [hI.2])
+    obtain ⟨gJ, hgJmin, hgJpc, hgJint⟩ := gt_of_lt_lower_integral hJ.1 (X := integ f J - ε/2)
+      (by rw [hfuJ]; linarith [hJ.2])
+    set g := fun x => if x ∈ (I:Set ℝ) then gI x else gJ x with hgdef
+    have hgI_eq : ∀ x ∈ (I:Set ℝ), g x = gI x := fun x hx => by simp only [hgdef, if_pos hx]
+    have hgJ_eq : ∀ x ∈ (J:Set ℝ), g x = gJ x := fun x hx => by
+      simp only [hgdef, if_neg (hdisj x hx)]
+    have hgpcI : PiecewiseConstantOn g I := hgIpc.congr' (fun x hx => (hgI_eq x hx).symm)
+    have hgpcJ : PiecewiseConstantOn g J := hgJpc.congr' (fun x hx => (hgJ_eq x hx).symm)
+    have hgpcK : PiecewiseConstantOn g K := (PiecewiseConstantOn.of_join hIJK g).mpr ⟨hgpcI, hgpcJ⟩
+    have hgmin : MinorizesOn g f K := by
+      intro x hx
+      rcases hmemK x hx with hxI | hxJ
+      · rw [hgI_eq x hxI]; exact hgImin x hxI
+      · rw [hgJ_eq x hxJ]; exact hgJmin x hxJ
+    have hKle := integ_le_lower_integral h.1 hgmin hgpcK
+    have hsplit := PiecewiseConstantOn.integ_of_join hIJK hgpcK
+    have hcgI : PiecewiseConstantOn.integ g I = PiecewiseConstantOn.integ gI I :=
+      PiecewiseConstantOn.integ_congr hgI_eq
+    have hcgJ : PiecewiseConstantOn.integ g J = PiecewiseConstantOn.integ gJ J :=
+      PiecewiseConstantOn.integ_congr hgJ_eq
+    rw [show hgpcK.integ' = PiecewiseConstantOn.integ g K from rfl] at hKle
+    rw [hsplit, hcgI, hcgJ] at hKle
+    have hluK : lower_integral f K ≤ upper_integral f K := lower_integral_le_upper h.1
+    rw [hfuK]; linarith [hgIint, hgJint]
+  linarith [hup, hlow]
 
 /-- A further variant of Theorem 11.4.1(h) that will be useful in later sections. -/
 theorem IntegrableOn.eq {I J: BoundedInterval} (hIJ: J ⊆ I)
