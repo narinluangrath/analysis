@@ -247,10 +247,205 @@ theorem BoundedInterval.join_Ioo_Icc' {a b c:ℝ} (hab: a < b) (hbc: b ≤ c) : 
 theorem BoundedInterval.join_Ioo_Ico' {a b c:ℝ} (hab: a < b) (hbc: b ≤ c) : (Ioo a c).joins' (Ioo a b) (Ico b c) := ⟨ join_Ioo_Ico hab hbc,
   by simp [α_length, show a < b by grind, show b ≤ c by grind, show a < c by grind] ⟩
 
+section
+open Classical
+open Classical in
+private noncomputable def Lend (α:ℝ→ℝ) (I:BoundedInterval) : ℝ := if I.a ∈ (I:Set ℝ) then left_lim α I.a else right_lim α I.a
+open Classical in
+private noncomputable def Rend (α:ℝ→ℝ) (I:BoundedInterval) : ℝ := if I.b ∈ (I:Set ℝ) then right_lim α I.b else left_lim α I.b
+private theorem αlen_eq {α:ℝ→ℝ} {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) : α[I]ₗ = Rend α I - Lend α I := by
+  cases I with
+  | Icc a b => simp only [set_Icc] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Icc] at hx
+               have hab : a ≤ b := le_trans hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Icc, hab, le_refl]
+  | Ico a b => simp only [set_Ico] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Ico] at hx
+               have hab : a < b := lt_of_le_of_lt hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Ico, hab.le, hab, le_refl]
+  | Ioc a b => simp only [set_Ioc] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Ioc] at hx
+               have hab : a < b := lt_of_lt_of_le hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Ioc, hab.le, hab, le_refl]
+  | Ioo a b => simp only [set_Ioo] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Ioo] at hx
+               have hab : a < b := lt_trans hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Ioo, hab, le_refl, not_lt, le_of_lt]
+private theorem αl_csInf_eq_a {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) : sInf (I:Set ℝ) = I.a := by
+  cases I with
+  | Icc a b => simp only [set_Icc] at h ⊢; exact csInf_Icc (Set.nonempty_Icc.mp h)
+  | Ico a b => simp only [set_Ico] at h ⊢; exact csInf_Ico (Set.nonempty_Ico.mp h)
+  | Ioc a b => simp only [set_Ioc] at h ⊢; exact csInf_Ioc (Set.nonempty_Ioc.mp h)
+  | Ioo a b => simp only [set_Ioo] at h ⊢; exact csInf_Ioo (Set.nonempty_Ioo.mp h)
+private theorem αl_csSup_eq_b {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) : sSup (I:Set ℝ) = I.b := by
+  cases I with
+  | Icc a b => simp only [set_Icc] at h ⊢; exact csSup_Icc (Set.nonempty_Icc.mp h)
+  | Ico a b => simp only [set_Ico] at h ⊢; exact csSup_Ico (Set.nonempty_Ico.mp h)
+  | Ioc a b => simp only [set_Ioc] at h ⊢; exact csSup_Ioc (Set.nonempty_Ioc.mp h)
+  | Ioo a b => simp only [set_Ioo] at h ⊢; exact csSup_Ioo (Set.nonempty_Ioo.mp h)
+private theorem αl_ab_le {I:BoundedInterval} (h:(I:Set ℝ).Nonempty) : I.a ≤ I.b := by
+  obtain ⟨x,hx⟩ := h; have := BoundedInterval.subset_Icc I; rw [subset_iff,set_Icc] at this
+  have := this hx; rw [Set.mem_Icc] at this; linarith
+private theorem αl_ge_a {I:BoundedInterval} {x:ℝ} (hx: x ∈ (I:Set ℝ)) : I.a ≤ x := by
+  have := BoundedInterval.subset_Icc I; rw [subset_iff,set_Icc] at this; have := this hx; rw [Set.mem_Icc] at this; exact this.1
+private theorem αl_le_b {I:BoundedInterval} {x:ℝ} (hx: x ∈ (I:Set ℝ)) : x ≤ I.b := by
+  have := BoundedInterval.subset_Icc I; rw [subset_iff,set_Icc] at this; have := this hx; rw [Set.mem_Icc] at this; exact this.2
+private theorem αl_len_eq {I:BoundedInterval} (h:(I:Set ℝ).Nonempty) : |I|ₗ = I.b - I.a := by
+  simp only [BoundedInterval.length]; exact max_eq_left (by linarith [αl_ab_le h])
+private theorem αl_eq_of_set_eq {K K':BoundedInterval} (h: (K:Set ℝ)=(K':Set ℝ)) (α) : α[K]ₗ = α[K']ₗ := by
+  rcases eq_or_ne (K:Set ℝ) ∅ with he | hne
+  · rw [α_length_of_empty α he, α_length_of_empty α (h ▸ he)]
+  · have hne' : (K:Set ℝ).Nonempty := Set.nonempty_iff_ne_empty.mpr hne
+    have hne'' : (K':Set ℝ).Nonempty := h ▸ hne'
+    rw [αlen_eq hne', αlen_eq hne'']
+    have ha : K.a = K'.a := by rw [← αl_csInf_eq_a hne', ← αl_csInf_eq_a hne'', h]
+    have hb : K.b = K'.b := by rw [← αl_csSup_eq_b hne', ← αl_csSup_eq_b hne'', h]
+    simp only [Rend, Lend, ha, hb, h]
+private theorem αl_core_mem {I:BoundedInterval} {x:ℝ} (h1: I.a < x) (h2: x < I.b) : x ∈ (I:Set ℝ) := by
+  have := BoundedInterval.Ioo_subset I; rw [subset_iff, set_Ioo] at this; exact this ⟨h1,h2⟩
+private theorem αl_pt_mem {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) (hab: I.a = I.b) : I.a ∈ (I:Set ℝ) := by
+  obtain ⟨x, hx⟩ := h
+  have hxa : x = I.a := le_antisymm (by rw [hab]; exact αl_le_b hx) (αl_ge_a hx)
+  rwa [hxa] at hx
+private theorem αl_sep {I J:BoundedInterval} (hI:(I:Set ℝ).Nonempty)(hJ:(J:Set ℝ).Nonempty)
+    (hd:(I:Set ℝ)∩(J:Set ℝ)=∅) : I.b ≤ J.a ∨ J.b ≤ I.a := by
+  by_contra hcon; push_neg at hcon; obtain ⟨h1, h2⟩ := hcon
+  rw [Set.eq_empty_iff_forall_notMem] at hd
+  rcases eq_or_lt_of_le (αl_ab_le hI) with hIpt | hIlt
+  · exact hd I.a ⟨αl_pt_mem hI hIpt, αl_core_mem (I:=J) (x:=I.a) (by rw [hIpt]; exact h1) h2⟩
+  rcases eq_or_lt_of_le (αl_ab_le hJ) with hJpt | hJlt
+  · exact hd J.a ⟨αl_core_mem (I:=I) (x:=J.a) (by rw [hJpt]; exact h2) h1, αl_pt_mem hJ hJpt⟩
+  · have hca : I.a ≤ max I.a J.a := le_max_left _ _
+    have hcb : J.a ≤ max I.a J.a := le_max_right _ _
+    have hdb : min I.b J.b ≤ I.b := min_le_left _ _
+    have hdb' : min I.b J.b ≤ J.b := min_le_right _ _
+    have hcd : max I.a J.a < min I.b J.b := by
+      simp only [max_lt_iff, lt_min_iff]; refine ⟨⟨?_, ?_⟩, ?_, ?_⟩ <;> assumption
+    have hp1 : max I.a J.a < (max I.a J.a + min I.b J.b)/2 := by linarith
+    have hp2 : (max I.a J.a + min I.b J.b)/2 < min I.b J.b := by linarith
+    exact hd ((max I.a J.a + min I.b J.b)/2)
+      ⟨αl_core_mem (lt_of_le_of_lt hca hp1) (lt_of_lt_of_le hp2 hdb),
+       αl_core_mem (lt_of_le_of_lt hcb hp1) (lt_of_lt_of_le hp2 hdb')⟩
+private theorem αl_ordConn (I:BoundedInterval) : (I:Set ℝ).OrdConnected := by
+  cases I with
+  | Ioo a b => rw [set_Ioo]; exact Set.ordConnected_Ioo
+  | Icc a b => rw [set_Icc]; exact Set.ordConnected_Icc
+  | Ioc a b => rw [set_Ioc]; exact Set.ordConnected_Ioc
+  | Ico a b => rw [set_Ico]; exact Set.ordConnected_Ico
+private theorem joins_α_aux {K I J:BoundedInterval} (α:ℝ→ℝ)
+    (hI:(I:Set ℝ).Nonempty)(hJ:(J:Set ℝ).Nonempty)(hsep: I.b ≤ J.a)
+    (hd:(I:Set ℝ)∩(J:Set ℝ)=∅)(hc:(K:Set ℝ)=(I:Set ℝ)∪(J:Set ℝ))
+    (hlen: |K|ₗ = |I|ₗ + |J|ₗ) : α[K]ₗ = α[I]ₗ + α[J]ₗ := by
+  have hK : (K:Set ℝ).Nonempty := by rw [hc]; obtain ⟨x,hx⟩ := hI; exact ⟨x, Or.inl hx⟩
+  have hKbdd : BddBelow (K:Set ℝ) := (Bornology.IsBounded.of_boundedInterval K).bddBelow
+  have hKbdda : BddAbove (K:Set ℝ) := (Bornology.IsBounded.of_boundedInterval K).bddAbove
+  have hIsubK : (I:Set ℝ) ⊆ (K:Set ℝ) := by rw [hc]; exact Set.subset_union_left
+  have hJsubK : (J:Set ℝ) ⊆ (K:Set ℝ) := by rw [hc]; exact Set.subset_union_right
+  have hKa : K.a = I.a := by
+    rw [← αl_csInf_eq_a hK]; apply le_antisymm
+    · rw [← αl_csInf_eq_a hI]; exact csInf_le_csInf hKbdd hI hIsubK
+    · apply le_csInf hK; intro x hx; rw [hc] at hx
+      rcases hx with h | h
+      · exact αl_ge_a h
+      · exact le_trans (le_trans (αl_ab_le hI) hsep) (αl_ge_a h)
+  have hKb : K.b = J.b := by
+    rw [← αl_csSup_eq_b hK]; apply le_antisymm
+    · apply csSup_le hK; intro x hx; rw [hc] at hx
+      rcases hx with h | h
+      · exact le_trans (αl_le_b h) (le_trans hsep (αl_ab_le hJ))
+      · exact αl_le_b h
+    · rw [← αl_csSup_eq_b hJ]; exact csSup_le_csSup hKbdda hJ hJsubK
+  have hmid : I.b = J.a := by
+    have h1 := αl_len_eq hI; have h2 := αl_len_eq hJ; have h3 := αl_len_eq hK
+    rw [h1, h2, h3, hKa, hKb] at hlen; linarith
+  have hbK : I.b ∈ (K:Set ℝ) := by
+    obtain ⟨x, hx⟩ := hI; obtain ⟨y, hy⟩ := hJ
+    exact (αl_ordConn K).out' (hIsubK hx) (hJsubK hy)
+      ⟨αl_le_b hx, le_trans (by rw [hmid]) (αl_ge_a hy)⟩
+  have hA : Lend α K = Lend α I := by
+    have hmemA : (I.a ∈ (K:Set ℝ)) ↔ (I.a ∈ (I:Set ℝ)) := by
+      constructor
+      · intro hm; by_contra hni; rw [hc] at hm; rcases hm with h | h
+        · exact hni h
+        · exact hni (αl_pt_mem hI (le_antisymm (αl_ab_le hI) (le_trans hsep (αl_ge_a h))))
+      · intro hm; rw [hc]; exact Or.inl hm
+    unfold Lend; rw [hKa, hmemA]
+  have hB : Rend α K = Rend α J := by
+    have hmemB : (J.b ∈ (K:Set ℝ)) ↔ (J.b ∈ (J:Set ℝ)) := by
+      constructor
+      · intro hm; rw [hc] at hm; rcases hm with h | h
+        · have hbb : J.a = J.b := le_antisymm (αl_ab_le hJ) (le_trans (αl_le_b h) hsep)
+          rw [← hbb]; exact αl_pt_mem hJ hbb
+        · exact h
+      · intro hm; rw [hc]; exact Or.inr hm
+    unfold Rend; rw [hKb, hmemB]
+  have hC : Rend α I = Lend α J := by
+    unfold Rend Lend
+    by_cases hbI : I.b ∈ (I:Set ℝ)
+    · rw [if_pos hbI]
+      have hJa : J.a ∉ (J:Set ℝ) := by
+        rw [← hmid]; intro h
+        have : I.b ∈ (I:Set ℝ) ∩ (J:Set ℝ) := ⟨hbI, h⟩; rw [hd] at this; exact this
+      rw [if_neg hJa, hmid]
+    · rw [if_neg hbI]
+      have hJa : J.a ∈ (J:Set ℝ) := by
+        rw [hc] at hbK; rcases hbK with h | h
+        · exact absurd h hbI
+        · rwa [hmid] at h
+      rw [if_pos hJa, hmid]
+  rw [αlen_eq hK, αlen_eq hI, αlen_eq hJ, hA, hB, hC]; ring
+private theorem joins_α {K I J:BoundedInterval} (hj: K.joins I J) (α:ℝ→ℝ) : α[K]ₗ = α[I]ₗ + α[J]ₗ := by
+  obtain ⟨hd, hc, hl⟩ := hj
+  rcases eq_or_ne (I:Set ℝ) ∅ with hIe | hIne
+  · rw [α_length_of_empty α hIe, zero_add]
+    exact αl_eq_of_set_eq (by rw [hc, hIe, Set.empty_union]) α
+  rcases eq_or_ne (J:Set ℝ) ∅ with hJe | hJne
+  · rw [α_length_of_empty α hJe, add_zero]
+    exact αl_eq_of_set_eq (by rw [hc, hJe, Set.union_empty]) α
+  have hI := Set.nonempty_iff_ne_empty.mpr hIne
+  have hJ := Set.nonempty_iff_ne_empty.mpr hJne
+  rcases αl_sep hI hJ hd with hs | hs
+  · exact joins_α_aux α hI hJ hs hd hc hl
+  · rw [add_comm]
+    exact joins_α_aux α hJ hI hs (by rw [Set.inter_comm]; exact hd)
+      (by rw [Set.union_comm]; exact hc) (by rw [hl]; ring)
+
+end
+
 /-- Theorem 11.8.4 / Exercise 11.8.1 -/
 theorem Partition.sum_of_α_length  {I: BoundedInterval} (P: Partition I) (α: ℝ → ℝ) :
   ∑ J ∈ P.intervals, α[J]ₗ = α[I]ₗ := by
-  sorry
+  generalize hcard : P.intervals.card = n
+  revert I; induction' n with n hn <;> intro I P hcard
+  · rw [Finset.card_eq_zero] at hcard
+    have hIe : (I:Set ℝ) = ∅ := by
+      rw [Set.eq_empty_iff_forall_notMem]; intro x hx
+      obtain ⟨J,⟨hJ,_⟩,_⟩ := P.exists_unique x ((mem_iff I x).mpr hx); rw [hcard] at hJ; simp at hJ
+    rw [hcard, Finset.sum_empty, α_length_of_empty α hIe]
+  · rcases lt_or_ge I.a I.b with hlt | hge
+    · obtain ⟨K, L, P', hK, hjoin, hP'⟩ := P.exists_peel hlt
+      have hαI : α[I]ₗ = α[L]ₗ + α[K]ₗ := joins_α hjoin α
+      have hcardL : P'.intervals.card = n := by rw [hP', Finset.card_erase_of_mem hK]; omega
+      have hLsum := hn P' hcardL
+      rw [← Finset.add_sum_erase _ (fun J => α[J]ₗ) hK, ← hP', hLsum, hαI]; ring
+    · rcases eq_or_ne (I:Set ℝ) ∅ with hIe | hIne
+      · rw [α_length_of_empty α hIe]; apply Finset.sum_eq_zero; intro J hJ
+        have hsub : (J:Set ℝ) ⊆ (I:Set ℝ) := by have := P.contains J hJ; rwa [subset_iff] at this
+        exact α_length_of_empty α (Set.subset_eq_empty hsub hIe)
+      · have hne := Set.nonempty_iff_ne_empty.mpr hIne
+        have hpt : I.a = I.b := le_antisymm (αl_ab_le hne) hge
+        have hIset : (I:Set ℝ) = {I.a} := by
+          apply Set.eq_singleton_iff_unique_mem.mpr
+          exact ⟨αl_pt_mem hne hpt, fun x hx => le_antisymm (le_trans (αl_le_b hx) hge) (αl_ge_a hx)⟩
+        obtain ⟨Js, ⟨hJsmem, hJsa⟩, hJsuniq⟩ := P.exists_unique I.a ((mem_iff I I.a).mpr (αl_pt_mem hne hpt))
+        refine (Finset.sum_eq_single Js ?_ ?_).trans ?_
+        · intro J hJ hne2
+          apply α_length_of_empty
+          rw [Set.eq_empty_iff_forall_notMem]; intro x hx
+          have hxI : x ∈ (I:Set ℝ) := by have := P.contains J hJ; rw [subset_iff] at this; exact this hx
+          rw [hIset, Set.mem_singleton_iff] at hxI; subst hxI
+          exact hne2 (hJsuniq J ⟨hJ, (mem_iff J I.a).mpr hx⟩)
+        · intro h; exact absurd hJsmem h
+        · apply αl_eq_of_set_eq; rw [hIset]
+          apply Set.eq_singleton_iff_unique_mem.mpr
+          refine ⟨(mem_iff Js I.a).mp hJsa, fun x hx => ?_⟩
+          have := P.contains Js hJsmem; rw [subset_iff, hIset] at this; exact this hx
 
 /-- Definition 11.8.5 (Piecewise constant RS integral)-/
 noncomputable abbrev PiecewiseConstantWith.RS_integ (f:ℝ → ℝ) {I: BoundedInterval} (P: Partition I) (α: ℝ → ℝ)   :
