@@ -120,7 +120,37 @@ theorem ContinuousWithinAt.tfae (X:Set ℝ) (f: ℝ → ℝ) {x₀:ℝ} (h : x�
     ∀ a:ℕ → ℝ, (∀ n, a n ∈ X) → Filter.atTop.Tendsto a (nhds x₀) → Filter.atTop.Tendsto (fun n ↦ f (a n)) (nhds (f x₀)),
     ∀ ε > 0, ∃ δ > 0, ∀ x ∈ X, |x-x₀| < δ → |f x - f x₀| < ε
   ].TFAE := by
-  sorry
+  tfae_have 1 → 2 := by
+    intro hc a haX hconv
+    exact hc.tendsto.comp (tendsto_nhdsWithin_of_tendsto_nhds_of_eventually_within a hconv
+      (Filter.Eventually.of_forall haX))
+  tfae_have 2 → 3 := by
+    intro hseq ε hε
+    by_contra hcon; push_neg at hcon
+    choose! a haX haδ hae using fun n : ℕ => hcon ((1:ℝ)/(n+1)) (by positivity)
+    have hconv : Filter.atTop.Tendsto a (nhds x₀) := by
+      rw [Metric.tendsto_atTop]; intro δ hδ
+      obtain ⟨N, hN⟩ := exists_nat_gt (1/δ)
+      refine ⟨N, fun n hn => ?_⟩
+      rw [Real.dist_eq]
+      have h1 : (1:ℝ)/(n+1) < δ := by
+        rw [div_lt_iff₀ (by positivity)]
+        have hNn : (N:ℝ) ≤ n := by exact_mod_cast hn
+        have : (1:ℝ)/δ < n + 1 := by linarith
+        rw [div_lt_iff₀ hδ] at this; linarith
+      linarith [haδ n]
+    have hfa := hseq a haX hconv
+    rw [Metric.tendsto_atTop] at hfa
+    obtain ⟨N, hN⟩ := hfa ε hε
+    have := hN N (le_refl N); rw [Real.dist_eq] at this
+    linarith [hae N]
+  tfae_have 3 → 1 := by
+    intro hδ
+    rw [Metric.continuousWithinAt_iff]
+    intro ε hε; obtain ⟨δ, hδpos, hδx⟩ := hδ ε hε
+    refine ⟨δ, hδpos, fun {x} hx hxd => ?_⟩
+    rw [Real.dist_eq] at hxd ⊢; exact hδx x hx hxd
+  tfae_finish
 
 /-- Remark 9.4.8 --/
 theorem _root_.Filter.Tendsto.comp_of_continuous {X:Set ℝ} {f: ℝ → ℝ} {x₀:ℝ} (h : x₀ ∈ X)
