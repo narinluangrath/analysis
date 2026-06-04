@@ -260,6 +260,29 @@ theorem BoundedInterval.length_of_subsingleton {I: BoundedInterval} : Subsinglet
 theorem BoundedInterval.dist_le_length {I:BoundedInterval} {x y:ℝ} (hx: x ∈ I) (hy: y ∈ I) : |x - y| ≤ |I|ₗ := by
   apply subset_Icc I at hx; apply subset_Icc I at hy; simp_all [mem_iff, abs_le']; grind
 
+theorem BoundedInterval.length_mono {I J: BoundedInterval} (h: (I:Set ℝ) ⊆ (J:Set ℝ)) :
+    |I|ₗ ≤ |J|ₗ := by
+  rcases lt_or_ge 0 (|I|ₗ) with h0 | h0
+  swap
+  · exact le_trans h0 (length_nonneg J)
+  · have hba : (0:ℝ) < I.b - I.a := by
+      simp only [length, lt_max_iff] at h0; rcases h0 with h' | h'
+      · exact h'
+      · exact absurd h' (lt_irrefl 0)
+    have hlen : |I|ₗ = I.b - I.a := by simp only [length]; exact max_eq_left (by linarith)
+    by_contra hcon; push_neg at hcon
+    rw [hlen] at hcon
+    set ε := (I.b - I.a - |J|ₗ)/3 with hεdef
+    have hJnn := length_nonneg J
+    have hε : 0 < ε := by rw [hεdef]; linarith
+    have hsub := Ioo_subset I; rw [subset_iff, set_Ioo] at hsub
+    have hp1 : I.a + ε ∈ (I:Set ℝ) := hsub (by rw [Set.mem_Ioo]; exact ⟨by linarith, by rw [hεdef]; linarith⟩)
+    have hp2 : I.b - ε ∈ (I:Set ℝ) := hsub (by rw [Set.mem_Ioo]; exact ⟨by rw [hεdef]; linarith, by linarith⟩)
+    have hd := dist_le_length (I := J) ((mem_iff J _).mpr (h hp1)) ((mem_iff J _).mpr (h hp2))
+    rw [show I.a + ε - (I.b - ε) = -(I.b - I.a - 2*ε) by ring, abs_neg,
+      abs_of_nonneg (by rw [hεdef]; linarith)] at hd
+    rw [hεdef] at hd; linarith
+
 abbrev BoundedInterval.joins (K I J: BoundedInterval) : Prop := (I:Set ℝ) ∩ (J:Set ℝ) = ∅
   ∧ (K:Set ℝ) = (I:Set ℝ) ∪ (J:Set ℝ) ∧ |K|ₗ = |I|ₗ + |J|ₗ
 
