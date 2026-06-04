@@ -94,7 +94,21 @@ theorem Convergesto.iff_conv {E:Set ℝ} (f: ℝ → ℝ) (L:ℝ) {x₀:ℝ} (h:
   Convergesto E f L x₀ ↔ ∀ a:ℕ → ℝ, (∀ n:ℕ, a n ∈ E) →
   Filter.atTop.Tendsto a (nhds x₀) →
   Filter.atTop.Tendsto (fun n ↦ f (a n)) (nhds L) := by
-  sorry
+  rw [Convergesto.iff, Filter.tendsto_iff_seq_tendsto]
+  constructor
+  · intro H a ha hconv
+    exact H a (tendsto_nhdsWithin_iff.mpr ⟨hconv, Filter.Eventually.of_forall ha⟩)
+  · intro H x hx
+    rw [tendsto_nhdsWithin_iff] at hx
+    obtain ⟨hconv, hev⟩ := hx
+    rw [Filter.eventually_atTop] at hev
+    obtain ⟨N, hN⟩ := hev
+    have hall : ∀ n, x (n + N) ∈ E := fun n => hN (n+N) (by omega)
+    have hconv' : Filter.Tendsto (fun n => x (n + N)) Filter.atTop (nhds x₀) :=
+      hconv.comp (Filter.tendsto_add_atTop_nat N)
+    have hres := H (fun n => x (n + N)) hall hconv'
+    rw [show (f ∘ x) = (fun n => f (x n)) from rfl]
+    exact (Filter.tendsto_add_atTop_iff_nat N).mp hres
 
 theorem Convergesto.comp {E:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (h: AdherentPt x₀ E) (hf: Convergesto E f L x₀) {a:ℕ → ℝ} (ha: ∀ n:ℕ, a n ∈ E) (hconv: Filter.atTop.Tendsto a (nhds x₀)) :
   Filter.atTop.Tendsto (fun n ↦ f (a n)) (nhds L) := by
