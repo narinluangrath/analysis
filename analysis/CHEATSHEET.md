@@ -196,3 +196,29 @@ Key helper proved once and reused: `hgval : ∀ J ∈ P.intervals, ∀ x ∈ ↑
 - **RS_integ_eq (11_8:278) is BLOCKED on `Partition.sum_of_α_length` (11_8:251, also sorry).** sum_of_α_length (`∑_{J∈P} α[J]ₗ = α[I]ₗ`, GENERAL α not just monotone) needs the peel induction (like `sum_of_length`) BUT at the peel step requires `α[I]ₗ = α[L]ₗ + α[K]ₗ` from `I.joins L K` — and unlike `|·|` (which joins gives free via `.2.2`), α-length additivity is NOT part of `joins`; it's the extra `joins'` condition. α_length uses `left_lim`/`right_lim` (def: Icc=right_lim b − left_lim a, Ico=left_lim b − left_lim a, Ioc=right_lim b − right_lim a, Ioo=left_lim b − right_lim a). So a `joins → ∀α, α[K]=α[I]+α[J]` BRIDGE is needed, provable by constructor casework (recover endpoint relations from the joins set-equation, mirror the `join_XX'` lemmas' `simp [α_length, <orderings>]`). This bridge + peel induction = a real multi-part lemma (~80 lines). Once sum_of_α_length is done, RS_integ_eq ports `integ_eq`/`integ_eq_of_le` directly (α-length version). Good dedicated next target.
 - **EMPIRICAL: the `joins → α-additivity` bridge does NOT automate.** Tested `obtain ⟨hd,hc,hl⟩ := h; rw [Set.ext_iff] at hc hd; cases I <;> cases J <;> cases K <;> simp_all [α_length, length, toSet, Set.mem_*] <;> grind` → **deterministic timeout at 200000 heartbeats** (64 cases × lim-arithmetic + grind is too heavy). So `Partition.sum_of_α_length` (11_8:253) and its dependent `RS_integ_eq` (11_8:278) need a HAND-WRITTEN per-case bridge (recover each interval's constructor/endpoints from the abstract set-union `hc`, then `exact (join_XX' …).2 α`). Estimated ~120-150 lines. NOT a loop-iteration task — needs a dedicated focused session. (`Set.eq_comm` is not a lemma; use `Set.ext_iff` directly.)
 - **CONFIRMED BUGGED: f_11_8_6_RS_integ (11_8:267).** `f_11_8_6 = if x<2 then 4 else 2`, P=Ico 1 2 ⊔ Icc 2 3, α=id: RS_integ = 4·|Ico 1 2| + 2·|Icc 2 3| = 4·1 + 2·1 = 6, NOT the claimed 22. Leave it.
+
+## VERIFIED INFRASTRUCTURE toward sum_of_α_length (11_8) — paste-ready, all compile
+The `joins → α-additivity` bridge is best done via an abstract `.a`/`.b` endpoint decomposition (NOT 64-case casework). These lemmas are TESTED-COMPILING (against Section_11_8 import); paste into 11_8 then write the bridge body using them:
+```lean
+open Classical in
+noncomputable def Lend (α:ℝ→ℝ) (I:BoundedInterval) : ℝ := if I.a ∈ (I:Set ℝ) then left_lim α I.a else right_lim α I.a
+open Classical in
+noncomputable def Rend (α:ℝ→ℝ) (I:BoundedInterval) : ℝ := if I.b ∈ (I:Set ℝ) then right_lim α I.b else left_lim α I.b
+theorem α_length_eq {α:ℝ→ℝ} {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) : α[I]ₗ = Rend α I - Lend α I := by
+  cases I with
+  | Icc a b => simp only [set_Icc] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Icc] at hx
+               have hab : a ≤ b := le_trans hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Icc, hab, le_refl]
+  | Ico a b => simp only [set_Ico] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Ico] at hx
+               have hab : a < b := lt_of_le_of_lt hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Ico, hab.le, hab, le_refl]
+  | Ioc a b => simp only [set_Ioc] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Ioc] at hx
+               have hab : a < b := lt_of_lt_of_le hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Ioc, hab.le, hab, le_refl]
+  | Ioo a b => simp only [set_Ioo] at h; obtain ⟨x,hx⟩ := h; rw [Set.mem_Ioo] at hx
+               have hab : a < b := lt_trans hx.1 hx.2
+               simp [α_length, Lend, Rend, BoundedInterval.toSet, Set.mem_Ioo, hab, le_refl, not_lt, le_of_lt]
+-- csInf/csSup endpoints: `exact csInf_Icc (Set.nonempty_Icc.mp h)` etc (lemmas: csInf_Icc/Ico/Ioc/Ioo, csSup_*; NO Real. prefix). cases I; simp only [set_Xxx] at h ⊢; exact cs??_Xxx (Set.nonempty_Xxx.mp h).
+-- ge_a_of_mem / le_b_of_mem: from BoundedInterval.subset_Icc I (rw subset_iff,set_Icc; Set.mem_Icc).
+```
+**BRIDGE BODY — the remaining hard part, with the PITFALL that broke the naive approach:** Orientation by `I.a ≤ J.a` is WRONG when `.a` ties: e.g. `I=Ioo a c, J=Icc a a` (={a}) has `I.a=J.a=a` but J is the LEFT piece (↑K=Ico a c). So Lend telescoping `Lend K = Lend I` FAILS (a∉↑I open, a∈↑J). Must determine the left piece by `sSup↑I ≤ sInf↑J` (i.e. I.b ≤ J.a), not by `.a`. Plan once oriented (I left): from `hlen` (|K|=|I|+|J|, with |·|=.b−.a for nonempty) + `K.a=I.a` (le_antisymm via csInf_le_csInf both ways) + `K.b=J.b` ⟹ derive `I.b = J.a` (shared pt); then 3 facts `Lend K=Lend I`, `Rend K=Rend J`, `Rend I=Lend J` (shared-pt membership dichotomy: m∈↑I XOR m∈↑J since disjoint+covered), close with `α_length_eq` on all three + `ring`. Handle ↑I=∅ / ↑J=∅ first (then ↑K=other, same-set ⟹ same α via α_length_eq+csInf/csSup+membership-transfer). Degenerate single-point pieces (Icc a a) are the edge cases to watch. Est. ~100-120 lines; a focused dedicated-session task. Then sum_of_α_length = port of sum_of_length (11_1) peel-induction using this bridge at the join step; RS_integ_eq = port of integ_eq/integ_eq_of_le with α-length.
