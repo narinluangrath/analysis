@@ -196,18 +196,65 @@ theorem IntegrableOn.const' {I: BoundedInterval} {f:ℝ → ℝ} (hf: ConstantOn
 
 
 open Classical in
+private theorem IntegrableOn.extend_bounds {I J: BoundedInterval} (hIJ: I ⊆ J)
+    {f: ℝ → ℝ} (h: IntegrableOn f I) :
+    BddOn (fun x ↦ if x ∈ I then f x else 0) J ∧
+    upper_integral (fun x ↦ if x ∈ I then f x else 0) J ≤ integ f I ∧
+    integ f I ≤ lower_integral (fun x ↦ if x ∈ I then f x else 0) J := by
+  classical
+  set g : ℝ → ℝ := fun x ↦ if x ∈ I then f x else 0 with hgdef
+  have hbg : BddOn g J := by
+    obtain ⟨M, hM⟩ := h.1
+    refine ⟨max M 0, fun x hx => ?_⟩
+    simp only [hgdef]
+    split_ifs with hxI
+    · exact le_trans (hM x (by rw [BoundedInterval.mem_iff] at hxI; exact hxI)) (le_max_left _ _)
+    · rw [abs_zero]; exact le_max_right _ _
+  have hfuI : integ f I = upper_integral f I := rfl
+  refine ⟨hbg, ?_, ?_⟩
+  · apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨φ, hφmaj, hφpc, hφint⟩ := lt_of_gt_upper_integral h.1 (X := integ f I + ε)
+      (by rw [hfuI]; linarith)
+    have hφepc : PiecewiseConstantOn (fun x => if x ∈ I then φ x else 0) J :=
+      PiecewiseConstantOn.of_extend hIJ hφpc
+    have hφemaj : MajorizesOn (fun x => if x ∈ I then φ x else 0) g J := by
+      intro x hx; simp only [hgdef]; split_ifs with hxI
+      · exact hφmaj x (by rw [BoundedInterval.mem_iff] at hxI; exact hxI)
+      · exact le_refl 0
+    have hle := upper_integral_le_integ hbg hφemaj hφepc
+    rw [show hφepc.integ' = PiecewiseConstantOn.integ (fun x => if x ∈ I then φ x else 0) J from rfl,
+      PiecewiseConstantOn.integ_of_extend hIJ hφpc] at hle
+    linarith [hφint]
+  · apply le_of_forall_pos_le_add; intro ε hε
+    obtain ⟨ψ, hψmin, hψpc, hψint⟩ := gt_of_lt_lower_integral h.1 (X := integ f I - ε)
+      (by rw [hfuI]; linarith [h.2])
+    have hψepc : PiecewiseConstantOn (fun x => if x ∈ I then ψ x else 0) J :=
+      PiecewiseConstantOn.of_extend hIJ hψpc
+    have hψemin : MinorizesOn (fun x => if x ∈ I then ψ x else 0) g J := by
+      intro x hx; simp only [hgdef]; split_ifs with hxI
+      · exact hψmin x (by rw [BoundedInterval.mem_iff] at hxI; exact hxI)
+      · exact le_refl 0
+    have hge := integ_le_lower_integral hbg hψemin hψepc
+    rw [show hψepc.integ' = PiecewiseConstantOn.integ (fun x => if x ∈ I then ψ x else 0) J from rfl,
+      PiecewiseConstantOn.integ_of_extend hIJ hψpc] at hge
+    linarith [hψint]
+
+open Classical in
 /-- Theorem 11.4.1 (g)  / Exercise 11.4.1 -/
 theorem IntegrableOn.of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
   {f: ℝ → ℝ} (h: IntegrableOn f I) :
   IntegrableOn (fun x ↦ if x ∈ I then f x else 0) J := by
-  sorry
+  obtain ⟨hbg, hup, hlow⟩ := IntegrableOn.extend_bounds hIJ h
+  exact ⟨hbg, le_antisymm (lower_integral_le_upper hbg) (by linarith)⟩
 
 open Classical in
 /-- Theorem 11.4.1 (g)  / Exercise 11.4.1 -/
 theorem IntegrableOn.of_extend' {I J: BoundedInterval} (hIJ: I ⊆ J)
   {f: ℝ → ℝ} (h: IntegrableOn f I) :
   integ (fun x ↦ if x ∈ I then f x else 0) J = integ f I := by
-  sorry
+  obtain ⟨hbg, hup, hlow⟩ := IntegrableOn.extend_bounds hIJ h
+  show upper_integral (fun x ↦ if x ∈ I then f x else 0) J = integ f I
+  exact le_antisymm hup (le_trans hlow (lower_integral_le_upper hbg))
 
 /-- A nonnegative piecewise constant function integrates to no more over a subinterval. -/
 theorem PiecewiseConstantOn.integ_le_of_subset {I J: BoundedInterval} (hJI: J ⊆ I)
