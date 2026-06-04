@@ -587,17 +587,17 @@ theorem PiecewiseConstantOn.integ_const' {f:ℝ → ℝ} {I: BoundedInterval} (h
   simp only [PiecewiseConstantWith.integ, Partition.intervals_of_bot, Finset.sum_singleton]
 
 open Classical in
-/-- Theorem 11.2.16 (g) (Laws of integration) / Exercise 11.2.4 -/
-theorem PiecewiseConstantOn.of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
-  {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) :
-  PiecewiseConstantOn (fun x ↦ if x ∈ I then f x else 0) J := by
+/-- The partition construction underlying the extend-by-zero lemmas: extends a partition `P`
+of `I` to a partition of `J` by adjoining the left/right gap intervals, on which the extended
+function vanishes. -/
+private theorem PiecewiseConstantOn.of_extend_aux {I J: BoundedInterval} (hIJ: I ⊆ J)
+    {f: ℝ → ℝ} {P: Partition I} (hP: PiecewiseConstantWith f P) (hIemp: (I:Set ℝ) ≠ ∅) :
+    ∃ (Q : Partition J) (L R : BoundedInterval),
+      PiecewiseConstantWith (fun x ↦ if x ∈ I then f x else 0) Q ∧
+      Q.intervals = insert L (insert R P.intervals) ∧
+      (∀ x ∈ (L:Set ℝ), x ∉ (I:Set ℝ)) ∧ (∀ x ∈ (R:Set ℝ), x ∉ (I:Set ℝ)) := by
   classical
   set g : ℝ → ℝ := fun x ↦ if x ∈ I then f x else 0 with hgdef
-  by_cases hIemp : (I:Set ℝ) = ∅
-  · refine (ConstantOn.of_const' (0:ℝ) (J:Set ℝ)).piecewiseConstantOn.congr' (fun x _ => ?_)
-    show (0:ℝ) = g x
-    rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff, hIemp]; exact Set.notMem_empty x)]
-  obtain ⟨P, hP⟩ := h
   have hIsub : (I:Set ℝ) ⊆ (J:Set ℝ) := by rwa [subset_iff] at hIJ
   have hIcc : (I:Set ℝ) ⊆ Set.Icc I.a I.b := by have := I.subset_Icc; rwa [subset_iff, set_Icc] at this
   have hcoreI : Set.Ioo I.a I.b ⊆ (I:Set ℝ) := by
@@ -641,7 +641,7 @@ theorem PiecewiseConstantOn.of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
     have hpeq : p = I.a := le_antisymm (by linarith) hpa
     have hyeqa : y = I.a := by linarith
     exact hynI (hyeqa ▸ hpeq ▸ hp)
-  refine ⟨⟨insert Lgap (insert Rgap P.intervals), ?_, ?_⟩, ?_⟩
+  refine ⟨⟨insert Lgap (insert Rgap P.intervals), ?_, ?_⟩, Lgap, Rgap, ?_, rfl, ?_, ?_⟩
   · -- exists_unique
     intro x hx
     rw [mem_iff] at hx
@@ -710,13 +710,70 @@ theorem PiecewiseConstantOn.of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
           have := P.contains K hK; rw [subset_iff] at this; exact this hx
         show f x = g x
         rw [hgdef]; simp only [if_pos (show x ∈ I by rw [mem_iff]; exact hxI)]
+  · intro x hx; rw [← hLgap] at hx; exact hx.2.2
+  · intro x hx; rw [← hRgap] at hx; exact hx.2.2
+
+open Classical in
+/-- Theorem 11.2.16 (g) (Laws of integration) / Exercise 11.2.4 -/
+theorem PiecewiseConstantOn.of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
+  {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) :
+  PiecewiseConstantOn (fun x ↦ if x ∈ I then f x else 0) J := by
+  classical
+  by_cases hIemp : (I:Set ℝ) = ∅
+  · refine (ConstantOn.of_const' (0:ℝ) (J:Set ℝ)).piecewiseConstantOn.congr' (fun x _ => ?_)
+    simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff, hIemp]; exact Set.notMem_empty x)]
+  obtain ⟨P, hP⟩ := h
+  obtain ⟨Q, L, R, hpc, _, _, _⟩ := PiecewiseConstantOn.of_extend_aux hIJ hP hIemp
+  exact ⟨Q, hpc⟩
 
 open Classical in
 /-- Theorem 11.2.16 (g) (Laws of integration) / Exercise 11.2.4 -/
 theorem PiecewiseConstantOn.integ_of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
   {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) :
   integ (fun x ↦ if x ∈ I then f x else 0) J = integ f I := by
-  sorry
+  classical
+  set g : ℝ → ℝ := fun x ↦ if x ∈ I then f x else 0 with hgdef
+  by_cases hIemp : (I:Set ℝ) = ∅
+  · have hgJ0 : integ g J = 0 := by
+      rw [integ_congr (g := fun _ => (0:ℝ)) (fun x _ => by
+        rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff, hIemp]; exact Set.notMem_empty x)]),
+        integ_const, zero_mul]
+    have hfI0 : integ f I = 0 := by
+      have hc : ConstantOn f (I:Set ℝ) :=
+        ConstantOn.of_const (c := 0) (fun x hx => absurd hx (by rw [hIemp]; exact Set.notMem_empty x))
+      rw [integ_const' hc, BoundedInterval.length_of_empty hIemp, mul_zero]
+    rw [hgJ0, hfI0]
+  obtain ⟨P, hP⟩ := h
+  obtain ⟨Q, L, R, hpcQ, hQint, hgL, hgR⟩ := PiecewiseConstantOn.of_extend_aux hIJ hP hIemp
+  -- the gap terms vanish
+  have hFzero : ∀ (K:BoundedInterval), (∀ x ∈ (K:Set ℝ), x ∉ (I:Set ℝ)) →
+      constant_value_on g (K:Set ℝ) * |K|ₗ = 0 := by
+    intro K hK
+    rcases eq_or_ne (K:Set ℝ) ∅ with he | hne
+    · rw [BoundedInterval.length_of_empty he, mul_zero]
+    · have : constant_value_on g (K:Set ℝ) = 0 := by
+        apply ConstantOn.const_eq (Set.nonempty_iff_ne_empty.mpr hne) (c := 0)
+        intro x hx; rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff]; exact hK x hx)]
+      rw [this, zero_mul]
+  have key : ∀ (a:BoundedInterval) (s:Finset BoundedInterval),
+      constant_value_on g (a:Set ℝ) * |a|ₗ = 0 →
+      ∑ K ∈ insert a s, constant_value_on g (K:Set ℝ) * |K|ₗ
+        = ∑ K ∈ s, constant_value_on g (K:Set ℝ) * |K|ₗ := by
+    intro a s ha
+    by_cases h : a ∈ s
+    · rw [Finset.insert_eq_self.mpr h]
+    · rw [Finset.sum_insert h, ha, zero_add]
+  rw [integ_def hpcQ, integ_def hP]
+  simp only [PiecewiseConstantWith.integ, hQint]
+  rw [key L _ (hFzero L hgL), key R _ (hFzero R hgR)]
+  apply Finset.sum_congr rfl
+  intro K hK
+  congr 1
+  apply constant_value_on_congr
+  intro x hx
+  have hxI : x ∈ (I:Set ℝ) := by
+    have := P.contains K hK; rw [subset_iff] at this; exact this hx
+  rw [hgdef]; simp only [if_pos (show x ∈ I by rw [mem_iff]; exact hxI)]
 
 /-- Restricting a piecewise constant function to a subinterval. -/
 theorem PiecewiseConstantOn.restrict {K I: BoundedInterval} (hIK: I ⊆ K) {f: ℝ → ℝ}
