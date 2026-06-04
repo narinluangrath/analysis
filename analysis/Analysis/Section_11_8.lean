@@ -467,10 +467,64 @@ theorem PiecewiseConstantWith.RS_integ_eq_integ {f:ℝ → ℝ} {I: BoundedInter
   apply Finset.sum_congr rfl
   intro J hJ; rw [α_len_of_id]
 
+theorem PiecewiseConstantWith.RS_integ_eq_of_le {f:ℝ → ℝ} {I: BoundedInterval} {Q R: Partition I}
+    (hQR: Q ≤ R) (hQ: PiecewiseConstantWith f Q) (α:ℝ → ℝ) : RS_integ f Q α = RS_integ f R α := by
+  classical
+  have hg : ∀ K ∈ R.intervals, ∃ J ∈ Q.intervals, (K:Set ℝ) ⊆ (J:Set ℝ) := by
+    intro K hK; obtain ⟨J, hJ, hsub⟩ := hQR K hK
+    rw [BoundedInterval.subset_iff] at hsub; exact ⟨J, hJ, hsub⟩
+  choose! g hgmem hgsub using hg
+  have hcval : ∀ J ∈ Q.intervals, ∀ K, (K:Set ℝ).Nonempty → (K:Set ℝ) ⊆ (J:Set ℝ) →
+      constant_value_on f (K:Set ℝ) = constant_value_on f (J:Set ℝ) := by
+    intro J hJ K hKne hKJ
+    obtain ⟨x, hx⟩ := hKne
+    have hcK : ConstantOn f (K:Set ℝ) :=
+      ConstantOn.of_const (fun y hy => ConstantOn.eq (hQ J hJ) (hKJ hy))
+    rw [← ConstantOn.eq hcK hx, ← ConstantOn.eq (hQ J hJ) (hKJ hx)]
+  have hsumlen : ∀ J ∈ Q.intervals,
+      ∑ K ∈ R.intervals.filter (fun K => g K = J), α[K]ₗ = α[J]ₗ := by
+    intro J hJ
+    have hex : ∃ QJ : Partition J, QJ.intervals = R.intervals.filter (fun K => g K = J) := by
+      refine ⟨⟨R.intervals.filter (fun K => g K = J), ?_, ?_⟩, rfl⟩
+      · intro x hx
+        have hxI : x ∈ (I:Set ℝ) := by
+          have := Q.contains J hJ; rw [BoundedInterval.subset_iff] at this
+          exact this ((BoundedInterval.mem_iff J x).mp hx)
+        obtain ⟨K, ⟨hKmem, hxK⟩, hKuniq⟩ := R.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)
+        have hgKJ : g K = J := by
+          have hxgK : x ∈ (g K:Set ℝ) := hgsub K hKmem ((BoundedInterval.mem_iff K x).mp hxK)
+          exact (Q.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).unique
+            ⟨hgmem K hKmem, (BoundedInterval.mem_iff (g K) x).mpr hxgK⟩ ⟨hJ, hx⟩
+        refine ⟨K, ⟨Finset.mem_filter.mpr ⟨hKmem, hgKJ⟩, hxK⟩, ?_⟩
+        rintro K' ⟨hK'F, hxK'⟩
+        exact hKuniq K' ⟨(Finset.mem_filter.mp hK'F).1, hxK'⟩
+      · intro K hKF
+        have hKmem := (Finset.mem_filter.mp hKF).1
+        have hgKJ := (Finset.mem_filter.mp hKF).2
+        rw [BoundedInterval.subset_iff]; intro y hy
+        have := hgsub K hKmem hy; rw [hgKJ] at this; exact this
+    obtain ⟨QJ, hQJ⟩ := hex
+    have := Partition.sum_of_α_length QJ α; rw [hQJ] at this; exact this
+  show ∑ J ∈ Q.intervals, _ = ∑ K ∈ R.intervals, _
+  rw [← Finset.sum_fiberwise_of_maps_to hgmem (fun K => constant_value_on f (K:Set ℝ) * α[K]ₗ)]
+  apply Finset.sum_congr rfl
+  intro J hJ
+  rw [← hsumlen J hJ, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro K hKF
+  have hKmem := (Finset.mem_filter.mp hKF).1
+  have hgKJ := (Finset.mem_filter.mp hKF).2
+  rcases eq_or_ne (K:Set ℝ) ∅ with hKe | hKne
+  · rw [α_length_of_empty α hKe]; ring
+  · have hKsub : (K:Set ℝ) ⊆ (J:Set ℝ) := by
+      have := hgsub K hKmem; rw [hgKJ] at this; exact this
+    rw [hcval J hJ K (Set.nonempty_iff_ne_empty.mpr hKne) hKsub]
+
 /-- Analogue of Proposition 11.2.13 -/
 theorem PiecewiseConstantWith.RS_integ_eq {f:ℝ → ℝ} {I: BoundedInterval} {P P': Partition I}
   (hP: PiecewiseConstantWith f P) (hP': PiecewiseConstantWith f P') (α:ℝ → ℝ): RS_integ f P α = RS_integ f P' α := by
-  sorry
+  rw [RS_integ_eq_of_le (BoundedInterval.le_max P P').1 hP α,
+      RS_integ_eq_of_le (BoundedInterval.le_max P P').2 hP' α]
 
 open Classical in
 noncomputable abbrev PiecewiseConstantOn.RS_integ (f:ℝ → ℝ) (I: BoundedInterval) (α:ℝ → ℝ):
