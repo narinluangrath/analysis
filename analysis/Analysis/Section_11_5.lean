@@ -28,7 +28,7 @@ private theorem bne {I : BoundedInterval} (h : I.a < I.b) : (I:Set ℝ).Nonempty
   have := BoundedInterval.Ioo_subset I; rw [subset_iff, set_Ioo] at this
   exact this (by rw [Set.mem_Ioo]; constructor <;> linarith)
 
-private theorem unif_gen : ∀ N : ℕ, 0 < N → ∀ (I : BoundedInterval), I.a < I.b →
+theorem unif_gen : ∀ N : ℕ, 0 < N → ∀ (I : BoundedInterval), I.a < I.b →
     ∃ P : Partition I, P.intervals.card = N ∧ ∀ J ∈ P.intervals, |J|ₗ = (I.b - I.a)/N := by
   intro N
   induction N with
