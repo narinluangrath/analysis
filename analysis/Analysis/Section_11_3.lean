@@ -284,7 +284,29 @@ theorem lower_integ_ge_lower_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: BddOn 
 
 theorem lower_integ_eq_sup_lower_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: BddOn f I) :
   lower_integral f I = sSup (.range (fun P : Partition I ↦ lower_riemann_sum f P)) := by
-  sorry
+  apply le_antisymm
+  · have hbd : BddAbove (Set.range (fun P : Partition I => lower_riemann_sum f P)) :=
+      ⟨lower_integral f I, by rintro v ⟨P, rfl⟩; exact lower_integ_ge_lower_sum hf P⟩
+    apply csSup_le (integral_bound_lower_nonempty hf)
+    rintro v ⟨g, ⟨hgmin, hgpc⟩, rfl⟩
+    refine le_trans ?_ (le_csSup hbd ⟨hgpc.choose, rfl⟩)
+    show PiecewiseConstantOn.integ g I ≤ lower_riemann_sum f hgpc.choose
+    rw [PiecewiseConstantOn.integ_def hgpc.choose_spec]
+    simp only [PiecewiseConstantWith.integ, lower_riemann_sum]
+    apply Finset.sum_le_sum
+    intro J hJ
+    by_cases hJne : (J:Set ℝ).Nonempty
+    · apply mul_le_mul_of_nonneg_right _ (BoundedInterval.length_nonneg J)
+      obtain ⟨cv, hcv⟩ := hgpc.choose_spec J hJ
+      rw [ConstantOn.const_eq hJne (fun x hx => hcv ⟨x, hx⟩)]
+      apply le_csInf (hJne.image f)
+      rintro y ⟨z, hz, rfl⟩
+      have hzI : z ∈ (I:Set ℝ) := by
+        have hsub := hgpc.choose.contains J hJ; rw [BoundedInterval.subset_iff] at hsub; exact hsub hz
+      calc cv = g z := (hcv ⟨z, hz⟩).symm
+        _ ≤ f z := hgmin z hzI
+    · rw [BoundedInterval.length_of_empty (Set.not_nonempty_iff_eq_empty.mp hJne)]; simp
+  · exact csSup_le (Set.range_nonempty _) (by rintro v ⟨P, rfl⟩; exact lower_integ_ge_lower_sum hf P)
 
 /-- Exercise 11.3.1 -/
 theorem MajorizesOn.trans {f g h: ℝ → ℝ} {I: BoundedInterval}
