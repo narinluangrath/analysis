@@ -317,14 +317,91 @@ noncomputable def Sequence.sqrt_two : Sequence := (fun n:ℕ ↦ ((⌊ (Real.sqr
 /--
   Example 5.1.10. (This requires extensive familiarity with Mathlib's API for the real numbers.)
 -/
-theorem Sequence.ex_5_1_10_a : (1:ℚ).Steady sqrt_two := by sorry
+theorem Sequence.ex_5_1_10_a : (1:ℚ).Steady sqrt_two := by
+  have ratbound : ∀ n:ℕ, (1:ℚ) ≤ (⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ) ∧ (⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ) < 2 := by
+    intro n
+    have hsqrt : (1:ℝ) ≤ Real.sqrt 2 := by
+      rw [show (1:ℝ) = Real.sqrt 1 by simp]; exact Real.sqrt_le_sqrt (by norm_num)
+    have sqrtlt : Real.sqrt 2 < 2 := by
+      rw [show (2:ℝ) = Real.sqrt 4 by rw [show (4:ℝ)=2^2 by norm_num, Real.sqrt_sq (by norm_num)]]
+      exact Real.sqrt_lt_sqrt (by norm_num) (by norm_num)
+    have h10 : (0:ℝ) < (10:ℝ)^n := by positivity
+    have hcast : (((⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ)):ℝ) = (⌊ (Real.sqrt 2)*10^n ⌋:ℝ) / (10^n:ℝ) := by push_cast; ring
+    have hfloor_le : (⌊ (Real.sqrt 2)*10^n ⌋ :ℝ) ≤ (Real.sqrt 2)*10^n := Int.floor_le _
+    have hle_floor : ((10:ℝ)^n) ≤ (⌊ (Real.sqrt 2)*10^n ⌋ :ℝ) := by
+      have h1 : (((10:ℤ)^n : ℤ) : ℝ) ≤ (Real.sqrt 2)*10^n := by push_cast; nlinarith [hsqrt, h10]
+      have h3 := Int.le_floor.mpr h1
+      have h2 : (((10:ℤ)^n :ℤ):ℝ) ≤ (⌊ (Real.sqrt 2)*10^n ⌋ :ℝ) := by exact_mod_cast h3
+      push_cast at h2; exact h2
+    have h1 : (1:ℝ) ≤ ((⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ):ℝ) := by rw [hcast, le_div_iff₀ h10]; linarith
+    have h2 : ((⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ):ℝ) ≤ Real.sqrt 2 := by rw [hcast, div_le_iff₀ h10]; exact hfloor_le
+    constructor
+    · have : ((1:ℚ):ℝ) ≤ ((⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ):ℝ) := by rw [Rat.cast_one]; exact h1
+      exact_mod_cast this
+    · have : ((⌊ (Real.sqrt 2)*10^n ⌋ / 10^n : ℚ):ℝ) < ((2:ℚ):ℝ) := by rw [Rat.cast_ofNat]; linarith
+      exact_mod_cast this
+  unfold sqrt_two
+  rw [Rat.Steady.coe]
+  intro n m
+  rw [Rat.Close, abs_le]
+  obtain ⟨ha1, ha2⟩ := ratbound n
+  obtain ⟨hb1, hb2⟩ := ratbound m
+  constructor <;> linarith
 
 /--
   Example 5.1.10. (This requires extensive familiarity with Mathlib's API for the real numbers.)
 -/
-theorem Sequence.ex_5_1_10_b : (0.1:ℚ).Steady (sqrt_two.from 1) := by sorry
+theorem Sequence.ex_5_1_10_b : (0.1:ℚ).Steady (sqrt_two.from 1) := by
+  have ratbound : ∀ n:ℤ, n ≥ 1 → (7/5:ℚ) ≤ (sqrt_two.from 1) n ∧ (sqrt_two.from 1) n < (3/2:ℚ) := by
+    intro n hn
+    rw [Sequence.from_eval _ hn]
+    have hn0 : n ≥ (0:ℤ) := by omega
+    rw [show sqrt_two = ((fun k:ℕ ↦ ((⌊ (Real.sqrt 2)*10^k ⌋ / 10^k):ℚ)):Sequence) from rfl]
+    rw [eval_coe_at_int, if_pos hn0]
+    set k := n.toNat with hk
+    have hk1 : k ≥ 1 := by simp only [hk]; omega
+    have hsqrt : (1.4:ℝ) ≤ Real.sqrt 2 := by
+      rw [show (1.4:ℝ) = Real.sqrt (1.96) by rw [show (1.96:ℝ)=1.4^2 by norm_num, Real.sqrt_sq (by norm_num)]]
+      exact Real.sqrt_le_sqrt (by norm_num)
+    have sqrtlt : Real.sqrt 2 < 1.5 := by
+      rw [show (1.5:ℝ) = Real.sqrt (2.25) by rw [show (2.25:ℝ)=1.5^2 by norm_num, Real.sqrt_sq (by norm_num)]]
+      exact Real.sqrt_lt_sqrt (by norm_num) (by norm_num)
+    have h10 : (0:ℝ) < (10:ℝ)^k := by positivity
+    have hcast : (((⌊ (Real.sqrt 2)*10^k ⌋ / 10^k : ℚ)):ℝ) = (⌊ (Real.sqrt 2)*10^k ⌋:ℝ) / (10^k:ℝ) := by push_cast; ring
+    have hfloor_le : (⌊ (Real.sqrt 2)*10^k ⌋ :ℝ) ≤ (Real.sqrt 2)*10^k := Int.floor_le _
+    have hle_floor : ((1.4:ℝ)*(10:ℝ)^k) ≤ (⌊ (Real.sqrt 2)*10^k ⌋ :ℝ) := by
+      have hpow : (10:ℝ)^k = 10 * 10^(k-1) := by rw [← pow_succ']; congr 1; omega
+      have heq : (1.4:ℝ)*(10:ℝ)^k = ((14 * 10^(k-1) : ℤ):ℝ) := by push_cast; rw [hpow]; ring
+      rw [heq]
+      have hle : ((14 * 10^(k-1) : ℤ):ℝ) ≤ (Real.sqrt 2)*10^k := by rw [← heq]; nlinarith [hsqrt, h10]
+      have := Int.le_floor.mpr hle; exact_mod_cast this
+    have hlow : (1.4:ℝ) ≤ ((⌊ (Real.sqrt 2)*10^k ⌋ / 10^k : ℚ):ℝ) := by
+      rw [hcast, le_div_iff₀ h10]; exact hle_floor
+    have hhigh : ((⌊ (Real.sqrt 2)*10^k ⌋ / 10^k : ℚ):ℝ) < 1.5 := by
+      rw [hcast, div_lt_iff₀ h10]; nlinarith [hfloor_le, sqrtlt, h10]
+    constructor
+    · have : ((7/5:ℚ):ℝ) ≤ ((⌊ (Real.sqrt 2)*10^k ⌋ / 10^k : ℚ):ℝ) := by push_cast; linarith
+      exact_mod_cast this
+    · have : ((⌊ (Real.sqrt 2)*10^k ⌋ / 10^k : ℚ):ℝ) < ((3/2:ℚ):ℝ) := by push_cast; linarith
+      exact_mod_cast this
+  rw [Rat.steady_def]
+  intro n hn m hm
+  have hn0 : (sqrt_two.from 1).n₀ = 1 := by
+    show (max sqrt_two.n₀ 1) = 1
+    have : sqrt_two.n₀ = 0 := by unfold sqrt_two; exact Sequence.n0_coe _
+    rw [this]; rfl
+  rw [hn0] at hn hm
+  obtain ⟨ha1, ha2⟩ := ratbound n hn
+  obtain ⟨hb1, hb2⟩ := ratbound m hm
+  have h01 : (0.1:ℚ) = 1/10 := by norm_num
+  rw [Rat.Close, abs_le, h01]
+  constructor <;> linarith
 
-theorem Sequence.ex_5_1_10_c : (0.1:ℚ).EventuallySteady sqrt_two := by sorry
+theorem Sequence.ex_5_1_10_c : (0.1:ℚ).EventuallySteady sqrt_two := by
+  refine ⟨1, ?_, ex_5_1_10_b⟩
+  show sqrt_two.n₀ ≤ 1
+  have : sqrt_two.n₀ = 0 := by unfold sqrt_two; exact Sequence.n0_coe _
+  rw [this]; norm_num
 
 /-- Proposition 5.1.11. The harmonic sequence, defined as a₁ = 1, a₂ = 1/2, ... is a Cauchy sequence. -/
 theorem Sequence.IsCauchy.harmonic : (mk' 1 (fun n ↦ (1:ℚ)/n)).IsCauchy := by
