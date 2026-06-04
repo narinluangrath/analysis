@@ -1234,8 +1234,91 @@ theorem Sequence.extended_limit_point_ge_liminf {a:Sequence} {L:EReal} (h:a.Exte
   · obtain ⟨hlb, _⟩ := a.limit_point_between_liminf_limsup h
     rw [ge_iff_le, ← EReal.coe_toReal h1 h2]; exact hlb
 
+noncomputable abbrev Exercise_6_4_9_seq : Sequence :=
+  (fun (n:ℕ) ↦ if n % 3 = 0 then (n:ℝ) else if n % 3 = 1 then -(n:ℝ) else 0)
+
+private theorem E649_eval {n:ℤ} (hn : 0 ≤ n) :
+    Exercise_6_4_9_seq n =
+      if n.toNat % 3 = 0 then (n.toNat:ℝ) else if n.toNat % 3 = 1 then -(n.toNat:ℝ) else 0 := by
+  simp only [Exercise_6_4_9_seq, Sequence.instCoeFun, Sequence.ofNatFun]
+  rw [if_pos hn]
+
+private theorem E649_not_bddAbove : ¬ Exercise_6_4_9_seq.BddAbove := by
+  rintro ⟨M, hM⟩
+  obtain ⟨j, hj⟩ := exists_nat_gt M
+  have hev := hM (3*j : ℤ) (by positivity)
+  rw [E649_eval (by positivity)] at hev
+  rw [show (3*(j:ℤ)).toNat = 3*j by omega, if_pos (by omega)] at hev
+  push_cast at hev
+  have : (j:ℝ) ≤ 3*j := by nlinarith [(by positivity : (0:ℝ) ≤ (j:ℝ))]
+  linarith
+
+private theorem E649_not_bddBelow : ¬ Exercise_6_4_9_seq.BddBelow := by
+  rintro ⟨M, hM⟩
+  obtain ⟨j, hj⟩ := exists_nat_gt (-M)
+  have hev := hM (3*j+1 : ℤ) (by positivity)
+  rw [E649_eval (by positivity)] at hev
+  rw [show (3*(j:ℤ)+1).toNat = 3*j+1 by omega, if_neg (by omega), if_pos (by omega)] at hev
+  push_cast at hev
+  have : (j:ℝ) ≤ 3*j+1 := by nlinarith [(by positivity : (0:ℝ) ≤ (j:ℝ))]
+  linarith
+
+private theorem E649_lp_zero : Exercise_6_4_9_seq.LimitPoint 0 := by
+  rw [Sequence.limit_point_def]
+  intro ε hε N hN
+  obtain ⟨j, hj⟩ := exists_nat_gt (N:ℝ)
+  refine ⟨3*(j:ℤ)+2, ?_, ?_⟩
+  · have hz : (N:ℤ) ≤ 3*j+2 := by
+      have : (N:ℝ) ≤ 3*j+2 := by nlinarith [(by positivity : (0:ℝ) ≤ (j:ℝ))]
+      exact_mod_cast this
+    exact hz
+  · rw [E649_eval (by positivity), show (3*(j:ℤ)+2).toNat = 3*j+2 by omega,
+      if_neg (by omega), if_neg (by omega)]
+    norm_num
+    exact le_of_lt hε
+
+private theorem E649_lp_iff {r:ℝ} : Exercise_6_4_9_seq.LimitPoint r ↔ r = 0 := by
+  constructor
+  · intro h
+    by_contra hr
+    rw [Sequence.limit_point_def] at h
+    obtain ⟨j, hj⟩ := exists_nat_gt (3*|r|/2 + 1)
+    obtain ⟨n, hn, hbound⟩ := h (|r|/2) (by positivity) (j:ℤ) (by positivity)
+    have hn0 : 0 ≤ n := le_trans (by positivity) hn
+    have hnj : (j:ℝ) ≤ (n.toNat:ℝ) := by
+      have : (j:ℤ) ≤ (n.toNat:ℤ) := by rw [Int.toNat_of_nonneg hn0]; exact hn
+      exact_mod_cast this
+    have hjbig : 3*|r|/2 + 1 < (n.toNat:ℝ) := by linarith
+    rw [E649_eval hn0] at hbound
+    split_ifs at hbound with h0 h1
+    · rw [abs_le] at hbound
+      nlinarith [abs_nonneg r, le_abs_self r, neg_abs_le r]
+    · rw [abs_le] at hbound
+      nlinarith [abs_nonneg r, le_abs_self r, neg_abs_le r]
+    · rw [zero_sub, abs_neg] at hbound
+      have : |r| > 0 := abs_pos.mpr hr
+      linarith
+  · rintro rfl; exact E649_lp_zero
+
 /-- Exercise 6.4.9 -/
-theorem Sequence.exists_three_limit_points : ∃ a:Sequence, ∀ L:EReal, a.ExtendedLimitPoint L ↔ L = ⊥ ∨ L = 0 ∨ L = ⊤ := by sorry
+theorem Sequence.exists_three_limit_points : ∃ a:Sequence, ∀ L:EReal, a.ExtendedLimitPoint L ↔ L = ⊥ ∨ L = 0 ∨ L = ⊤ := by
+  use Exercise_6_4_9_seq
+  intro L
+  unfold Sequence.ExtendedLimitPoint
+  split_ifs with h1 h2
+  · subst h1
+    exact ⟨fun _ => by tauto, fun _ => E649_not_bddAbove⟩
+  · subst h2
+    exact ⟨fun _ => by tauto, fun _ => E649_not_bddBelow⟩
+  · rw [E649_lp_iff]
+    constructor
+    · intro hr
+      right; left
+      rw [← EReal.coe_toReal h1 h2, hr]; rfl
+    · rintro (h | h | h)
+      · exact absurd h h2
+      · rw [h]; rfl
+      · exact absurd h h1
 
 /-- Exercise 6.4.10 -/
 theorem Sequence.limit_points_of_limit_points {a b:Sequence} {c:ℝ} (hab: ∀ n ≥ b.m, a.LimitPoint (b n)) (hbc: b.LimitPoint c) : a.LimitPoint c := by
