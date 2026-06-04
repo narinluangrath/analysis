@@ -162,7 +162,57 @@ def Sequence.exist_subseq_of_subseq :
 -/
 theorem Sequence.subseq_of_unbounded {a:ℕ → ℝ} (ha: ¬ (a:Sequence).IsBounded) :
     ∃ b:ℕ → ℝ, Sequence.subseq a b ∧ (b:Sequence)⁻¹.TendsTo 0 := by
-  sorry
+  have unb : ∀ (M:ℝ) (N:ℕ), ∃ k:ℕ, N ≤ k ∧ M < |a k| := by
+    intro M N
+    by_contra hcon
+    push_neg at hcon
+    apply ha
+    set C := ∑ k ∈ Finset.range N, |a k| with hC
+    refine ⟨max (max M C) 0, le_max_right _ _, ?_⟩
+    intro n
+    rcases lt_or_ge n 0 with hn | hn
+    · have hz : (a:Sequence) n = 0 := by
+        simp only [Sequence.instCoeFun, Sequence.ofNatFun]; rw [if_neg (by omega)]
+      rw [hz, abs_zero]; exact le_max_right _ _
+    · rw [show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe]
+      rcases lt_or_ge n.toNat N with hk | hk
+      · have hle : |a n.toNat| ≤ C :=
+          Finset.single_le_sum (f := fun k => |a k|) (fun i _ => abs_nonneg _)
+            (Finset.mem_range.mpr hk)
+        exact le_trans hle (le_trans (le_max_right _ _) (le_max_left _ _))
+      · exact le_trans (hcon n.toNat hk) (le_trans (le_max_left _ _) (le_max_left _ _))
+  have step : ∀ (N:ℕ) (k:ℕ), ∃ m:ℕ, N ≤ m ∧ (k:ℝ)+1 < |a m| :=
+    fun N k => unb ((k:ℝ)+1) N
+  choose g hg_ge hg_gt using step
+  set f : ℕ → ℕ := fun k => Nat.rec (g 0 0) (fun k prev => g (prev+1) (k+1)) k with hf_def
+  have hf0 : f 0 = g 0 0 := rfl
+  have hfs : ∀ k, f (k+1) = g (f k + 1) (k+1) := fun k => rfl
+  have hf_lt : ∀ k, f k < f (k+1) := by
+    intro k; rw [hfs k]; have := hg_ge (f k + 1) (k+1); omega
+  have hf_mono : StrictMono f := strictMono_nat_of_lt_succ hf_lt
+  have hf_gt : ∀ (k:ℕ), (k:ℝ)+1 < |a (f k)| := by
+    intro k; cases k with
+    | zero => rw [hf0]; have := hg_gt 0 0; simpa using this
+    | succ j => rw [hfs j]; have := hg_gt (f j + 1) (j+1); exact_mod_cast this
+  refine ⟨fun k => a (f k), ⟨f, hf_mono, fun _ => rfl⟩, ?_⟩
+  rw [Sequence.tendsTo_iff]
+  intro ε hε
+  obtain ⟨M, hM⟩ := exists_nat_gt (1/ε)
+  have hMpos : 0 < (M:ℝ) := lt_of_le_of_lt (by positivity) hM
+  refine ⟨(M:ℤ), fun n hn => ?_⟩
+  have hn0 : (0:ℤ) ≤ n := le_trans (by positivity) hn
+  have hMle : M ≤ n.toNat := by omega
+  rw [Sequence.inv_eval, show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe]
+  have hpos : (0:ℝ) < |a (f n.toNat)| := lt_trans (by positivity) (hf_gt n.toNat)
+  have hbig : 1/ε < |a (f n.toNat)| := by
+    have h1 : (M:ℝ) ≤ (n.toNat:ℝ) := by exact_mod_cast hMle
+    have h2 := hf_gt n.toNat
+    linarith
+  rw [sub_zero, abs_inv]
+  have hposε : (0:ℝ) < 1/ε := by positivity
+  have h := (inv_lt_inv₀ hpos hposε).mpr hbig
+  rw [one_div, inv_inv] at h
+  exact le_of_lt h
 
 
 end Chapter6
