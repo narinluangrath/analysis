@@ -79,7 +79,60 @@ theorem Sequence.convergent_iff_subseq (a:ℕ → ℝ) (L:ℝ) :
 /-- Proposition 6.6.6 / Exercise 6.6.5 -/
 theorem Sequence.limit_point_iff_subseq (a:ℕ → ℝ) (L:ℝ) :
     (a:Sequence).LimitPoint L ↔ ∃ b:ℕ → ℝ, Sequence.subseq a b ∧ (b:Sequence).TendsTo L := by
-  sorry
+  constructor
+  · intro h
+    have base : ∀ (N:ℕ) (ε:ℝ), 0 < ε → ∃ m:ℕ, N ≤ m ∧ |a m - L| ≤ ε := by
+      intro N ε hε
+      obtain ⟨n, hn, hclose⟩ := (Sequence.limit_point_def _ _).mp h ε hε (N:ℤ)
+        (by show ((a:Sequence)).m ≤ (N:ℤ); show (0:ℤ) ≤ (N:ℤ); positivity)
+      refine ⟨n.toNat, by omega, ?_⟩
+      rwa [show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe] at hclose
+    have step : ∀ (N:ℕ) (k:ℕ), ∃ m:ℕ, N ≤ m ∧ |a m - L| ≤ 1/((k:ℝ)+1) :=
+      fun N k => base N (1/((k:ℝ)+1)) (by positivity)
+    choose g hg_ge hg_close using step
+    set f : ℕ → ℕ := fun k => Nat.rec (g 0 0) (fun k prev => g (prev+1) (k+1)) k with hf_def
+    have hf0 : f 0 = g 0 0 := rfl
+    have hfs : ∀ k, f (k+1) = g (f k + 1) (k+1) := fun k => rfl
+    have hf_lt : ∀ k, f k < f (k+1) := by
+      intro k; rw [hfs k]; have := hg_ge (f k + 1) (k+1); omega
+    have hf_mono : StrictMono f := strictMono_nat_of_lt_succ hf_lt
+    have hf_close : ∀ k, |a (f k) - L| ≤ 1/((k:ℝ)+1) := by
+      intro k; cases k with
+      | zero => rw [hf0]; have := hg_close 0 0; simpa using this
+      | succ j => rw [hfs j]; have := hg_close (f j + 1) (j+1); exact_mod_cast this
+    refine ⟨fun k => a (f k), ⟨f, hf_mono, fun _ => rfl⟩, ?_⟩
+    rw [Sequence.tendsTo_iff]
+    intro ε hε
+    obtain ⟨M, hM⟩ := exists_nat_gt (1/ε)
+    have hMpos : 0 < (M:ℝ) := lt_of_le_of_lt (by positivity) hM
+    refine ⟨(M:ℤ), fun n hn => ?_⟩
+    have hn0 : (0:ℤ) ≤ n := le_trans (by positivity) hn
+    rw [show n = ((n.toNat:ℕ):ℤ) by omega, Sequence.eval_coe]
+    have hMle : M ≤ n.toNat := by omega
+    calc |a (f n.toNat) - L| ≤ 1/((n.toNat:ℝ)+1) := hf_close n.toNat
+      _ ≤ 1/(M:ℝ) := by
+          apply one_div_le_one_div_of_le hMpos
+          have : (M:ℝ) ≤ (n.toNat:ℝ) := by exact_mod_cast hMle
+          linarith
+      _ ≤ ε := by
+          rw [div_le_iff₀ hMpos]
+          rw [div_lt_iff₀ hε] at hM
+          nlinarith [hM]
+  · rintro ⟨b, ⟨f, hf, hbf⟩, hb⟩
+    rw [Sequence.limit_point_def]
+    intro ε hε N hN
+    rw [Sequence.tendsTo_iff] at hb
+    obtain ⟨M, hMb⟩ := hb ε hε
+    set k : ℕ := max M.toNat N.toNat with hk
+    have hkM : (M:ℤ) ≤ (k:ℤ) := by omega
+    have hclose := hMb (k:ℤ) hkM
+    rw [Sequence.eval_coe, hbf] at hclose
+    refine ⟨(f k:ℤ), ?_, ?_⟩
+    · have hNk : N ≤ (k:ℤ) := by omega
+      have : (k:ℤ) ≤ (f k:ℤ) := by exact_mod_cast hf.id_le k
+      omega
+    · rw [Sequence.eval_coe]
+      exact hclose
 
 /-- Theorem 6.6.8 (Bolzano-Weierstrass theorem) -/
 theorem Sequence.convergent_of_subseq_of_bounded {a:ℕ→ ℝ} (ha: (a:Sequence).IsBounded) :
