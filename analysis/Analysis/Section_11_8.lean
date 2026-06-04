@@ -501,7 +501,32 @@ theorem PiecewiseConstantOn.RS_integ_of_extend {I J: BoundedInterval} (hIJ: I �
 theorem PiecewiseConstantOn.RS_integ_of_join {I J K: BoundedInterval} (hIJK: K.joins' I J)
   {f: ℝ → ℝ} (h: PiecewiseConstantOn f K) {α:ℝ → ℝ} (hα: Monotone α):
   RS_integ f K α = RS_integ f I α + RS_integ f J α := by
-  sorry
+  classical
+  have hIK : I ⊆ K := by rw [BoundedInterval.subset_iff, hIJK.1.2.1]; exact Set.subset_union_left
+  have hJK : J ⊆ K := by rw [BoundedInterval.subset_iff, hIJK.1.2.1]; exact Set.subset_union_right
+  obtain ⟨PI, hPI⟩ := h.restrict hIK
+  obtain ⟨PJ, hPJ⟩ := h.restrict hJK
+  have hjoinpc : PiecewiseConstantWith f (PI.join PJ hIJK.1) := by
+    intro L hL; rcases Finset.mem_union.mp hL with hL | hL
+    · exact hPI L hL
+    · exact hPJ L hL
+  rw [RS_integ_def hjoinpc α, RS_integ_def hPI α, RS_integ_def hPJ α]
+  simp only [PiecewiseConstantWith.RS_integ]
+  have hinter0 : ∑ L ∈ PI.intervals ∩ PJ.intervals, (constant_value_on f (L:Set ℝ) * α[L]ₗ) = 0 := by
+    apply Finset.sum_eq_zero
+    intro L hL
+    rw [Finset.mem_inter] at hL
+    have hLI := PI.contains L hL.1; rw [BoundedInterval.subset_iff] at hLI
+    have hLJ := PJ.contains L hL.2; rw [BoundedInterval.subset_iff] at hLJ
+    have hLe : (L:Set ℝ) = ∅ := by
+      rw [Set.eq_empty_iff_forall_notMem]; intro x hx
+      have hxIJ : x ∈ (I:Set ℝ) ∩ (J:Set ℝ) := ⟨hLI hx, hLJ hx⟩
+      rw [hIJK.1.1] at hxIJ; exact hxIJ
+    rw [α_length_of_empty α hLe, mul_zero]
+  have hsui := Finset.sum_union_inter (s₁ := PI.intervals) (s₂ := PJ.intervals)
+    (f := fun L => constant_value_on f (L:Set ℝ) * α[L]ₗ)
+  rw [hinter0, add_zero] at hsui
+  exact hsui
 
 /-- Analogue of Definition 11.3.2 (Uppper and lower Riemann integrals )-/
 noncomputable abbrev upper_RS_integral (f:ℝ → ℝ) (I: BoundedInterval) (α: ℝ → ℝ): ℝ :=
