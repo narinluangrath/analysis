@@ -21,6 +21,78 @@ namespace Chapter11
 open BoundedInterval
 open Chapter9
 
+private theorem blen {I : BoundedInterval} (h : I.a ≤ I.b) : |I|ₗ = I.b - I.a := by
+  simp only [BoundedInterval.length]; exact max_eq_left (by linarith)
+private theorem bne {I : BoundedInterval} (h : I.a < I.b) : (I:Set ℝ).Nonempty := by
+  refine ⟨(I.a+I.b)/2, ?_⟩
+  have := BoundedInterval.Ioo_subset I; rw [subset_iff, set_Ioo] at this
+  exact this (by rw [Set.mem_Ioo]; constructor <;> linarith)
+
+private theorem unif_gen : ∀ N : ℕ, 0 < N → ∀ (I : BoundedInterval), I.a < I.b →
+    ∃ P : Partition I, P.intervals.card = N ∧ ∀ J ∈ P.intervals, |J|ₗ = (I.b - I.a)/N := by
+  intro N
+  induction N with
+  | zero => intro h0 _ _; exact absurd h0 (lt_irrefl 0)
+  | succ n ih =>
+    intro _ I hab
+    rcases Nat.eq_zero_or_pos n with hn0 | hnpos
+    · subst hn0
+      refine ⟨⊥, by rw [Partition.intervals_of_bot]; simp, ?_⟩
+      intro J hJ; rw [Partition.intervals_of_bot, Finset.mem_singleton] at hJ; subst hJ
+      rw [Nat.cast_one, div_one, blen hab.le]
+    · have hn1 : (0:ℝ) < ((n+1:ℕ):ℝ) := by positivity
+      have hlt1 : (1:ℝ) < ((n+1:ℕ):ℝ) := by exact_mod_cast (by omega : 1 < n+1)
+      have hnR : ((n:ℕ):ℝ) ≠ 0 := by positivity
+      have key : ∀ (I' F R : BoundedInterval), I'.joins F R → 0 < I'.b - I'.a →
+          F.a = I'.a → F.b = I'.a + (I'.b-I'.a)/((n+1:ℕ):ℝ) →
+          R.a = I'.a + (I'.b-I'.a)/((n+1:ℕ):ℝ) → R.b = I'.b →
+          ∃ P : Partition I', P.intervals.card = n+1 ∧ ∀ J ∈ P.intervals, |J|ₗ = (I'.b-I'.a)/((n+1:ℕ):ℝ) := by
+        intro I' F R hj hd' hFa hFb hRa hRb
+        have hRab : R.a < R.b := by rw [hRa, hRb]; linarith [div_lt_self hd' hlt1]
+        obtain ⟨PR, hPRcard, hPRlen⟩ := ih hnpos R hRab
+        have hFab : F.a ≤ F.b := by rw [hFa, hFb]; have : (0:ℝ) ≤ (I'.b-I'.a)/((n+1:ℕ):ℝ) := by positivity
+                                    linarith
+        have hFlen : |F|ₗ = (I'.b-I'.a)/((n+1:ℕ):ℝ) := by rw [blen hFab, hFb, hFa]; ring
+        have hFmem : F ∉ PR.intervals := by
+          intro hmem
+          have hsub := PR.contains _ hmem; rw [subset_iff] at hsub
+          obtain ⟨x, hx⟩ := bne (by rw [hFa, hFb]; have : (0:ℝ) < (I'.b-I'.a)/((n+1:ℕ):ℝ) := by positivity
+                                    linarith)
+          have : x ∈ (F:Set ℝ) ∩ (R:Set ℝ) := ⟨hx, hsub hx⟩
+          rw [hj.1] at this; exact this
+        refine ⟨(⊥ : Partition F).join PR hj, ?_, ?_⟩
+        · rw [Partition.intervals_of_join, Partition.intervals_of_bot,
+            ← Finset.insert_eq, Finset.card_insert_of_notMem hFmem, hPRcard]
+        · intro J hJ
+          rw [Partition.intervals_of_join, Partition.intervals_of_bot, Finset.mem_union,
+            Finset.mem_singleton] at hJ
+          rcases hJ with hJ | hJ
+          · subst hJ; exact hFlen
+          · have harith : (R.b - R.a)/((n:ℕ):ℝ) = (I'.b-I'.a)/((n+1:ℕ):ℝ) := by
+              rw [hRa, hRb, show ((n+1:ℕ):ℝ) = (n:ℝ)+1 by push_cast; ring]; field_simp; ring
+            rw [hPRlen J hJ]; exact harith
+      cases I with
+      | Icc a b =>
+        have hab' : a < b := hab
+        exact key _ (Ico a (a+(b-a)/((n+1:ℕ):ℝ))) (Icc (a+(b-a)/((n+1:ℕ):ℝ)) b)
+          (join_Ico_Icc (le_add_of_nonneg_right (div_nonneg (by linarith) hn1.le)) (by have := div_le_self (by linarith : (0:ℝ)≤b-a) hlt1.le; linarith))
+          (by linarith) rfl rfl rfl rfl
+      | Ico a b =>
+        have hab' : a < b := hab
+        exact key _ (Ico a (a+(b-a)/((n+1:ℕ):ℝ))) (Ico (a+(b-a)/((n+1:ℕ):ℝ)) b)
+          (join_Ico_Ico (le_add_of_nonneg_right (div_nonneg (by linarith) hn1.le)) (by have := div_le_self (by linarith : (0:ℝ)≤b-a) hlt1.le; linarith))
+          (by linarith) rfl rfl rfl rfl
+      | Ioc a b =>
+        have hab' : a < b := hab
+        exact key _ (Ioc a (a+(b-a)/((n+1:ℕ):ℝ))) (Ioc (a+(b-a)/((n+1:ℕ):ℝ)) b)
+          (join_Ioc_Ioc (le_add_of_nonneg_right (div_nonneg (by linarith) hn1.le)) (by have := div_le_self (by linarith : (0:ℝ)≤b-a) hlt1.le; linarith))
+          (by linarith) rfl rfl rfl rfl
+      | Ioo a b =>
+        have hab' : a < b := hab
+        exact key _ (Ioc a (a+(b-a)/((n+1:ℕ):ℝ))) (Ioo (a+(b-a)/((n+1:ℕ):ℝ)) b)
+          (join_Ioc_Ioo (le_add_of_nonneg_right (div_nonneg (by linarith) hn1.le)) (by have := div_lt_self (by linarith : (0:ℝ)<b-a) hlt1; linarith))
+          (by linarith) rfl rfl rfl rfl
+
 /-- Theorem 11.5.1 -/
 theorem integ_of_uniform_cts {I: BoundedInterval} {f:ℝ → ℝ} (hf: UniformContinuousOn f I) :
   IntegrableOn f I := by
@@ -43,7 +115,9 @@ theorem integ_of_uniform_cts {I: BoundedInterval} {f:ℝ → ℝ} (hf: UniformCo
       rify; order
     have hN' : (b-a)/N < δ := by rwa [div_lt_comm₀] <;> positivity
     have : ∃ P: Partition I, P.intervals.card = N ∧ ∀ J ∈ P.intervals, |J|ₗ = (b-a) / N := by
-      sorry
+      have hIab : I.a < I.b := by show a < b; linarith
+      have := unif_gen N hNpos I hIab
+      simpa only [a, b] using this
     choose P hcard hlength using this
     calc
       _ ≤ ∑ J ∈ P.intervals, (sSup (f '' J) - sInf (f '' J)) * |J|ₗ := by
