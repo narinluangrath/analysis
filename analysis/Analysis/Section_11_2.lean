@@ -591,7 +591,125 @@ open Classical in
 theorem PiecewiseConstantOn.of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
   {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) :
   PiecewiseConstantOn (fun x ↦ if x ∈ I then f x else 0) J := by
-  sorry
+  classical
+  set g : ℝ → ℝ := fun x ↦ if x ∈ I then f x else 0 with hgdef
+  by_cases hIemp : (I:Set ℝ) = ∅
+  · refine (ConstantOn.of_const' (0:ℝ) (J:Set ℝ)).piecewiseConstantOn.congr' (fun x _ => ?_)
+    show (0:ℝ) = g x
+    rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff, hIemp]; exact Set.notMem_empty x)]
+  obtain ⟨P, hP⟩ := h
+  have hIsub : (I:Set ℝ) ⊆ (J:Set ℝ) := by rwa [subset_iff] at hIJ
+  have hIcc : (I:Set ℝ) ⊆ Set.Icc I.a I.b := by have := I.subset_Icc; rwa [subset_iff, set_Icc] at this
+  have hcoreI : Set.Ioo I.a I.b ⊆ (I:Set ℝ) := by
+    have := I.Ioo_subset; rwa [subset_iff, set_Ioo] at this
+  have hIne : (I:Set ℝ).Nonempty := Set.nonempty_iff_ne_empty.mpr hIemp
+  have hIab : I.a ≤ I.b := by obtain ⟨p, hp⟩ := hIne; exact le_trans (hIcc hp).1 (hIcc hp).2
+  have hJconn : (J:Set ℝ).OrdConnected := by
+    cases J with
+    | Ioo a b => rw [set_Ioo]; exact Set.ordConnected_Ioo
+    | Icc a b => rw [set_Icc]; exact Set.ordConnected_Icc
+    | Ioc a b => rw [set_Ioc]; exact Set.ordConnected_Ioc
+    | Ico a b => rw [set_Ico]; exact Set.ordConnected_Ico
+  have hJbdd : Bornology.IsBounded (J:Set ℝ) := Bornology.IsBounded.of_boundedInterval J
+  -- left gap interval
+  have hLconn : ((J:Set ℝ) ∩ {x | x ≤ I.a ∧ x ∉ (I:Set ℝ)}).OrdConnected := by
+    constructor
+    intro x hx y hy z hz
+    refine ⟨hJconn.out' hx.1 hy.1 hz, le_trans hz.2 hy.2.1, ?_⟩
+    intro hzI
+    have hzeq : z = I.a := le_antisymm (le_trans hz.2 hy.2.1) (hIcc hzI).1
+    have hyeq : y = I.a := le_antisymm hy.2.1 (by rw [← hzeq]; exact hz.2)
+    exact (hyeq ▸ hy.2.2) (hzeq ▸ hzI)
+  have hRconn : ((J:Set ℝ) ∩ {x | I.b ≤ x ∧ x ∉ (I:Set ℝ)}).OrdConnected := by
+    constructor
+    intro x hx y hy z hz
+    refine ⟨hJconn.out' hx.1 hy.1 hz, le_trans hx.2.1 hz.1, ?_⟩
+    intro hzI
+    have hzeq : z = I.b := le_antisymm (hIcc hzI).2 (le_trans hx.2.1 hz.1)
+    have hxeq : x = I.b := le_antisymm (by rw [← hzeq]; exact hz.1) hx.2.1
+    exact (hxeq ▸ hx.2.2) (hzeq ▸ hzI)
+  obtain ⟨Lgap, hLgap⟩ := (ordConnected_iff _).mp ⟨hJbdd.subset Set.inter_subset_left, hLconn⟩
+  obtain ⟨Rgap, hRgap⟩ := (ordConnected_iff _).mp ⟨hJbdd.subset Set.inter_subset_left, hRconn⟩
+  -- Lgap and Rgap cannot both contain a point
+  have hLRdisj : ∀ y ∈ (Lgap:Set ℝ), y ∉ (Rgap:Set ℝ) := by
+    intro y hyL hyR
+    rw [← hLgap] at hyL; rw [← hRgap] at hyR
+    obtain ⟨_, hyLa, hynI⟩ := hyL
+    obtain ⟨_, hyRb, _⟩ := hyR
+    obtain ⟨p, hp⟩ := hIne
+    have hpa := (hIcc hp).1; have hpb := (hIcc hp).2
+    have hpeq : p = I.a := le_antisymm (by linarith) hpa
+    have hyeqa : y = I.a := by linarith
+    exact hynI (hyeqa ▸ hpeq ▸ hp)
+  refine ⟨⟨insert Lgap (insert Rgap P.intervals), ?_, ?_⟩, ?_⟩
+  · -- exists_unique
+    intro x hx
+    rw [mem_iff] at hx
+    by_cases hxI : x ∈ (I:Set ℝ)
+    · obtain ⟨K0, ⟨hK0mem, hxK0⟩, hK0uniq⟩ := P.exists_unique x (by rw [mem_iff]; exact hxI)
+      refine ⟨K0, ⟨Finset.mem_insert_of_mem (Finset.mem_insert_of_mem hK0mem), hxK0⟩, ?_⟩
+      rintro K' ⟨hK'mem, hxK'⟩
+      rw [Finset.mem_insert] at hK'mem
+      rcases hK'mem with rfl | hK'mem
+      · exfalso; rw [mem_iff, ← hLgap] at hxK'; exact hxK'.2.2 hxI
+      · rw [Finset.mem_insert] at hK'mem
+        rcases hK'mem with rfl | hK'mem
+        · exfalso; rw [mem_iff, ← hRgap] at hxK'; exact hxK'.2.2 hxI
+        · exact hK0uniq K' ⟨hK'mem, hxK'⟩
+    · have hcase : x ≤ I.a ∨ I.b ≤ x := by
+        by_contra hc; push_neg at hc; exact hxI (hcoreI ⟨hc.1, hc.2⟩)
+      rcases hcase with hle | hge
+      · have hxL : x ∈ (Lgap:Set ℝ) := by rw [← hLgap]; exact ⟨hx, hle, hxI⟩
+        refine ⟨Lgap, ⟨Finset.mem_insert_self _ _, by rw [mem_iff]; exact hxL⟩, ?_⟩
+        rintro K' ⟨hK'mem, hxK'⟩
+        rw [Finset.mem_insert] at hK'mem
+        rcases hK'mem with rfl | hK'mem
+        · rfl
+        · exfalso
+          rw [Finset.mem_insert] at hK'mem
+          rcases hK'mem with rfl | hK'mem
+          · rw [mem_iff] at hxK'; exact hLRdisj x hxL hxK'
+          · rw [mem_iff] at hxK'; have := P.contains K' hK'mem
+            rw [subset_iff] at this; exact hxI (this hxK')
+      · have hxR : x ∈ (Rgap:Set ℝ) := by rw [← hRgap]; exact ⟨hx, hge, hxI⟩
+        refine ⟨Rgap, ⟨Finset.mem_insert_of_mem (Finset.mem_insert_self _ _),
+          by rw [mem_iff]; exact hxR⟩, ?_⟩
+        rintro K' ⟨hK'mem, hxK'⟩
+        rw [Finset.mem_insert] at hK'mem
+        rcases hK'mem with rfl | hK'mem
+        · exfalso; rw [mem_iff] at hxK'; exact hLRdisj x hxK' hxR
+        · rw [Finset.mem_insert] at hK'mem
+          rcases hK'mem with rfl | hK'mem
+          · rfl
+          · exfalso; rw [mem_iff] at hxK'; have := P.contains K' hK'mem
+            rw [subset_iff] at this; exact hxI (this hxK')
+  · -- contains
+    intro K hK
+    rw [Finset.mem_insert] at hK
+    rcases hK with rfl | hK
+    · rw [subset_iff, ← hLgap]; exact Set.inter_subset_left
+    · rw [Finset.mem_insert] at hK
+      rcases hK with rfl | hK
+      · rw [subset_iff, ← hRgap]; exact Set.inter_subset_left
+      · have := P.contains K hK; rw [subset_iff] at this ⊢; exact this.trans hIsub
+  · -- piecewise constant with this partition
+    intro K hK
+    replace hK : K ∈ insert Lgap (insert Rgap P.intervals) := hK
+    rw [Finset.mem_insert] at hK
+    rcases hK with rfl | hK
+    · apply ConstantOn.of_const (c := 0); intro x hx
+      rw [← hLgap] at hx
+      rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff]; exact hx.2.2)]
+    · rw [Finset.mem_insert] at hK
+      rcases hK with rfl | hK
+      · apply ConstantOn.of_const (c := 0); intro x hx
+        rw [← hRgap] at hx
+        rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by rw [mem_iff]; exact hx.2.2)]
+      · refine (ConstantOn.congr (fun x hx => ?_)).mp (hP K hK)
+        have hxI : x ∈ (I:Set ℝ) := by
+          have := P.contains K hK; rw [subset_iff] at this; exact this hx
+        show f x = g x
+        rw [hgdef]; simp only [if_pos (show x ∈ I by rw [mem_iff]; exact hxI)]
 
 open Classical in
 /-- Theorem 11.2.16 (g) (Laws of integration) / Exercise 11.2.4 -/
