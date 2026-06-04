@@ -138,11 +138,80 @@ theorem integ_of_antitone {a b:ℝ} {f:ℝ → ℝ} (hf: AntitoneOn f (Icc a b))
 /-- Corollary 11.6.3 / Exercise 11.6.1 -/
 theorem integ_of_bdd_monotone {I:BoundedInterval} {f:ℝ → ℝ} (hbound: BddOn f I)
   (hf: MonotoneOn f I) : IntegrableOn f I := by
-  sorry
+  rcases lt_or_ge I.a I.b with hlt | hge
+  · classical
+    obtain ⟨M, hM⟩ := hbound
+    have hbddB : BddBelow (f '' (I:Set ℝ)) :=
+      ⟨-M, by rintro _ ⟨x, hx, rfl⟩; exact (abs_le.mp (hM x hx)).1⟩
+    have hbddA : BddAbove (f '' (I:Set ℝ)) :=
+      ⟨M, by rintro _ ⟨x, hx, rfl⟩; exact (abs_le.mp (hM x hx)).2⟩
+    set lo := sInf (f '' (I:Set ℝ)) with hlodef
+    set hi := sSup (f '' (I:Set ℝ)) with hhidef
+    have hcore : Set.Ioo I.a I.b ⊆ (I:Set ℝ) := by
+      have := I.Ioo_subset; rwa [BoundedInterval.subset_iff, BoundedInterval.set_Ioo] at this
+    have hInonempty : (I:Set ℝ).Nonempty :=
+      ⟨(I.a+I.b)/2, hcore ⟨by linarith, by linarith⟩⟩
+    have hlo_le : ∀ x ∈ (I:Set ℝ), lo ≤ f x := fun x hx => csInf_le hbddB ⟨x, hx, rfl⟩
+    have hle_hi : ∀ x ∈ (I:Set ℝ), f x ≤ hi := fun x hx => le_csSup hbddA ⟨x, hx, rfl⟩
+    have hlohi : lo ≤ hi := by
+      obtain ⟨x, hx⟩ := hInonempty; exact le_trans (hlo_le x hx) (hle_hi x hx)
+    set g : ℝ → ℝ := fun x => if x ∈ (I:Set ℝ) then f x else if x ≤ I.a then lo else hi with hgdef
+    have hgI : ∀ x ∈ (I:Set ℝ), g x = f x := fun x hx => by simp only [hgdef, if_pos hx]
+    have hga : I.a ∉ (I:Set ℝ) → g I.a = lo := fun h => by
+      simp only [hgdef, if_neg h, if_pos (le_refl I.a)]
+    have hgb : I.b ∉ (I:Set ℝ) → g I.b = hi := fun h => by
+      simp only [hgdef, if_neg h, if_neg (by linarith : ¬ I.b ≤ I.a)]
+    have hclass : ∀ z ∈ Set.Icc I.a I.b, z ∈ (I:Set ℝ) ∨ z = I.a ∨ z = I.b := by
+      intro z hz
+      by_cases hzI : z ∈ (I:Set ℝ)
+      · left; exact hzI
+      · right
+        rcases lt_or_ge I.a z with h | h
+        · right
+          rcases lt_or_ge z I.b with h2 | h2
+          · exact absurd (hcore ⟨h, h2⟩) hzI
+          · exact le_antisymm hz.2 h2
+        · left; exact le_antisymm h hz.1
+    have hEqOn : Set.EqOn f g (I:Set ℝ) := fun x hx => (hgI x hx).symm
+    have hgmono : MonotoneOn g (Set.Icc I.a I.b) := by
+      intro x hx y hy hxy
+      rcases hclass x hx with hxI | rfl | rfl <;> rcases hclass y hy with hyI | rfl | rfl
+      · rw [hgI x hxI, hgI y hyI]; exact hf hxI hyI hxy
+      · have hxeq : x = I.a := le_antisymm hxy hx.1; rw [hxeq]
+      · rw [hgI x hxI]
+        by_cases hbI : I.b ∈ (I:Set ℝ)
+        · rw [hgI _ hbI]; exact hf hxI hbI hxy
+        · rw [hgb hbI]; exact hle_hi x hxI
+      · rw [hgI y hyI]
+        by_cases haI : I.a ∈ (I:Set ℝ)
+        · rw [hgI _ haI]; exact hf haI hyI hxy
+        · rw [hga haI]; exact hlo_le y hyI
+      · exact le_refl _
+      · by_cases haI : I.a ∈ (I:Set ℝ)
+        · rw [hgI _ haI]
+          by_cases hbI : I.b ∈ (I:Set ℝ)
+          · rw [hgI _ hbI]; exact hf haI hbI hxy
+          · rw [hgb hbI]; exact hle_hi _ haI
+        · rw [hga haI]
+          by_cases hbI : I.b ∈ (I:Set ℝ)
+          · rw [hgI _ hbI]; exact hlo_le _ hbI
+          · rw [hgb hbI]; exact hlohi
+      · have hyeq : y = I.b := le_antisymm hy.2 hxy; rw [hyeq]
+      · exact absurd hxy (not_le.mpr hlt)
+      · exact le_refl _
+    have hgInt : IntegrableOn g (BoundedInterval.Icc I.a I.b) := integ_of_monotone hgmono
+    obtain ⟨_, hge2⟩ := hgInt.mono' I.subset_Icc
+    exact ⟨⟨M, hM⟩, by rw [lower_integral_congr hEqOn, upper_integral_congr hEqOn]; exact hge2⟩
+  · have hI0 : |I|ₗ = 0 := by rw [BoundedInterval.length]; exact max_eq_right (by linarith)
+    exact (integ_on_subsingleton hI0).1
 
 theorem integ_of_bdd_antitone {I:BoundedInterval} {f:ℝ → ℝ} (hbound: BddOn f I)
   (hf: AntitoneOn f I) : IntegrableOn f I := by
-  sorry
+  rw [←neg_neg f]
+  apply (integ_of_bdd_monotone (f := -f) ?_ ?_).neg.1
+  · obtain ⟨M, hM⟩ := hbound
+    exact ⟨M, fun x hx => by simp only [Pi.neg_apply, abs_neg]; exact hM x hx⟩
+  · intro x hx y hy hxy; simp only [Pi.neg_apply]; exact neg_le_neg (hf hx hy hxy)
 
 /-- Proposition 11.6.4 (Integral test) -/
 theorem summable_iff_integ_of_antitone {f:ℝ → ℝ} (hnon: ∀ x ≥ 0, f x ≥ 0)
