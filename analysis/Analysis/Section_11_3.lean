@@ -182,7 +182,41 @@ theorem lower_riemann_sum_ge {f h: ℝ → ℝ} {I:BoundedInterval} (P: Partitio
 /-- Proposition 11.3.12 / Exercise 11.3.5 -/
 theorem upper_integ_le_upper_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: BddOn f I)
   (P: Partition I): upper_integral f I ≤ upper_riemann_sum f P := by
-  sorry
+  classical
+  set g : ℝ → ℝ := fun x => if h : x ∈ (I:Set ℝ) then
+    sSup (f '' (((P.exists_unique x ((BoundedInterval.mem_iff I x).mpr h)).exists.choose : BoundedInterval) : Set ℝ)) else 0 with hgdef
+  have hgval : ∀ J, J ∈ P.intervals → ∀ x, x ∈ (J:Set ℝ) → g x = sSup (f '' (J:Set ℝ)) := by
+    intro J hJ x hx
+    have hxI : x ∈ (I:Set ℝ) := by
+      have hsub := P.contains J hJ; rw [BoundedInterval.subset_iff] at hsub; exact hsub hx
+    have hspec := (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).exists.choose_spec
+    have hch := (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).unique hspec
+      ⟨hJ, (BoundedInterval.mem_iff J x).mpr hx⟩
+    simp only [g, dif_pos hxI, hch]
+  have hgpcw : PiecewiseConstantWith g P := fun J hJ => ConstantOn.of_const (hgval J hJ)
+  obtain ⟨M, hM⟩ := hf
+  have hbddJ : ∀ J, J ∈ P.intervals → BddAbove (f '' (J:Set ℝ)) := by
+    intro J hJ
+    refine ⟨M, ?_⟩; rintro y ⟨z, hz, rfl⟩
+    have hzI : z ∈ (I:Set ℝ) := by
+      have hsub := P.contains J hJ; rw [BoundedInterval.subset_iff] at hsub; exact hsub hz
+    have := hM z hzI; rw [abs_le] at this; linarith [this.2]
+  have hgmaj : MajorizesOn g f I := by
+    intro x hx
+    obtain ⟨J, ⟨hJmem, hxJ⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+    rw [hgval J hJmem x ((BoundedInterval.mem_iff J x).mp hxJ)]
+    exact le_csSup (hbddJ J hJmem) ⟨x, (BoundedInterval.mem_iff J x).mp hxJ, rfl⟩
+  have hgi : PiecewiseConstantOn.integ g I = upper_riemann_sum f P := by
+    rw [PiecewiseConstantOn.integ_def hgpcw]
+    simp only [PiecewiseConstantWith.integ, upper_riemann_sum]
+    apply Finset.sum_congr rfl
+    intro J hJ
+    by_cases hJne : (J:Set ℝ).Nonempty
+    · rw [ConstantOn.const_eq hJne (hgval J hJ)]
+    · rw [Set.not_nonempty_iff_eq_empty] at hJne
+      rw [BoundedInterval.length_of_empty hJne]; ring
+  rw [← hgi]
+  exact upper_integral_le_integ ⟨M, hM⟩ hgmaj ⟨P, hgpcw⟩
 
 theorem upper_integ_eq_inf_upper_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: BddOn f I) :
   upper_integral f I = sInf (.range (fun P : Partition I ↦ upper_riemann_sum f P)) := by
