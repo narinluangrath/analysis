@@ -538,10 +538,51 @@ theorem PiecewiseConstantOn.integ_of_extend {I J: BoundedInterval} (hIJ: I ⊆ J
   integ (fun x ↦ if x ∈ I then f x else 0) J = integ f I := by
   sorry
 
-/-- Theorem 11.2.16 (h) (Laws of integration) / Exercise 11.2.4 -/
+/-- Restricting a piecewise constant function to a subinterval. -/
+theorem PiecewiseConstantOn.restrict {K I: BoundedInterval} (hIK: I ⊆ K) {f: ℝ → ℝ}
+  (h: PiecewiseConstantOn f K) : PiecewiseConstantOn f I := by
+  classical
+  obtain ⟨P, hP⟩ := h
+  have hQ : ∃ Q : Partition I, Q.intervals = P.intervals.image (fun L => L ∩ I) := by
+    refine ⟨⟨P.intervals.image (fun L => L ∩ I), ?_, ?_⟩, rfl⟩
+    · intro x hx
+      have hxK : x ∈ (K:Set ℝ) := by
+        have := hIK; rw [BoundedInterval.subset_iff] at this
+        exact this ((BoundedInterval.mem_iff I x).mp hx)
+      obtain ⟨L, ⟨hLmem, hxL⟩, hLuniq⟩ := P.exists_unique x ((BoundedInterval.mem_iff K x).mpr hxK)
+      refine ⟨L ∩ I, ⟨Finset.mem_image_of_mem _ hLmem, ?_⟩, ?_⟩
+      · rw [BoundedInterval.mem_iff, BoundedInterval.inter_eq]
+        exact ⟨(BoundedInterval.mem_iff L x).mp hxL, (BoundedInterval.mem_iff I x).mp hx⟩
+      · rintro M ⟨hMmem, hxM⟩
+        obtain ⟨L', hL'mem, rfl⟩ := Finset.mem_image.mp hMmem
+        rw [BoundedInterval.mem_iff, BoundedInterval.inter_eq] at hxM
+        rw [hLuniq L' ⟨hL'mem, (BoundedInterval.mem_iff L' x).mpr hxM.1⟩]
+    · intro M hMmem
+      obtain ⟨L', hL'mem, rfl⟩ := Finset.mem_image.mp hMmem
+      rw [BoundedInterval.subset_iff, BoundedInterval.inter_eq]
+      exact Set.inter_subset_right
+  obtain ⟨Q, hQint⟩ := hQ
+  refine ⟨Q, ?_⟩
+  intro M hM
+  rw [show (M ∈ Q) = (M ∈ Q.intervals) from rfl, hQint] at hM
+  obtain ⟨L', hL'mem, rfl⟩ := Finset.mem_image.mp hM
+  rw [BoundedInterval.inter_eq]
+  exact ConstantOn.of_const (fun y hy => ConstantOn.eq (hP L' hL'mem) hy.1)
+
 theorem PiecewiseConstantOn.of_join {I J K: BoundedInterval} (hIJK: K.joins I J)
   (f: ℝ → ℝ) : PiecewiseConstantOn f K ↔ PiecewiseConstantOn f I ∧ PiecewiseConstantOn f J := by
-  sorry
+  have hIK : I ⊆ K := by
+    rw [BoundedInterval.subset_iff, hIJK.2.1]; exact Set.subset_union_left
+  have hJK : J ⊆ K := by
+    rw [BoundedInterval.subset_iff, hIJK.2.1]; exact Set.subset_union_right
+  constructor
+  · intro h; exact ⟨h.restrict hIK, h.restrict hJK⟩
+  · rintro ⟨⟨PI, hPI⟩, ⟨PJ, hPJ⟩⟩
+    refine ⟨PI.join PJ hIJK, ?_⟩
+    intro L hL
+    rcases Finset.mem_union.mp hL with hL | hL
+    · exact hPI L hL
+    · exact hPJ L hL
 
 /-- Theorem 11.2.16 (h) (Laws of integration) / Exercise 11.2.4 -/
 theorem PiecewiseConstantOn.integ_of_join {I J K: BoundedInterval} (hIJK: K.joins I J)
