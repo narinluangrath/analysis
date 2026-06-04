@@ -529,7 +529,29 @@ example : ∃ P P' : Partition (Icc 1 4),
                  Icc 3 4} ∧
   P'.intervals = {Icc 1 2, Ioc 2 4} ∧
   P' ≤ P := by
-  sorry
+  set P1 : Partition (Ico 1 2) := ⊥
+  set P2 : Partition (Icc 1 2) := P1.join (⊥:Partition (Icc 2 2)) (join_Ico_Icc (by norm_num) (by norm_num))
+  set P3 : Partition (Ico 1 3) := P2.join (⊥:Partition (Ioo 2 3)) (join_Icc_Ioo (by norm_num) (by norm_num))
+  set P4 : Partition (Icc 1 4) := P3.join (⊥:Partition (Icc 3 4)) (join_Ico_Icc (by norm_num) (by norm_num))
+  set Q1 : Partition (Icc 1 2) := ⊥
+  set Q2 : Partition (Icc 1 4) := Q1.join (⊥:Partition (Ioc 2 4)) (join_Icc_Ioc (by norm_num) (by norm_num))
+  refine ⟨P4, Q2, ?_, ?_, ?_⟩
+  · simp only [P4, P3, P2, P1, Partition.intervals_of_join, Partition.intervals_of_bot]; aesop
+  · simp only [Q2, Q1, Partition.intervals_of_join, Partition.intervals_of_bot]; aesop
+  · intro J hJ
+    simp only [P4, P3, P2, P1, Partition.intervals_of_join, Partition.intervals_of_bot,
+      Finset.mem_union, Finset.mem_singleton] at hJ
+    have hIcc12 : Icc 1 2 ∈ Q2 := by
+      show Icc 1 2 ∈ Q2.intervals
+      simp only [Q2, Q1, Partition.intervals_of_join, Partition.intervals_of_bot]; simp
+    have hIoc24 : Ioc 2 4 ∈ Q2 := by
+      show Ioc 2 4 ∈ Q2.intervals
+      simp only [Q2, Q1, Partition.intervals_of_join, Partition.intervals_of_bot]; simp
+    rcases hJ with (((rfl | rfl) | rfl) | rfl)
+    · exact ⟨Icc 1 2, hIcc12, by rw [subset_iff, set_Ico, set_Icc]; exact Set.Ico_subset_Icc_self⟩
+    · exact ⟨Icc 1 2, hIcc12, by rw [subset_iff, set_Icc, set_Icc]; intro x hx; rw [Set.mem_Icc] at hx ⊢; exact ⟨by linarith [hx.1], hx.2⟩⟩
+    · exact ⟨Ioc 2 4, hIoc24, by rw [subset_iff, set_Ioo, set_Ioc]; intro x hx; rw [Set.mem_Ioo] at hx; rw [Set.mem_Ioc]; exact ⟨hx.1, by linarith [hx.2]⟩⟩
+    · exact ⟨Ioc 2 4, hIoc24, by rw [subset_iff, set_Icc, set_Ioc]; intro x hx; rw [Set.mem_Icc] at hx; rw [Set.mem_Ioc]; exact ⟨by linarith [hx.1], hx.2⟩⟩
 
 /-- Definition 11.1.16 (Common refinement)-/
 noncomputable instance Partition.instMax (I: BoundedInterval) : Max (Partition I) where
