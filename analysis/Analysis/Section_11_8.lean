@@ -445,15 +445,57 @@ open Classical in
 /-- Theorem 11.8.8 (g) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
   {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) {α:ℝ → ℝ} (hα: Monotone α):
-  PiecewiseConstantOn (fun x ↦ if x ∈ I then f x else 0) J := by
-  sorry
+  PiecewiseConstantOn (fun x ↦ if x ∈ I then f x else 0) J :=
+  PiecewiseConstantOn.of_extend hIJ h
 
 open Classical in
 /-- Theorem 11.8.8 (g) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_of_extend {I J: BoundedInterval} (hIJ: I ⊆ J)
   {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) {α:ℝ → ℝ} (hα: Monotone α):
   RS_integ (fun x ↦ if x ∈ I then f x else 0) J α = RS_integ f I α := by
-  sorry
+  classical
+  set g : ℝ → ℝ := fun x ↦ if x ∈ I then f x else 0 with hgdef
+  have hg0 : ∀ K : BoundedInterval, (∀ x ∈ (K:Set ℝ), x ∉ (I:Set ℝ)) →
+      constant_value_on g (K:Set ℝ) * α[K]ₗ = 0 := by
+    intro K hK
+    rcases eq_or_ne (K:Set ℝ) ∅ with he | hne
+    · rw [α_length_of_empty α he, mul_zero]
+    · rw [ConstantOn.const_eq (Set.nonempty_iff_ne_empty.mpr hne) (c := 0)
+        (fun x hx => by rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by
+          rw [BoundedInterval.mem_iff]; exact hK x hx)]), zero_mul]
+  by_cases hIemp : (I:Set ℝ) = ∅
+  · have hRg : RS_integ g J α = 0 := by
+      have hcg : ConstantOn g (J:Set ℝ) := ConstantOn.of_const (c := 0) (fun x _ => by
+        rw [hgdef]; simp only [if_neg (show ¬ (x ∈ I) by
+          rw [BoundedInterval.mem_iff, hIemp]; exact Set.notMem_empty x)])
+      rw [RS_integ_const' hα hcg]
+      exact hg0 J (fun x _ => by rw [hIemp]; exact Set.notMem_empty x)
+    have hRf : RS_integ f I α = 0 := by
+      have hcf : ConstantOn f (I:Set ℝ) := ConstantOn.of_const (c := 0)
+        (fun x hx => absurd hx (by rw [hIemp]; exact Set.notMem_empty x))
+      rw [RS_integ_const' hα hcf, α_length_of_empty α hIemp, mul_zero]
+    rw [hRg, hRf]
+  obtain ⟨P, hP⟩ := h
+  obtain ⟨Q, L, R, hpcQ, hQint, hgL, hgR⟩ := PiecewiseConstantOn.of_extend_aux hIJ hP hIemp
+  have key : ∀ (a:BoundedInterval) (s:Finset BoundedInterval),
+      constant_value_on g (a:Set ℝ) * α[a]ₗ = 0 →
+      ∑ K ∈ insert a s, constant_value_on g (K:Set ℝ) * α[K]ₗ
+        = ∑ K ∈ s, constant_value_on g (K:Set ℝ) * α[K]ₗ := by
+    intro a s ha
+    by_cases hmem : a ∈ s
+    · rw [Finset.insert_eq_self.mpr hmem]
+    · rw [Finset.sum_insert hmem, ha, zero_add]
+  rw [RS_integ_def hpcQ α, RS_integ_def hP α]
+  simp only [PiecewiseConstantWith.RS_integ, hQint]
+  rw [key L _ (hg0 L hgL), key R _ (hg0 R hgR)]
+  apply Finset.sum_congr rfl
+  intro K hK
+  congr 1
+  apply constant_value_on_congr
+  intro x hx
+  have hxI : x ∈ (I:Set ℝ) := by
+    have := P.contains K hK; rw [BoundedInterval.subset_iff] at this; exact this hx
+  rw [hgdef]; simp only [if_pos (show x ∈ I by rw [BoundedInterval.mem_iff]; exact hxI)]
 
 /-- Theorem 11.8.8 (h) (Laws of RS integration) / Exercise 11.8.8 -/
 theorem PiecewiseConstantOn.RS_integ_of_join {I J K: BoundedInterval} (hIJK: K.joins' I J)

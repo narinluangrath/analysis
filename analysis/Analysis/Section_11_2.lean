@@ -590,7 +590,7 @@ open Classical in
 /-- The partition construction underlying the extend-by-zero lemmas: extends a partition `P`
 of `I` to a partition of `J` by adjoining the left/right gap intervals, on which the extended
 function vanishes. -/
-private theorem PiecewiseConstantOn.of_extend_aux {I J: BoundedInterval} (hIJ: I ⊆ J)
+theorem PiecewiseConstantOn.of_extend_aux {I J: BoundedInterval} (hIJ: I ⊆ J)
     {f: ℝ → ℝ} {P: Partition I} (hP: PiecewiseConstantWith f P) (hIemp: (I:Set ℝ) ≠ ∅) :
     ∃ (Q : Partition J) (L R : BoundedInterval),
       PiecewiseConstantWith (fun x ↦ if x ∈ I then f x else 0) Q ∧
