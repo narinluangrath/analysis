@@ -135,10 +135,48 @@ example : PiecewiseConstantOn f_11_2_4 (Icc 1 6) := by
     simp only [f_11_2_4, this]; norm_num
 
 example : PiecewiseConstantOn f_11_2_4 (Icc 1 6) := by
-  use Partition.mk { Ico 1 2, Icc 2 2, Ioo 2 3, Icc 3 3, Ioo 3 5, Ico 5 6, Icc 6 6} ?_ ?_
-  . sorry
-  . sorry
-  sorry
+  set P2 : Partition (Icc 1 2) := (⊥:Partition (Ico 1 2)).join (⊥:Partition (Icc 2 2))
+    (BoundedInterval.join_Ico_Icc (by norm_num) (by norm_num))
+  set P3 : Partition (Ico 1 3) := P2.join (⊥:Partition (Ioo 2 3))
+    (BoundedInterval.join_Icc_Ioo (by norm_num) (by norm_num))
+  set P4 : Partition (Icc 1 3) := P3.join (⊥:Partition (Icc 3 3))
+    (BoundedInterval.join_Ico_Icc (by norm_num) (by norm_num))
+  set P5 : Partition (Ico 1 5) := P4.join (⊥:Partition (Ioo 3 5))
+    (BoundedInterval.join_Icc_Ioo (by norm_num) (by norm_num))
+  set P6 : Partition (Ico 1 6) := P5.join (⊥:Partition (Ico 5 6))
+    (BoundedInterval.join_Ico_Ico (by norm_num) (by norm_num))
+  set P7 : Partition (Icc 1 6) := P6.join (⊥:Partition (Icc 6 6))
+    (BoundedInterval.join_Ico_Icc (by norm_num) (by norm_num)) with hP7
+  refine ⟨P7, ?_⟩
+  intro L hL
+  have hL2 : L ∈ P7.intervals := hL
+  simp only [hP7, P6, P5, P4, P3, P2, Partition.intervals_of_join, Partition.intervals_of_bot,
+    Finset.mem_union, Finset.mem_singleton] at hL2
+  rcases hL2 with ((((((rfl | rfl) | rfl) | rfl) | rfl) | rfl) | rfl)
+  · refine ConstantOn.of_const (c := 7) (fun x hx => ?_)
+    rw [BoundedInterval.set_Ico, Set.mem_Ico] at hx; obtain ⟨ha, hb⟩ := hx
+    simp only [f_11_2_4]; split_ifs <;> first | rfl | (exfalso; linarith)
+  · refine ConstantOn.of_const (c := 7) (fun x hx => ?_)
+    rw [BoundedInterval.set_Icc, Set.mem_Icc] at hx
+    have : x = 2 := le_antisymm hx.2 hx.1
+    simp only [f_11_2_4, this]; norm_num
+  · refine ConstantOn.of_const (c := 7) (fun x hx => ?_)
+    rw [BoundedInterval.set_Ioo, Set.mem_Ioo] at hx; obtain ⟨ha, hb⟩ := hx
+    simp only [f_11_2_4]; split_ifs <;> first | rfl | (exfalso; linarith)
+  · refine ConstantOn.of_const (c := 4) (fun x hx => ?_)
+    rw [BoundedInterval.set_Icc, Set.mem_Icc] at hx
+    have : x = 3 := le_antisymm hx.2 hx.1
+    simp only [f_11_2_4, this]; norm_num
+  · refine ConstantOn.of_const (c := 5) (fun x hx => ?_)
+    rw [BoundedInterval.set_Ioo, Set.mem_Ioo] at hx; obtain ⟨ha, hb⟩ := hx
+    simp only [f_11_2_4]; split_ifs <;> first | rfl | (exfalso; linarith)
+  · refine ConstantOn.of_const (c := 5) (fun x hx => ?_)
+    rw [BoundedInterval.set_Ico, Set.mem_Ico] at hx; obtain ⟨ha, hb⟩ := hx
+    simp only [f_11_2_4]; split_ifs <;> first | rfl | (exfalso; linarith)
+  · refine ConstantOn.of_const (c := 2) (fun x hx => ?_)
+    rw [BoundedInterval.set_Icc, Set.mem_Icc] at hx
+    have : x = 6 := le_antisymm hx.2 hx.1
+    simp only [f_11_2_4, this]; norm_num
 
 /-- Example 11.2.6 -/
 theorem ConstantOn.piecewiseConstantOn {f:ℝ → ℝ} {I: BoundedInterval} (h: ConstantOn f (I:Set ℝ)) :
