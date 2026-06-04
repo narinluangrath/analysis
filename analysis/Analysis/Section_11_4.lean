@@ -430,11 +430,38 @@ theorem IntegrableOn.join {I J K: BoundedInterval} (hIJK: K.joins I J)
     rw [hfuK]; linarith [hgIint, hgJint]
   linarith [hup, hlow]
 
+/-- For a nondegenerate interval, the integral equals the integral over its open core
+(the endpoints contribute zero). -/
+theorem integ_eq_Ioo {I: BoundedInterval} (hlt: I.a < I.b) {f: ℝ → ℝ} (h: IntegrableOn f I) :
+    integ f I = integ f (BoundedInterval.Ioo I.a I.b) := by
+  have hsingl : ∀ c:ℝ, integ f (BoundedInterval.Icc c c) = 0 :=
+    fun c => (integ_on_subsingleton (by rw [BoundedInterval.length]; exact max_eq_right (by simp))).2
+  cases I with
+  | Ioo a b => rfl
+  | Icc a b =>
+    obtain ⟨_, hIoc, heq1⟩ := h.join (BoundedInterval.join_Icc_Ioc (le_refl a) hlt.le)
+    obtain ⟨_, _, heq2⟩ := hIoc.join (BoundedInterval.join_Ioo_Icc hlt (le_refl b))
+    rw [heq1, heq2, hsingl a, hsingl b]; ring
+  | Ioc a b =>
+    obtain ⟨_, _, heq⟩ := h.join (BoundedInterval.join_Ioo_Icc hlt (le_refl b))
+    rw [heq, hsingl b]; ring
+  | Ico a b =>
+    obtain ⟨_, _, heq⟩ := h.join (BoundedInterval.join_Icc_Ioo (le_refl a) hlt)
+    rw [heq, hsingl a]; ring
+
 /-- A further variant of Theorem 11.4.1(h) that will be useful in later sections. -/
 theorem IntegrableOn.eq {I J: BoundedInterval} (hIJ: J ⊆ I)
   (ha: J.a = I.a) (hb: J.b = I.b)
   {f: ℝ → ℝ} (h: IntegrableOn f I) : integ f J = integ f I := by
-  sorry
+  rcases lt_or_ge I.a I.b with hlt | hge
+  · have hltJ : J.a < J.b := by rw [ha, hb]; exact hlt
+    rw [integ_eq_Ioo hltJ (h.mono' hIJ), integ_eq_Ioo hlt h, ha, hb]
+  · have hI0 : |I|ₗ = 0 := by rw [BoundedInterval.length]; exact max_eq_right (by linarith)
+    have hJ0 : |J|ₗ = 0 := le_antisymm
+      (by rw [← hI0]; exact BoundedInterval.length_mono (by
+        have := hIJ; rwa [BoundedInterval.subset_iff] at this))
+      (BoundedInterval.length_nonneg J)
+    rw [(integ_on_subsingleton hJ0).2, (integ_on_subsingleton hI0).2]
 
 /-- A handy little lemma for "epsilon of room" type arguments -/
 lemma nonneg_of_le_const_mul_eps {x C:ℝ} (h: ∀ ε>0, x ≤ C * ε) : x ≤ 0 := by
