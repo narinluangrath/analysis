@@ -190,7 +190,41 @@ theorem upper_integ_eq_inf_upper_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: Bd
 
 theorem lower_integ_ge_lower_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: BddOn f I)
   (P: Partition I): lower_riemann_sum f P ≤ lower_integral f I := by
-  sorry
+  classical
+  set g : ℝ → ℝ := fun x => if h : x ∈ (I:Set ℝ) then
+    sInf (f '' (((P.exists_unique x ((BoundedInterval.mem_iff I x).mpr h)).exists.choose : BoundedInterval) : Set ℝ)) else 0 with hgdef
+  have hgval : ∀ J, J ∈ P.intervals → ∀ x, x ∈ (J:Set ℝ) → g x = sInf (f '' (J:Set ℝ)) := by
+    intro J hJ x hx
+    have hxI : x ∈ (I:Set ℝ) := by
+      have hsub := P.contains J hJ; rw [BoundedInterval.subset_iff] at hsub; exact hsub hx
+    have hspec := (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).exists.choose_spec
+    have hch := (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).unique hspec
+      ⟨hJ, (BoundedInterval.mem_iff J x).mpr hx⟩
+    simp only [g, dif_pos hxI, hch]
+  have hgpcw : PiecewiseConstantWith g P := fun J hJ => ConstantOn.of_const (hgval J hJ)
+  obtain ⟨M, hM⟩ := hf
+  have hbddJ : ∀ J, J ∈ P.intervals → BddBelow (f '' (J:Set ℝ)) := by
+    intro J hJ
+    refine ⟨-M, ?_⟩; rintro y ⟨z, hz, rfl⟩
+    have hzI : z ∈ (I:Set ℝ) := by
+      have hsub := P.contains J hJ; rw [BoundedInterval.subset_iff] at hsub; exact hsub hz
+    have := hM z hzI; rw [abs_le] at this; linarith [this.1]
+  have hgmin : MinorizesOn g f I := by
+    intro x hx
+    obtain ⟨J, ⟨hJmem, hxJ⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+    rw [hgval J hJmem x ((BoundedInterval.mem_iff J x).mp hxJ)]
+    exact csInf_le (hbddJ J hJmem) ⟨x, (BoundedInterval.mem_iff J x).mp hxJ, rfl⟩
+  have hgi : PiecewiseConstantOn.integ g I = lower_riemann_sum f P := by
+    rw [PiecewiseConstantOn.integ_def hgpcw]
+    simp only [PiecewiseConstantWith.integ, lower_riemann_sum]
+    apply Finset.sum_congr rfl
+    intro J hJ
+    by_cases hJne : (J:Set ℝ).Nonempty
+    · rw [ConstantOn.const_eq hJne (hgval J hJ)]
+    · rw [Set.not_nonempty_iff_eq_empty] at hJne
+      rw [BoundedInterval.length_of_empty hJne]; ring
+  rw [← hgi]
+  exact integ_le_lower_integral ⟨M, hM⟩ hgmin ⟨P, hgpcw⟩
 
 theorem lower_integ_eq_sup_lower_sum {f:ℝ → ℝ} {I:BoundedInterval} (hf: BddOn f I) :
   lower_integral f I = sSup (.range (fun P : Partition I ↦ lower_riemann_sum f P)) := by
