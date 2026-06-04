@@ -711,6 +711,35 @@ open BoundedInterval
 /-- Exercise 11.4.2 -/
 theorem IntegrableOn.split {I: BoundedInterval} {f: ℝ → ℝ} (hf: IntegrableOn f I) (P: Partition I) :
   integ f I = ∑ J ∈ P.intervals, integ f J := by
-    sorry
+  generalize hcard : P.intervals.card = n
+  revert I
+  induction' n with n hn <;> intro I hf P hcard
+  · rw [Finset.card_eq_zero] at hcard
+    have hIe : (I:Set ℝ) = ∅ := by
+      rw [Set.eq_empty_iff_forall_notMem]; intro x hx
+      obtain ⟨J, ⟨hJ, _⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [hcard] at hJ; simp at hJ
+    rw [hcard, Finset.sum_empty]
+    exact (integ_on_subsingleton (BoundedInterval.length_of_empty hIe)).2
+  · by_cases hss : Subsingleton (I:Set ℝ)
+    · have hI0 : |I|ₗ = 0 := BoundedInterval.length_of_subsingleton.mp hss
+      rw [(integ_on_subsingleton hI0).2]
+      symm; apply Finset.sum_eq_zero; intro J hJ
+      have hJss : Subsingleton (J:Set ℝ) := by
+        rw [Set.subsingleton_coe] at hss ⊢
+        have hsub := P.contains J hJ; rw [BoundedInterval.subset_iff] at hsub
+        exact hss.anti hsub
+      exact (integ_on_subsingleton (BoundedInterval.length_of_subsingleton.mp hJss)).2
+    · have hlt : I.a < I.b := by
+        simp [BoundedInterval.length_of_subsingleton, BoundedInterval.length,
+          -Set.subsingleton_coe] at hss
+        exact hss
+      obtain ⟨K, L, P', hK, hjoin, hP'⟩ := P.exists_peel hlt
+      obtain ⟨hIL, _, hjeq⟩ := hf.join hjoin
+      have hcardL : P'.intervals.card = n := by
+        rw [hP', Finset.card_erase_of_mem hK]; omega
+      have hLsum := hn hIL P' hcardL
+      rw [hjeq, hLsum, hP', add_comm]
+      exact Finset.add_sum_erase _ _ hK
 
 end Chapter11

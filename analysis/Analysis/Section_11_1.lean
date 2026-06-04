@@ -521,6 +521,123 @@ theorem Partition.exist_right {I: BoundedInterval} (hI: I.a < I.b) (hI': I.b ∉
   | Icc c d => intro _ hbeq hbn hlt2; exact absurd (Set.mem_Icc.mpr ⟨hbeq ▸ hlt2.le, hbeq.ge⟩) hbn
   | Ioc c d => intro _ hbeq hbn hlt2; exact absurd (Set.mem_Ioc.mpr ⟨hbeq ▸ hlt2, hbeq.ge⟩) hbn
 
+/-- A nondegenerate partitioned interval can have its rightmost piece `K` peeled off,
+leaving a partition `P'` of the remaining interval `L` with `I.joins L K`. -/
+theorem Partition.exists_peel {I: BoundedInterval} (P: Partition I) (h: I.a < I.b) :
+    ∃ (K L : BoundedInterval) (P' : Partition L),
+      K ∈ P ∧ I.joins L K ∧ P'.intervals = P.intervals.erase K := by
+  have hex : ∃ K L : BoundedInterval, K ∈ P ∧ I.joins L K := by
+    by_cases hI' : I.b ∈ I
+    . choose K hK hbK using (P.exists_unique I.b hI').exists
+      observe hKI : K ⊆ I
+      by_cases hsub : Subsingleton (K:Set ℝ)
+      . simp_all [mem_iff]
+        apply hsub.eq_singleton_of_mem at hbK
+        have : K = Icc (I.b) (I.b) := by
+          cases K with
+          | Icc c d =>
+            rw [set_Icc, Set.Icc_eq_singleton_iff] at hbK
+            rw [hbK.1, hbK.2]
+          | Ioo c d =>
+            exfalso; rw [set_Ioo] at hbK
+            have hmem : I.b ∈ Set.Ioo c d := by rw [hbK]; rfl
+            rw [Set.mem_Ioo] at hmem
+            have hy : (c + I.b)/2 ∈ Set.Ioo c d := by
+              rw [Set.mem_Ioo]; exact ⟨by linarith [hmem.1], by linarith [hmem.1, hmem.2]⟩
+            rw [hbK, Set.mem_singleton_iff] at hy; linarith [hmem.1]
+          | Ioc c d =>
+            exfalso; rw [set_Ioc] at hbK
+            have hmem : I.b ∈ Set.Ioc c d := by rw [hbK]; rfl
+            rw [Set.mem_Ioc] at hmem
+            have hy : (c + I.b)/2 ∈ Set.Ioc c d := by
+              rw [Set.mem_Ioc]; exact ⟨by linarith [hmem.1], by linarith [hmem.1, hmem.2]⟩
+            rw [hbK, Set.mem_singleton_iff] at hy; linarith [hmem.1]
+          | Ico c d =>
+            exfalso; rw [set_Ico] at hbK
+            have hmem : I.b ∈ Set.Ico c d := by rw [hbK]; rfl
+            rw [Set.mem_Ico] at hmem
+            have hy : (I.b + d)/2 ∈ Set.Ico c d := by
+              rw [Set.mem_Ico]; exact ⟨by linarith [hmem.1, hmem.2], by linarith [hmem.2]⟩
+            rw [hbK, Set.mem_singleton_iff] at hy; linarith [hmem.2]
+        subst this
+        cases I with
+        | Ioo _ _ => simp at hI'
+        | Icc a b => use (Icc b b), hK, Ico a b; apply join_Ico_Icc <;> order
+        | Ioc a b => use (Icc b b), hK, Ioo a b; apply join_Ioo_Icc <;> order
+        | Ico _ _ => simp at hI'
+      simp [length_of_subsingleton, -Set.subsingleton_coe] at hsub
+      have hKI' := (K.Ioo_subset.trans hKI).trans I.subset_Icc
+      simp only [subset_iff] at hKI'
+      have hKb : K.b = I.b := by
+        rw [le_antisymm_iff]; split_ands
+        . apply csSup_le_csSup bddAbove_Icc (by simp [hsub]) at hKI'
+          simp_all [csSup_Ioo hsub, csSup_Icc (le_of_lt h)]
+        have := K.subset_Icc _ hbK; simp [mem_iff] at this; exact this.2
+      have hKA : I.a ≤ K.a := by
+        apply csInf_le_csInf bddBelow_Icc (by simp [hsub]) at hKI'
+        simp_all [csInf_Icc (le_of_lt h), csInf_Ioo]
+      cases I with
+      | Ioo _ _ => simp [mem_iff] at hI'
+      | Icc a₁ b₁ =>
+        use K; cases K with
+        | Ioo _ _ => simp [mem_iff, subset_iff] at *; grind
+        | Icc c₂ b₂ => use Ico a₁ c₂, hK; simp_all; apply join_Ico_Icc <;> order
+        | Ioc c₂ b₂ => use Icc a₁ c₂, hK; simp_all; apply join_Icc_Ioc <;> order
+        | Ico _ _ => simp [mem_iff] at *; grind
+      | Ioc a₁ b₁ =>
+        use K; cases K with
+        | Ioo _ _ => simp_all [mem_iff]
+        | Icc c₂ b₂ =>
+          use Ioo a₁ c₂, hK
+          simp_all [subset_iff]
+          have : c₂ ∈ Set.Icc c₂ b₁ := by grind
+          apply hKI at this; grind [join_Ioo_Icc]
+        | Ioc c₂ b₂ => use Ioc a₁ c₂, hK; simp_all; apply join_Ioc_Ioc <;> order
+        | Ico _ _ => simp [mem_iff, subset_iff] at *; grind
+      | Ico _ _ => simp [mem_iff] at hI'
+    choose c hc hK using P.exist_right h hI'
+    cases I with
+    | Ioo a₁ b₁ =>
+      obtain hK | hK := hK <;> simp_all [mem_iff]
+      . use Ioo c b₁, hK, Ioc a₁ c; apply join_Ioc_Ioo <;> tauto
+      use Ico c b₁, hK, Ioo a₁ c
+      apply P.contains at hK; simp [subset_iff] at hK
+      have : c ∈ Set.Ico c b₁ := by grind
+      grind [join_Ioo_Ico]
+    | Icc _ _ => simp [mem_iff] at hI' h; order
+    | Ioc _ _ => simp [mem_iff] at hI' h; order
+    | Ico a₁ b₁ =>
+      obtain hK | hK := hK <;> simp_all [mem_iff]
+      . use Ioo c b₁, hK, Icc a₁ c; grind [join_Icc_Ioo]
+      use Ico c b₁, hK, Ico a₁ c; grind [join_Ico_Ico]
+  obtain ⟨ K, L, hK, ⟨ h1, h2, h3 ⟩ ⟩ := hex
+  have hP'ex : ∃ P' : Partition L, P'.intervals = P.intervals.erase K := by
+    refine ⟨⟨P.intervals.erase K, ?_, ?_⟩, rfl⟩
+    · intro x hx
+      have hxI : x ∈ (I:Set ℝ) := by rw [h2]; left; exact (mem_iff L x).mp hx
+      obtain ⟨J, ⟨hJmem, hxJ⟩, hJuniq⟩ := P.exists_unique x ((mem_iff I x).mpr hxI)
+      have hJneK : J ≠ K := by
+        rintro rfl
+        have hxK : x ∈ (L:Set ℝ) ∩ (J:Set ℝ) := ⟨(mem_iff L x).mp hx, (mem_iff J x).mp hxJ⟩
+        rw [h1] at hxK; exact hxK
+      refine ⟨J, ⟨Finset.mem_erase.mpr ⟨hJneK, hJmem⟩, hxJ⟩, ?_⟩
+      rintro K' ⟨hK'erase, hxK'⟩
+      exact hJuniq K' ⟨(Finset.mem_erase.mp hK'erase).2, hxK'⟩
+    · intro J hJerase
+      have hJmem := (Finset.mem_erase.mp hJerase).2
+      have hJneK := (Finset.mem_erase.mp hJerase).1
+      rw [subset_iff]; intro y hy
+      have hyI : y ∈ (I:Set ℝ) := by
+        have := P.contains J hJmem; rw [subset_iff] at this; exact this hy
+      rw [h2, Set.mem_union] at hyI
+      rcases hyI with hyL | hyK
+      · exact hyL
+      · exfalso
+        have huniq := P.exists_unique y ((mem_iff I y).mpr (by rw [h2]; right; exact hyK))
+        exact hJneK (huniq.unique ⟨hJmem, (mem_iff J y).mpr hy⟩ ⟨hK, (mem_iff K y).mpr hyK⟩)
+  obtain ⟨P', hP'⟩ := hP'ex
+  exact ⟨K, L, P', hK, ⟨h1, h2, h3⟩, hP'⟩
+
 /-- Theorem 11.1.13 (Length is finitely additive). -/
 theorem Partition.sum_of_length  (I: BoundedInterval) (P: Partition I) :
   ∑ J ∈ P.intervals, |J|ₗ = |I|ₗ := by
