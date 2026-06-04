@@ -909,17 +909,6 @@ theorem RS_IntegrableOn_iff_IntegrableOn (f:ℝ → ℝ) (I: BoundedInterval) :
   unfold RS_IntegrableOn IntegrableOn
   rw [upper_RS_integral_eq_upper_integral, lower_RS_integral_eq_lower_integral]
 
-/-- Exercise 11.8.4 -/
-theorem RS_integ_of_uniform_cts {I: BoundedInterval} {f:ℝ → ℝ} (hf: UniformContinuousOn f I)
- {α:ℝ → ℝ} (hα: Monotone α):
-  RS_IntegrableOn f I α := by
-  sorry
-
-/-- Exercise 11.8.5 -/
-theorem RS_integ_with_sign (f:ℝ → ℝ) (hf: ContinuousOn f (.Icc (-1) 1)) : RS_IntegrableOn f (Icc (-1) 1) Real.sign ∧ RS_integ f (Icc (-1) 1) (fun x ↦ -Real.sign x) = 2 * f 0 := by
-  sorry
-
-/-- Analogue of Lemma 11.3.7 -/
 theorem RS_integ_of_piecewise_const {f:ℝ → ℝ} {I: BoundedInterval} (hf: PiecewiseConstantOn f I)
   {α: ℝ → ℝ} (hα: Monotone α):
   RS_IntegrableOn f I α ∧ RS_integ f I α = PiecewiseConstantOn.RS_integ f I α := by
@@ -941,5 +930,126 @@ theorem RS_integ_of_piecewise_const {f:ℝ → ℝ} {I: BoundedInterval} (hf: Pi
   refine ⟨⟨hbdd, by linarith⟩, ?_⟩
   show upper_RS_integral f I α = PiecewiseConstantOn.RS_integ f I α
   linarith
+
+
+/-- Exercise 11.8.4 -/
+theorem RS_integ_of_uniform_cts {I: BoundedInterval} {f:ℝ → ℝ} (hf: UniformContinuousOn f I)
+ {α:ℝ → ℝ} (hα: Monotone α):
+  RS_IntegrableOn f I α := by
+  classical
+  have hfbound : BddOn f I := by
+    rw [BddOn.iff']; exact hf.of_bounded subset_rfl (Bornology.IsBounded.of_boundedInterval I)
+  by_cases hsing : |I|ₗ = 0
+  · haveI : Subsingleton ((I:Set ℝ)) := BoundedInterval.length_of_subsingleton.mpr hsing
+    exact (RS_integ_of_piecewise_const ConstantOn.of_subsingleton.piecewiseConstantOn hα).1
+  refine ⟨hfbound, ?_⟩
+  have hab : I.a < I.b := by
+    by_contra hcon; push_neg at hcon
+    exact hsing (by simp only [BoundedInterval.length]; exact max_eq_right (by linarith))
+  obtain ⟨M, hM⟩ := id hfbound
+  have hcont := hf
+  rw [UniformContinuousOn.iff] at hcont
+  have key : ∀ ε:ℝ, 0 < ε → upper_RS_integral f I α - lower_RS_integral f I α ≤ ε * α[I]ₗ := by
+    intro ε hε
+    obtain ⟨δ, hδ, hfu⟩ := hcont ε hε; simp [Real.Close, Real.dist_eq] at hfu
+    obtain ⟨N, hN⟩ := exists_nat_gt ((I.b-I.a)/δ)
+    have hNpos : 0 < N := by
+      have h0 : 0 < (I.b-I.a)/δ := div_pos (by linarith) hδ
+      rify; order
+    have hN' : (I.b-I.a)/(N:ℝ) < δ := by rw [div_lt_comm₀ (by positivity) hδ]; exact hN
+    obtain ⟨P, hcard, hlength⟩ := unif_gen N hNpos I hab
+    have hcontJ : ∀ J ∈ P.intervals, (J:Set ℝ) ⊆ (I:Set ℝ) := by
+      intro J hJ; have := P.contains J hJ; rwa [subset_iff] at this
+    have hbddA : ∀ J ∈ P.intervals, BddAbove (f '' (J:Set ℝ)) := fun J hJ =>
+      ⟨M, by rintro y ⟨z, hz, rfl⟩; linarith [(abs_le.mp (hM z (hcontJ J hJ hz))).2]⟩
+    have hbddB : ∀ J ∈ P.intervals, BddBelow (f '' (J:Set ℝ)) := fun J hJ =>
+      ⟨-M, by rintro y ⟨z, hz, rfl⟩; linarith [(abs_le.mp (hM z (hcontJ J hJ hz))).1]⟩
+    have hpos : (0:ℝ) < (I.b-I.a)/N := div_pos (by linarith) (by positivity)
+    have hJne : ∀ J ∈ P.intervals, (f '' (J:Set ℝ)).Nonempty := by
+      intro J hJ
+      have hJl := hlength J hJ
+      refine Set.Nonempty.image _ ?_
+      rw [Set.nonempty_iff_ne_empty]; intro he
+      rw [BoundedInterval.length_of_empty he] at hJl; linarith
+    have hosc : ∀ J ∈ P.intervals, sSup (f '' (J:Set ℝ)) - sInf (f '' (J:Set ℝ)) ≤ ε := by
+      intro J hJ
+      have h1 : ∀ y ∈ (J:Set ℝ), sSup (f '' (J:Set ℝ)) ≤ f y + ε := by
+        intro y hy; apply csSup_le (hJne J hJ); rintro _ ⟨z, hz, rfl⟩
+        have hdd : |f z - f y| ≤ ε := by
+          apply hfu y (hcontJ J hJ hy) z (hcontJ J hJ hz)
+          exact le_of_lt (lt_of_le_of_lt (BoundedInterval.dist_le_length hz hy)
+            (by rw [hlength J hJ]; exact hN'))
+        linarith [(abs_le.mp hdd).2]
+      have h2 : sSup (f '' (J:Set ℝ)) - ε ≤ sInf (f '' (J:Set ℝ)) := by
+        apply le_csInf (hJne J hJ); rintro _ ⟨y, hy, rfl⟩; linarith [h1 y hy]
+      linarith
+    -- step functions
+    set gs : ℝ → ℝ := fun x => if h : x ∈ (I:Set ℝ) then
+      sSup (f '' (((P.exists_unique x ((BoundedInterval.mem_iff I x).mpr h)).exists.choose : BoundedInterval) : Set ℝ)) else 0 with hgsdef
+    set gi : ℝ → ℝ := fun x => if h : x ∈ (I:Set ℝ) then
+      sInf (f '' (((P.exists_unique x ((BoundedInterval.mem_iff I x).mpr h)).exists.choose : BoundedInterval) : Set ℝ)) else 0 with hgidef
+    have hgsval : ∀ J, J ∈ P.intervals → ∀ x, x ∈ (J:Set ℝ) → gs x = sSup (f '' (J:Set ℝ)) := by
+      intro J hJ x hx
+      have hxI : x ∈ (I:Set ℝ) := hcontJ J hJ hx
+      have hch := (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).unique
+        (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).exists.choose_spec
+        ⟨hJ, (BoundedInterval.mem_iff J x).mpr hx⟩
+      simp only [gs, dif_pos hxI, hch]
+    have hgival : ∀ J, J ∈ P.intervals → ∀ x, x ∈ (J:Set ℝ) → gi x = sInf (f '' (J:Set ℝ)) := by
+      intro J hJ x hx
+      have hxI : x ∈ (I:Set ℝ) := hcontJ J hJ hx
+      have hch := (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).unique
+        (P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hxI)).exists.choose_spec
+        ⟨hJ, (BoundedInterval.mem_iff J x).mpr hx⟩
+      simp only [gi, dif_pos hxI, hch]
+    have hgspc : PiecewiseConstantOn gs I := ⟨P, fun J hJ => ConstantOn.of_const (hgsval J hJ)⟩
+    have hgipc : PiecewiseConstantOn gi I := ⟨P, fun J hJ => ConstantOn.of_const (hgival J hJ)⟩
+    have hgsmaj : MajorizesOn gs f I := by
+      intro x hx
+      obtain ⟨J, ⟨hJmem, hxJ⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [hgsval J hJmem x ((BoundedInterval.mem_iff J x).mp hxJ)]
+      exact le_csSup (hbddA J hJmem) ⟨x, (BoundedInterval.mem_iff J x).mp hxJ, rfl⟩
+    have hgimin : MinorizesOn gi f I := by
+      intro x hx
+      obtain ⟨J, ⟨hJmem, hxJ⟩, _⟩ := P.exists_unique x ((BoundedInterval.mem_iff I x).mpr hx)
+      rw [hgival J hJmem x ((BoundedInterval.mem_iff J x).mp hxJ)]
+      exact csInf_le (hbddB J hJmem) ⟨x, (BoundedInterval.mem_iff J x).mp hxJ, rfl⟩
+    have hup := upper_RS_integral_le_integ hfbound hgsmaj hgspc hα
+    have hlo := integ_le_lower_RS_integral hfbound hgimin hgipc hα
+    -- RS_integ gs - RS_integ gi = ∑ (sSup - sInf) α[J] ≤ ε α[I]
+    have hRSs : PiecewiseConstantOn.RS_integ gs I α = ∑ J ∈ P.intervals, sSup (f '' (J:Set ℝ)) * α[J]ₗ := by
+      rw [PiecewiseConstantOn.RS_integ_def (fun J hJ => ConstantOn.of_const (hgsval J hJ)) α]
+      simp only [PiecewiseConstantWith.RS_integ]
+      apply Finset.sum_congr rfl; intro J hJ
+      by_cases hJn : (J:Set ℝ).Nonempty
+      · rw [ConstantOn.const_eq hJn (hgsval J hJ)]
+      · rw [Set.not_nonempty_iff_eq_empty] at hJn; rw [α_length_of_empty α hJn]; ring
+    have hRSi : PiecewiseConstantOn.RS_integ gi I α = ∑ J ∈ P.intervals, sInf (f '' (J:Set ℝ)) * α[J]ₗ := by
+      rw [PiecewiseConstantOn.RS_integ_def (fun J hJ => ConstantOn.of_const (hgival J hJ)) α]
+      simp only [PiecewiseConstantWith.RS_integ]
+      apply Finset.sum_congr rfl; intro J hJ
+      by_cases hJn : (J:Set ℝ).Nonempty
+      · rw [ConstantOn.const_eq hJn (hgival J hJ)]
+      · rw [Set.not_nonempty_iff_eq_empty] at hJn; rw [α_length_of_empty α hJn]; ring
+    have hdiff : PiecewiseConstantOn.RS_integ gs I α - PiecewiseConstantOn.RS_integ gi I α ≤ ε * α[I]ₗ := by
+      rw [hRSs, hRSi, ← Finset.sum_sub_distrib]
+      calc ∑ J ∈ P.intervals, (sSup (f '' (J:Set ℝ)) * α[J]ₗ - sInf (f '' (J:Set ℝ)) * α[J]ₗ)
+          = ∑ J ∈ P.intervals, (sSup (f '' (J:Set ℝ)) - sInf (f '' (J:Set ℝ))) * α[J]ₗ := by
+            apply Finset.sum_congr rfl; intro J hJ; ring
+        _ ≤ ∑ J ∈ P.intervals, ε * α[J]ₗ := by
+            apply Finset.sum_le_sum; intro J hJ
+            apply mul_le_mul_of_nonneg_right (hosc J hJ) (α_length_nonneg_of_monotone hα J)
+        _ = ε * ∑ J ∈ P.intervals, α[J]ₗ := by rw [Finset.mul_sum]
+        _ = ε * α[I]ₗ := by rw [Partition.sum_of_α_length P α]
+    linarith [hup, hlo, hdiff]
+  have hlu := lower_RS_integral_le_upper hfbound hα
+  have hle0 : upper_RS_integral f I α - lower_RS_integral f I α ≤ 0 :=
+    nonneg_of_le_const_mul_eps (fun ε hε => by rw [mul_comm]; exact key ε hε)
+  show lower_RS_integral f I α = upper_RS_integral f I α
+  linarith
+
+/-- Exercise 11.8.5 -/
+theorem RS_integ_with_sign (f:ℝ → ℝ) (hf: ContinuousOn f (.Icc (-1) 1)) : RS_IntegrableOn f (Icc (-1) 1) Real.sign ∧ RS_integ f (Icc (-1) 1) (fun x ↦ -Real.sign x) = 2 * f 0 := by
+  sorry
 
 end Chapter11
