@@ -588,6 +588,31 @@ theorem PiecewiseConstantOn.of_join {I J K: BoundedInterval} (hIJK: K.joins I J)
 theorem PiecewiseConstantOn.integ_of_join {I J K: BoundedInterval} (hIJK: K.joins I J)
   {f: ℝ → ℝ} (h: PiecewiseConstantOn f K) :
   integ f K = integ f I + integ f J := by
-  sorry
+  classical
+  have hIK : I ⊆ K := by rw [BoundedInterval.subset_iff, hIJK.2.1]; exact Set.subset_union_left
+  have hJK : J ⊆ K := by rw [BoundedInterval.subset_iff, hIJK.2.1]; exact Set.subset_union_right
+  obtain ⟨PI, hPI⟩ := h.restrict hIK
+  obtain ⟨PJ, hPJ⟩ := h.restrict hJK
+  have hjoinpc : PiecewiseConstantWith f (PI.join PJ hIJK) := by
+    intro L hL; rcases Finset.mem_union.mp hL with hL | hL
+    · exact hPI L hL
+    · exact hPJ L hL
+  rw [integ_def hjoinpc, integ_def hPI, integ_def hPJ]
+  simp only [PiecewiseConstantWith.integ]
+  have hinter0 : ∑ L ∈ PI.intervals ∩ PJ.intervals, (constant_value_on f (L:Set ℝ) * |L|ₗ) = 0 := by
+    apply Finset.sum_eq_zero
+    intro L hL
+    rw [Finset.mem_inter] at hL
+    have hLI := PI.contains L hL.1; rw [BoundedInterval.subset_iff] at hLI
+    have hLJ := PJ.contains L hL.2; rw [BoundedInterval.subset_iff] at hLJ
+    have hLe : (L:Set ℝ) = ∅ := by
+      rw [Set.eq_empty_iff_forall_notMem]; intro x hx
+      have hxIJ : x ∈ (I:Set ℝ) ∩ (J:Set ℝ) := ⟨hLI hx, hLJ hx⟩
+      rw [hIJK.1] at hxIJ; exact hxIJ
+    rw [BoundedInterval.length_of_empty hLe, mul_zero]
+  have hsui := Finset.sum_union_inter (s₁ := PI.intervals) (s₂ := PJ.intervals)
+    (f := fun L => constant_value_on f (L:Set ℝ) * |L|ₗ)
+  rw [hinter0, add_zero] at hsui
+  exact hsui
 
 end Chapter11
