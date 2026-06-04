@@ -108,7 +108,48 @@ theorem Series.converges_of_permute_nonneg {a:ℕ → ℝ} (ha: (a:Series).nonne
   linarith [ciSup_le hSL', ciSup_le hTL]
 
 /-- Example 7.4.2 -/
-theorem Series.zeta_2_converges : (fun n:ℕ ↦ 1/(n+1:ℝ)^2 : Series).converges := by sorry
+theorem Series.zeta_2_converges : (fun n:ℕ ↦ 1/(n+1:ℝ)^2 : Series).converges := by
+  set s : Series := (fun n:ℕ ↦ 1/(n+1:ℝ)^2 : Series) with hsdef
+  have hs : s.nonneg := by intro n; by_cases h : n ≥ 0 <;> simp [s, h]; positivity
+  rw [converges_of_nonneg_iff hs]
+  set t : Series := (mk' (m := 1) fun n ↦ 1 / (n:ℝ) ^ (2:ℝ) : Series) with htdef
+  have htnn : t.nonneg := by
+    intro n; by_cases h : n ≥ 1
+    · rw [Series.eval_mk' _ h]; positivity
+    · simp [t, h]
+  have htconv : t.converges := (converges_qseries 2 (by norm_num)).mpr (by norm_num)
+  obtain ⟨Q, hQ⟩ := (converges_of_nonneg_iff htnn).mp htconv
+  use Q
+  intro N
+  have key : s.partial N ≤ t.partial (N+1) := by
+    by_cases hN : N ≥ 0
+    · apply le_of_eq
+      unfold Series.partial
+      have hsm : s.m = 0 := rfl
+      have htm : t.m = 1 := rfl
+      rw [hsm, htm]
+      apply Finset.sum_nbij' (i := fun n => n + 1) (j := fun n => n - 1)
+      · intro a ha; simp only [Finset.mem_Icc] at *; omega
+      · intro a ha; simp only [Finset.mem_Icc] at *; omega
+      · intro a ha; omega
+      · intro a ha; omega
+      · intro a ha; simp only [Finset.mem_Icc] at ha
+        have ha0 : a ≥ 0 := ha.1
+        have hseqs : s.seq a = 1/((a.toNat:ℝ)+1)^2 := by simp [s, ha0]
+        have hcast : ((a+1).toNat:ℝ) = (a.toNat:ℝ) + 1 := by
+          have : (a+1).toNat = a.toNat + 1 := by omega
+          rw [this]; push_cast; ring
+        have hseqt : t.seq (a+1) = 1/((a.toNat:ℝ)+1)^2 := by
+          rw [htdef, Series.eval_mk' _ (show a + 1 ≥ 1 by omega), Real.rpow_two]
+          congr 2
+          have h2 : ((a.toNat:ℤ):ℝ) = (a:ℝ) := by rw [Int.toNat_of_nonneg ha0]
+          push_cast at h2 ⊢
+          first | rfl | (rw [h2]; ring) | linarith [h2]
+        rw [hseqs, hseqt]
+    · simp only [not_le] at hN
+      rw [Series.partial_of_lt (by simp [s]; omega)]
+      exact partial_nonneg htnn _
+  exact le_trans key (hQ _)
 
 theorem Series.permuted_zeta_2_converges :
   (fun n:ℕ ↦ if Even n then 1/(n+2:ℝ)^2 else 1/(n:ℝ)^2 : Series).converges := by
@@ -155,7 +196,14 @@ theorem Series.absConverges_of_permute {a:ℕ → ℝ} (ha : (a:Series).absConve
   choose M hM using this; use M; intro M' hM'
   have hM'_pos : M' ≥ 0 := by linarith
   have why : (Finset.Iic M'.toNat).image f ⊇ .Iic N.toNat := by
-    sorry
+    intro n hn
+    simp only [Finset.mem_Iic] at hn
+    rw [Finset.mem_image]
+    refine ⟨finv n, ?_, ?_⟩
+    · simp only [Finset.mem_Iic]
+      have := hM n hn
+      omega
+    · exact Function.invFun_eq (hf.2 n)
   set X : Finset ℕ := (Finset.Iic M'.toNat).image f \ .Iic N.toNat
   have claim : ∑ m ∈ .Iic M'.toNat, a (f m) = ∑ n ∈ .Iic N.toNat, a n + ∑ n ∈ X, a n := calc
     _ = ∑ n ∈ (Finset.Iic M'.toNat).image f , a n := by
@@ -167,7 +215,15 @@ theorem Series.absConverges_of_permute {a:ℕ → ℝ} (ha : (a:Series).absConve
       rw [Finset.disjoint_right]; intro n hn; simp only [X, Finset.mem_sdiff] at hn; tauto
   choose q' hq using X.bddAbove
   set q := max q' N.toNat
-  have why2 : X ⊆ Finset.Icc (N.toNat+1) q := by sorry
+  have why2 : X ⊆ Finset.Icc (N.toNat+1) q := by
+    intro n hn
+    have hnX : n ∉ Finset.Iic N.toNat := by
+      simp only [X, Finset.mem_sdiff] at hn; exact hn.2
+    simp only [Finset.mem_Iic] at hnX
+    simp only [Finset.mem_Icc]
+    refine ⟨by omega, ?_⟩
+    have : n ≤ q' := hq hn
+    omega
   have claim2 : |∑ n ∈ X, a n| ≤ ε/2 := calc
     _ ≤ ∑ n ∈ X, |a n| := X.abs_sum_le_sum_abs a
     _ ≤ ∑ n ∈ .Icc (N.toNat+1) q, |a n| := by
