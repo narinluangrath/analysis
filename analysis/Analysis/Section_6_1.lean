@@ -522,7 +522,30 @@ example : ¬ ((fun n ↦ (-1:ℝ)^n):Sequence).Convergent := by
 
 /-- Proposition 6.1.15 / Exercise 6.1.6 (Formal limits are genuine limits)-/
 theorem Sequence.lim_eq_LIM {a:ℕ → ℚ} (h: (a:Chapter5.Sequence).IsCauchy) :
-    ((a:Chapter5.Sequence):Sequence).TendsTo (Chapter5.Real.equivR (Chapter5.LIM a)) := by sorry
+    ((a:Chapter5.Sequence):Sequence).TendsTo (Chapter5.Real.equivR (Chapter5.LIM a)) := by
+  have hcoe : (Chapter5.Sequence.IsCauchy a) := h
+  rw [Chapter5.Real.equivR_eq' hcoe]
+  rw [Sequence.tendsTo_iff]
+  set f := hcoe.CauSeq with hf
+  intro ε hε
+  obtain ⟨q, hq0, hqε⟩ := exists_rat_btwn hε
+  have hq0' : (0:ℚ) < q := by exact_mod_cast hq0
+  obtain ⟨i, hi⟩ := f.cauchy₂ hq0'
+  refine ⟨(i:ℤ), fun n hn => ?_⟩
+  have hn0 : n ≥ 0 := le_trans (Int.natCast_nonneg i) hn
+  have hni : n.toNat ≥ i := by omega
+  rw [Chapter5.coe_sequence_eval, Chapter5.Sequence.eval_coe_at_int, if_pos hn0]
+  have hfval : ∀ k:ℕ, (f k : ℚ) = a k := fun k => rfl
+  rw [abs_sub_comm]
+  have key : |Real.mk f - (a n.toNat : ℝ)| ≤ (q:ℝ) := by
+    apply Real.mk_near_of_forall_near
+    refine ⟨i, fun j hj => ?_⟩
+    have h2 := le_of_lt (hi j hj n.toNat hni)
+    have : |((f j : ℝ)) - (a n.toNat : ℝ)| ≤ (q:ℝ) := by
+      rw [hfval j, ← Rat.cast_sub, ← Rat.cast_abs]; exact_mod_cast h2
+    rw [hfval j] at this; exact this
+  rw [abs_sub_comm] at key ⊢
+  linarith
 
 /-- Definition 6.1.16 -/
 abbrev Sequence.BoundedBy (a:Sequence) (M:ℝ) : Prop :=
@@ -1069,8 +1092,76 @@ abbrev Chapter5.Sequence.RatEquiv (a b: ℕ → ℚ) : Prop :=
   ∀ (ε:ℝ), ε > 0 → ε.SeqEventuallyClose (a:Chapter5.Sequence) (b:Chapter5.Sequence)
 
 namespace Chapter6
+
+private theorem ratequiv_iff_aux (a b: ℕ → ℚ) :
+    Chapter5.Sequence.RatEquiv a b ↔
+      ∀ (ε:ℝ), ε > 0 → ∃ N:ℤ, ∀ n:ℤ, n ≥ N → n ≥ 0 →
+        |(a n.toNat : ℝ) - (b n.toNat : ℝ)| ≤ ε := by
+  constructor
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max (max N (a:Chapter5.Sequence).n₀) (b:Chapter5.Sequence).n₀, fun n hn hn0 => ?_⟩
+    have hnN : n ≥ N := le_trans (le_trans (le_max_left _ _) (le_max_left _ _)) hn
+    have h1 : n ≥ ((a:Chapter5.Sequence).from N).n₀ := by
+      show n ≥ max (a:Chapter5.Sequence).n₀ N
+      simp only [ge_iff_le, max_le_iff]
+      exact ⟨le_trans (le_trans (le_max_right _ _) (le_max_left _ _)) hn, hnN⟩
+    have h2 : n ≥ ((b:Chapter5.Sequence).from N).n₀ := by
+      show n ≥ max (b:Chapter5.Sequence).n₀ N
+      simp only [ge_iff_le, max_le_iff]
+      exact ⟨le_trans (le_max_right _ _) hn, hnN⟩
+    have hc := hN n h1 h2
+    rw [show (((a:Chapter5.Sequence).from N) n) = (a:Chapter5.Sequence) n from
+          Chapter5.Sequence.from_eval _ hnN,
+        show (((b:Chapter5.Sequence).from N) n) = (b:Chapter5.Sequence) n from
+          Chapter5.Sequence.from_eval _ hnN] at hc
+    rw [Real.Close, Real.dist_eq] at hc
+    rw [Chapter5.Sequence.eval_coe_at_int, if_pos hn0,
+        Chapter5.Sequence.eval_coe_at_int, if_pos hn0] at hc
+    exact hc
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨max N 0, ?_⟩
+    intro n h1 h2
+    set M := max N 0 with hM
+    have hnM : n ≥ M := by
+      have heq : ((a:Chapter5.Sequence).from M).n₀ = max (a:Chapter5.Sequence).n₀ M := rfl
+      rw [heq] at h1; exact le_trans (le_max_right _ _) h1
+    have hnN : n ≥ N := le_trans (le_max_left _ _) hnM
+    have hn0 : n ≥ 0 := le_trans (le_max_right _ _) hnM
+    rw [show (((a:Chapter5.Sequence).from M) n) = (a:Chapter5.Sequence) n from
+          Chapter5.Sequence.from_eval _ hnM,
+        show (((b:Chapter5.Sequence).from M) n) = (b:Chapter5.Sequence) n from
+          Chapter5.Sequence.from_eval _ hnM]
+    rw [Real.Close, Real.dist_eq,
+        Chapter5.Sequence.eval_coe_at_int, if_pos hn0,
+        Chapter5.Sequence.eval_coe_at_int, if_pos hn0]
+    exact hN n hnN hn0
+
 /-- Exercise 6.1.10 -/
 theorem Chapter5.Sequence.equiv_rat (a b: ℕ → ℚ) :
-  Chapter5.Sequence.Equiv a b ↔ Chapter5.Sequence.RatEquiv a b := by sorry
+  Chapter5.Sequence.Equiv a b ↔ Chapter5.Sequence.RatEquiv a b := by
+  rw [Chapter5.Sequence.equiv_iff, ratequiv_iff_aux]
+  constructor
+  · intro h ε hε
+    obtain ⟨q, hq0, hqε⟩ := exists_rat_btwn hε
+    have hq0' : (0:ℚ) < q := by exact_mod_cast hq0
+    obtain ⟨N, hN⟩ := h q hq0'
+    refine ⟨max (N:ℤ) 0, fun n hn hn0 => ?_⟩
+    have hnN : n.toNat ≥ N := by omega
+    have hc := hN n.toNat hnN
+    have hcr : |(a n.toNat : ℝ) - (b n.toNat : ℝ)| ≤ (q:ℝ) := by
+      rw [← Rat.cast_sub, ← Rat.cast_abs]; exact_mod_cast hc
+    linarith
+  · intro h ε hε
+    have hεr : (0:ℝ) < (ε:ℝ) := by exact_mod_cast hε
+    obtain ⟨N, hN⟩ := h (ε:ℝ) hεr
+    refine ⟨max N 0 |>.toNat, fun n hn => ?_⟩
+    have hnN : (n:ℤ) ≥ N := by omega
+    have hn0 : (n:ℤ) ≥ 0 := Int.natCast_nonneg n
+    have hc := hN (n:ℤ) hnN hn0
+    rw [Int.toNat_natCast] at hc
+    rw [← Rat.cast_sub, ← Rat.cast_abs] at hc
+    exact_mod_cast hc
 
 end Chapter6
