@@ -362,7 +362,87 @@ example : ¬∃ P:Partition (Ioo 1 5), P.intervals = {Ioo 0 3, Ico 3 5} := by
 theorem Partition.exist_right {I: BoundedInterval} (hI: I.a < I.b) (hI': I.b ∉ I)
   {P: Partition I}
   : ∃ c ∈ Set.Ico I.a I.b, Ioo c I.b ∈ P ∨ Ico c I.b ∈ P := by
-  sorry
+  classical
+  -- midpoint of I lies in I
+  have hm : (I.a + I.b)/2 ∈ (I:Set ℝ) := by
+    have hsub := Ioo_subset I; rw [subset_iff, set_Ioo] at hsub
+    exact hsub (by rw [Set.mem_Ioo]; constructor <;> linarith)
+  obtain ⟨Jm, ⟨hJmmem, hJmm⟩, _⟩ := P.exists_unique _ ((mem_iff I _).mpr hm)
+  -- maximize right endpoint over nonempty pieces
+  set S := P.intervals.filter (fun J : BoundedInterval => (J:Set ℝ).Nonempty) with hSdef
+  have hJmS : Jm ∈ S := Finset.mem_filter.mpr ⟨hJmmem, ⟨_, (mem_iff Jm _).mp hJmm⟩⟩
+  obtain ⟨Js, hJsS, hJsmax⟩ := S.exists_max_image (fun J => J.b) ⟨Jm, hJmS⟩
+  rw [Finset.mem_filter] at hJsS
+  obtain ⟨hJsmem, p, hp⟩ := hJsS
+  have hJsI : (Js:Set ℝ) ⊆ Set.Icc I.a I.b := by
+    have h1 := P.contains Js hJsmem; rw [subset_iff] at h1
+    have h2 := subset_Icc I; rw [subset_iff, set_Icc] at h2
+    exact h1.trans h2
+  have hpIcc := hJsI hp; rw [Set.mem_Icc] at hpIcc
+  have hpJs := subset_Icc Js; rw [subset_iff, set_Icc] at hpJs
+  have hpJs' := hpJs hp; rw [Set.mem_Icc] at hpJs'
+  have hab : Js.a ≤ Js.b := le_trans hpJs'.1 hpJs'.2
+  -- Js.b ≤ I.b
+  have hub : Js.b ≤ I.b := by
+    rcases eq_or_lt_of_le hab with heq | hlt
+    · linarith [hpIcc.2, hpJs'.1, hpJs'.2, heq.ge]
+    · by_contra hgt; push_neg at hgt
+      have hy : (max Js.a I.b + Js.b)/2 ∈ (Js:Set ℝ) := by
+        have hsub := Ioo_subset Js; rw [subset_iff, set_Ioo] at hsub
+        apply hsub; rw [Set.mem_Ioo]
+        have hmlt : max Js.a I.b < Js.b := max_lt hlt hgt
+        exact ⟨by have := le_max_left Js.a I.b; linarith, by linarith⟩
+      have hyb := (hJsI hy); rw [Set.mem_Icc] at hyb
+      have := le_max_right Js.a I.b
+      linarith [hyb.2]
+  -- I.b ≤ Js.b
+  have hlb : I.b ≤ Js.b := by
+    by_contra hgt; push_neg at hgt
+    have hyI : (Js.b + I.b)/2 ∈ (I:Set ℝ) := by
+      have hsub := Ioo_subset I; rw [subset_iff, set_Ioo] at hsub
+      apply hsub; rw [Set.mem_Ioo]
+      exact ⟨by linarith [hpIcc.1, hpJs'.2], by linarith⟩
+    obtain ⟨Jy, ⟨hJymem, hJym⟩, _⟩ := P.exists_unique _ ((mem_iff I _).mpr hyI)
+    have hJyne : (Jy:Set ℝ).Nonempty := ⟨_, (mem_iff Jy _).mp hJym⟩
+    have hJyb : (Js.b + I.b)/2 ≤ Jy.b := by
+      have hsub := subset_Icc Jy; rw [subset_iff, set_Icc] at hsub
+      exact (Set.mem_Icc.mp (hsub ((mem_iff Jy _).mp hJym))).2
+    have hle := hJsmax Jy (Finset.mem_filter.mpr ⟨hJymem, hJyne⟩)
+    simp only at hle
+    linarith
+  have hJsbeq : Js.b = I.b := le_antisymm hub hlb
+  -- I.b ∉ ↑Js
+  have hbnJs : I.b ∉ (Js:Set ℝ) := by
+    intro h; apply hI'; rw [mem_iff]
+    have := P.contains Js hJsmem; rw [subset_iff] at this; exact this h
+  -- Js is a genuine (non-degenerate) interval ending at I.b
+  have hlt2 : Js.a < Js.b := by
+    rcases eq_or_lt_of_le hab with heq | h
+    · exfalso; apply hbnJs
+      have hp_eq : p = Js.b := le_antisymm hpJs'.2 (heq ▸ hpJs'.1)
+      rw [← hJsbeq, ← hp_eq]; exact hp
+    · exact h
+  have hIaJs : I.a ≤ Js.a := by
+    by_contra h; push_neg at h
+    have hmin : Js.a < min I.a Js.b := lt_min h hlt2
+    have hq1 : Js.a < (Js.a + min I.a Js.b)/2 := by linarith [hmin]
+    have hq2 : (Js.a + min I.a Js.b)/2 < Js.b := by
+      have := min_le_right I.a Js.b; linarith [hmin]
+    have hqJs : (Js.a + min I.a Js.b)/2 ∈ (Js:Set ℝ) := by
+      have hsub := Ioo_subset Js; rw [subset_iff, set_Ioo] at hsub
+      exact hsub (Set.mem_Ioo.mpr ⟨hq1, hq2⟩)
+    have hqI := hJsI hqJs; rw [Set.mem_Icc] at hqI
+    have := min_le_left I.a Js.b; linarith [hqI.1, hmin]
+  have hmem : Js.a ∈ Set.Ico I.a I.b := Set.mem_Ico.mpr ⟨hIaJs, hJsbeq ▸ hlt2⟩
+  refine ⟨Js.a, hmem, ?_⟩
+  rw [← hJsbeq]
+  clear hmem hIaJs hp hpJs hpJs' hpIcc hJsI hJsmax hlb hub hab
+  revert hJsmem hbnJs hlt2 hJsbeq
+  cases Js with
+  | Ioo c d => intro hmem _ _ _; left; exact hmem
+  | Ico c d => intro hmem _ _ _; right; exact hmem
+  | Icc c d => intro _ hbeq hbn hlt2; exact absurd (Set.mem_Icc.mpr ⟨hbeq ▸ hlt2.le, hbeq.ge⟩) hbn
+  | Ioc c d => intro _ hbeq hbn hlt2; exact absurd (Set.mem_Ioc.mpr ⟨hbeq ▸ hlt2, hbeq.ge⟩) hbn
 
 /-- Theorem 11.1.13 (Length is finitely additive). -/
 theorem Partition.sum_of_length  (I: BoundedInterval) (P: Partition I) :
