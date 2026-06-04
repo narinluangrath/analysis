@@ -396,7 +396,31 @@ theorem Partition.sum_of_length  (I: BoundedInterval) (P: Partition I) :
       . simp_all [mem_iff]
         apply hsub.eq_singleton_of_mem at hbK
         have : K = Icc (I.b) (I.b) := by
-          sorry
+          cases K with
+          | Icc c d =>
+            rw [set_Icc, Set.Icc_eq_singleton_iff] at hbK
+            rw [hbK.1, hbK.2]
+          | Ioo c d =>
+            exfalso; rw [set_Ioo] at hbK
+            have hmem : I.b ∈ Set.Ioo c d := by rw [hbK]; rfl
+            rw [Set.mem_Ioo] at hmem
+            have hy : (c + I.b)/2 ∈ Set.Ioo c d := by
+              rw [Set.mem_Ioo]; exact ⟨by linarith [hmem.1], by linarith [hmem.1, hmem.2]⟩
+            rw [hbK, Set.mem_singleton_iff] at hy; linarith [hmem.1]
+          | Ioc c d =>
+            exfalso; rw [set_Ioc] at hbK
+            have hmem : I.b ∈ Set.Ioc c d := by rw [hbK]; rfl
+            rw [Set.mem_Ioc] at hmem
+            have hy : (c + I.b)/2 ∈ Set.Ioc c d := by
+              rw [Set.mem_Ioc]; exact ⟨by linarith [hmem.1], by linarith [hmem.1, hmem.2]⟩
+            rw [hbK, Set.mem_singleton_iff] at hy; linarith [hmem.1]
+          | Ico c d =>
+            exfalso; rw [set_Ico] at hbK
+            have hmem : I.b ∈ Set.Ico c d := by rw [hbK]; rfl
+            rw [Set.mem_Ico] at hmem
+            have hy : (I.b + d)/2 ∈ Set.Ico c d := by
+              rw [Set.mem_Ico]; exact ⟨by linarith [hmem.1, hmem.2], by linarith [hmem.2]⟩
+            rw [hbK, Set.mem_singleton_iff] at hy; linarith [hmem.2]
         subst this
         cases I with
         | Ioo _ _ => simp at hI'
@@ -450,7 +474,29 @@ theorem Partition.sum_of_length  (I: BoundedInterval) (P: Partition I) :
       use Ico c b₁, hK, Ico a₁ c; grind [join_Ico_Ico]
   obtain ⟨ K, L, hK, ⟨ h1, h2, h3 ⟩ ⟩ := this
   have : ∃ P' : Partition L, P'.intervals = P.intervals.erase K := by
-    sorry
+    refine ⟨⟨P.intervals.erase K, ?_, ?_⟩, rfl⟩
+    · intro x hx
+      have hxI : x ∈ (I:Set ℝ) := by rw [h2]; left; exact (mem_iff L x).mp hx
+      obtain ⟨J, ⟨hJmem, hxJ⟩, hJuniq⟩ := P.exists_unique x ((mem_iff I x).mpr hxI)
+      have hJneK : J ≠ K := by
+        rintro rfl
+        have hxK : x ∈ (L:Set ℝ) ∩ (J:Set ℝ) := ⟨(mem_iff L x).mp hx, (mem_iff J x).mp hxJ⟩
+        rw [h1] at hxK; exact hxK
+      refine ⟨J, ⟨Finset.mem_erase.mpr ⟨hJneK, hJmem⟩, hxJ⟩, ?_⟩
+      rintro K' ⟨hK'erase, hxK'⟩
+      exact hJuniq K' ⟨(Finset.mem_erase.mp hK'erase).2, hxK'⟩
+    · intro J hJerase
+      have hJmem := (Finset.mem_erase.mp hJerase).2
+      have hJneK := (Finset.mem_erase.mp hJerase).1
+      rw [subset_iff]; intro y hy
+      have hyI : y ∈ (I:Set ℝ) := by
+        have := P.contains J hJmem; rw [subset_iff] at this; exact this hy
+      rw [h2, Set.mem_union] at hyI
+      rcases hyI with hyL | hyK
+      · exact hyL
+      · exfalso
+        have huniq := P.exists_unique y ((mem_iff I y).mpr (by rw [h2]; right; exact hyK))
+        exact hJneK (huniq.unique ⟨hJmem, (mem_iff J y).mpr hy⟩ ⟨hK, (mem_iff K y).mpr hyK⟩)
   choose P' hP' using this
   rw [h3, ←Finset.add_sum_erase _ _ hK, ←hP', add_comm]; congr
   apply hn; simp [hP', Finset.card_erase_of_mem hK, hcard]
