@@ -328,19 +328,237 @@ theorem PosintDecimal.sum_digit_lt (p q:PosintDecimal) (i:ℕ) :
     | succ n ih => rw [carry_succ]; split <;> omega
   split <;> omega
 
-/-- Define this number such that it satisfies the two following theorems. -/
-def PosintDecimal.sum_digit_top (p q:PosintDecimal) : ℕ := by sorry
+/-- Auxiliary: bound on a geometric-style sum of nines. -/
+theorem PosintDecimal.geom_lt (n:ℕ) : ∑ i:Fin n, 9 * 10^(i:ℕ) < 10^n := by
+  rw [Fin.sum_univ_eq_sum_range (fun i => 9 * 10^i)]
+  have h : ∑ i ∈ Finset.range n, 9 * 10^i = 10^n - 1 := by
+    induction n with
+    | zero => simp
+    | succ k ih => rw [Finset.sum_range_succ, ih]; have : 1 ≤ 10^k := Nat.one_le_pow _ _ (by norm_num); ring_nf; omega
+  rw [h]; have : 1 ≤ 10^n := Nat.one_le_pow _ _ (by norm_num); omega
+
+/-- `toNat` written as a sum over `digit`. -/
+theorem PosintDecimal.toNat_eq_sum_digit (p:PosintDecimal) :
+    (p:ℕ) = ∑ i:Fin p.digits.length, (p.digit i:ℕ) * 10^(i:ℕ) := by
+  show p.toNat = _
+  rw [toNat]
+  apply Finset.sum_congr rfl
+  intro i _
+  have h : (i:ℕ) < p.digits.length := i.isLt
+  simp only [digit, dif_pos h]; congr 3; omega
+
+theorem PosintDecimal.toNat_lt (p:PosintDecimal) : (p:ℕ) < 10^p.digits.length := by
+  rw [toNat_eq_sum_digit]
+  calc ∑ i:Fin p.digits.length, (p.digit i:ℕ) * 10^(i:ℕ)
+      ≤ ∑ i:Fin p.digits.length, 9 * 10^(i:ℕ) := by
+        apply Finset.sum_le_sum; intro i _
+        have h2 : ((p.digit i:ℕ)) < 10 := (p.digit i).isLt; gcongr; omega
+    _ < 10^p.digits.length := geom_lt _
+
+/-- The `i`-th `digit` extracts the `i`-th base-10 digit of `toNat`. -/
+theorem PosintDecimal.digit_eq_divmod (p:PosintDecimal) (i:ℕ) :
+    (p.digit i : ℕ) = (p:ℕ) / 10^i % 10 := by
+  by_cases hi : i < p.digits.length
+  · rw [toNat_eq_sum_digit]
+    set len := p.digits.length
+    have hsplit : ∑ j:Fin len, (p.digit j:ℕ) * 10^(j:ℕ)
+        = (∑ j ∈ Finset.range i, (p.digit j:ℕ)*10^j)
+          + (p.digit i:ℕ)*10^i
+          + (∑ j ∈ Finset.Ico (i+1) len, (p.digit j:ℕ)*10^j) := by
+      rw [Fin.sum_univ_eq_sum_range (fun j => (p.digit j:ℕ) * 10^j) len]
+      rw [← Finset.sum_range_add_sum_Ico _ (show i ≤ len by omega)]
+      rw [Finset.sum_eq_sum_Ico_succ_bot (show i < len by omega)]
+      ring
+    rw [hsplit]
+    set A := ∑ j ∈ Finset.range i, (p.digit j:ℕ)*10^j with hA
+    set B := ∑ j ∈ Finset.Ico (i+1) len, (p.digit j:ℕ)*10^j with hB
+    have hAlt : A < 10^i := by
+      calc A ≤ ∑ j ∈ Finset.range i, 9*10^j := by
+              apply Finset.sum_le_sum; intro j _
+              have : ((p.digit j:ℕ)) < 10 := (p.digit j).isLt; gcongr; omega
+        _ = ∑ j:Fin i, 9*10^(j:ℕ) := (Fin.sum_univ_eq_sum_range (fun j=>9*10^j) i).symm
+        _ < 10^i := geom_lt i
+    have hBdvd : 10^(i+1) ∣ B := by
+      apply Finset.dvd_sum; intro j hj
+      simp only [Finset.mem_Ico] at hj
+      exact Dvd.dvd.mul_left (pow_dvd_pow 10 hj.1) _
+    obtain ⟨C, hC⟩ := hBdvd
+    rw [hC]
+    have hdi : (p.digit i:ℕ) < 10 := (p.digit i).isLt
+    rw [show A + (p.digit i:ℕ)*10^i + 10^(i+1)*C = A + ((p.digit i:ℕ) + 10*C)*10^i from by ring]
+    rw [Nat.add_mul_div_right _ _ (by positivity : 0 < 10^i)]
+    rw [Nat.div_eq_of_lt hAlt]
+    omega
+  · simp only [digit, dif_neg hi]
+    have h1 : (p:ℕ) < 10^p.digits.length := p.toNat_lt
+    have h2 : 10^p.digits.length ≤ 10^i := Nat.pow_le_pow_right (by norm_num) (by omega)
+    have : (p:ℕ)/10^i = 0 := Nat.div_eq_of_lt (lt_of_lt_of_le h1 h2)
+    simp [this]
+
+theorem PosintDecimal.carry_eq (p q:PosintDecimal) (i:ℕ) :
+    p.carry q i = ((p:ℕ) % 10^i + (q:ℕ) % 10^i) / 10^i := by
+  induction i with
+  | zero => simp [carry_zero, Nat.mod_one]
+  | succ n ih =>
+    rw [carry_succ, digit_eq_divmod, digit_eq_divmod, ih]
+    set P := (p:ℕ); set Q := (q:ℕ)
+    have e1 : P % 10^(n+1) = P % 10^n + (P/10^n%10)*10^n := by
+      conv_lhs => rw [pow_succ, Nat.mod_mul]
+      ring
+    have e2 : Q % 10^(n+1) = Q % 10^n + (Q/10^n%10)*10^n := by
+      conv_lhs => rw [pow_succ, Nat.mod_mul]
+      ring
+    rw [e1, e2]
+    have hPn : P % 10^n < 10^n := Nat.mod_lt _ (by positivity)
+    have hQn : Q % 10^n < 10^n := Nat.mod_lt _ (by positivity)
+    set a := P/10^n%10; set b := Q/10^n%10
+    have ha : a < 10 := Nat.mod_lt _ (by norm_num)
+    have hb : b < 10 := Nat.mod_lt _ (by norm_num)
+    set c := (P%10^n + Q%10^n)/10^n
+    have hc : c ≤ 1 := by
+      simp only [c]
+      have : (P%10^n + Q%10^n)/10^n < 2 := by
+        apply Nat.div_lt_of_lt_mul; ring_nf; omega
+      omega
+    rw [show P % 10^n + a*10^n + (Q%10^n + b*10^n) = (P%10^n + Q%10^n) + (a+b)*10^n from by ring]
+    rw [pow_succ]
+    set S := P%10^n + Q%10^n with hS
+    have hSr : S = c*10^n + S%10^n := by
+      simp only [c]; conv_lhs => rw [← Nat.div_add_mod S (10^n)]
+      ring
+    set r := S % 10^n with hr
+    have hSmod : r < 10^n := Nat.mod_lt _ (by positivity)
+    rw [show S + (a+b)*10^n = r + (c+a+b)*10^n from by rw [hSr]; ring]
+    have hdiv : (r + (c+a+b)*10^n)/(10^n*10) = (c+a+b)/10 := by
+      rw [← Nat.div_div_eq_div_mul, Nat.add_mul_div_right _ _ (by positivity : 0 < 10^n),
+          Nat.div_eq_of_lt hSmod, zero_add]
+    rw [hdiv]
+    rcases Nat.lt_or_ge (a+b+c) 10 with h | h
+    · rw [if_pos h, Nat.div_eq_of_lt (by omega)]
+    · rw [if_neg (by omega)]
+      have : (c+a+b)/10 = 1 := by
+        rw [Nat.div_eq_of_lt_le] <;> omega
+      omega
+
+theorem PosintDecimal.div_add_div_carry (p q:PosintDecimal) (i:ℕ) :
+    ((p:ℕ)+(q:ℕ))/10^i = (p:ℕ)/10^i + (q:ℕ)/10^i + p.carry q i := by
+  rw [carry_eq]
+  set P := (p:ℕ); set Q := (q:ℕ)
+  conv_lhs => rw [← Nat.div_add_mod P (10^i), ← Nat.div_add_mod Q (10^i)]
+  rw [show 10^i*(P/10^i) + P%10^i + (10^i*(Q/10^i)+Q%10^i)
+        = (P%10^i + Q%10^i) + (P/10^i + Q/10^i)*10^i from by ring]
+  rw [Nat.add_mul_div_right _ _ (by positivity : 0 < 10^i)]
+  omega
+
+/-- `sum_digit` is the `i`-th base-10 digit of `p+q`. -/
+theorem PosintDecimal.sum_digit_eq (p q:PosintDecimal) (i:ℕ) :
+    p.sum_digit q i = ((p:ℕ)+(q:ℕ))/10^i % 10 := by
+  unfold sum_digit
+  rw [digit_eq_divmod, digit_eq_divmod, div_add_div_carry]
+  set P := (p:ℕ); set Q := (q:ℕ)
+  have hc : p.carry q i ≤ 1 := by
+    rcases i with _ | n
+    · rw [carry_zero]; omega
+    · rw [carry_succ]; split <;> omega
+  set a := P/10^i; set b := Q/10^i; set c := p.carry q i
+  have key : (a+b+c)%10 = (a%10 + b%10 + c)%10 := by omega
+  rw [key]
+  have ha : a%10 < 10 := Nat.mod_lt _ (by norm_num)
+  have hb : b%10 < 10 := Nat.mod_lt _ (by norm_num)
+  split <;> omega
+
+/-- General base-10 digit decomposition. -/
+theorem PosintDecimal.digit_decomp (L:ℕ) : ∀ (M:ℕ), M < 10^L →
+    M = ∑ i ∈ Finset.range L, (M/10^i%10)*10^i := by
+  induction L with
+  | zero => intro M h; simp only [pow_zero, Nat.lt_one_iff] at h; simp [h]
+  | succ k ih =>
+    intro M h
+    rw [Finset.sum_range_succ']
+    simp only [pow_zero, pow_succ, Nat.div_one, mul_one]
+    have hMk : M/10 < 10^k := by
+      have : (10:ℕ)^(k+1) = 10^k*10 := pow_succ 10 k
+      rw [Nat.div_lt_iff_lt_mul (by norm_num)]; omega
+    have hih := ih (M/10) hMk
+    have hcong : ∑ i ∈ Finset.range k, (M/(10^i*10)%10)*(10^i*10)
+               = (∑ i ∈ Finset.range k, ((M/10)/10^i%10)*10^i) * 10 := by
+      rw [Finset.sum_mul]
+      apply Finset.sum_congr rfl; intro i _
+      rw [show M/(10^i*10) = M/10/10^i from by
+            rw [Nat.div_div_eq_div_mul, Nat.mul_comm]]
+      ring
+    rw [hcong, ← hih]
+    omega
+
+/-- The index of the leading (most significant) digit of `p+q`. -/
+def PosintDecimal.sum_digit_top (p q:PosintDecimal) : ℕ := Nat.log 10 ((p:ℕ)+(q:ℕ))
 
 theorem PosintDecimal.leading_nonzero (p q:PosintDecimal) :
-    p.sum_digit q (p.sum_digit_top q) ≠ 0 := sorry
+    p.sum_digit q (p.sum_digit_top q) ≠ 0 := by
+  rw [sum_digit_eq, sum_digit_top]
+  set N := (p:ℕ)+(q:ℕ)
+  have hN : 0 < N := by have := p.pos; omega
+  have h1 : 10^(Nat.log 10 N) ≤ N := Nat.pow_log_le_self 10 (by omega)
+  have h2 : N < 10^(Nat.log 10 N + 1) := Nat.lt_pow_succ_log_self (by norm_num) N
+  have hd : 1 ≤ N/10^(Nat.log 10 N) := Nat.le_div_iff_mul_le (by positivity) |>.mpr (by omega)
+  have hd2 : N/10^(Nat.log 10 N) < 10 := by
+    rw [Nat.div_lt_iff_lt_mul (by positivity)]; rw [pow_succ] at h2; omega
+  rw [Nat.mod_eq_of_lt hd2]; omega
 
 theorem PosintDecimal.out_of_range_eq_zero (p q:PosintDecimal) :
-    ∀ i > ↑(p.sum_digit_top q), p.sum_digit q i = 0 := sorry
+    ∀ i > ↑(p.sum_digit_top q), p.sum_digit q i = 0 := by
+  intro i hi
+  rw [sum_digit_eq, sum_digit_top] at *
+  set N := (p:ℕ)+(q:ℕ)
+  have h2 : N < 10^(Nat.log 10 N + 1) := Nat.lt_pow_succ_log_self (by norm_num) N
+  have : 10^(Nat.log 10 N + 1) ≤ 10^i := Nat.pow_le_pow_right (by norm_num) (by omega)
+  have : N/10^i = 0 := Nat.div_eq_of_lt (by omega)
+  simp [this]
 
 def PosintDecimal.longAddition (p q : PosintDecimal) : PosintDecimal where
-  digits := sorry
-  nonempty := sorry
-  nonzero := sorry
+  digits := (List.range (p.sum_digit_top q + 1)).reverse.map
+              (fun i => Digit.mk (p.sum_digit_lt q i))
+  nonempty := by
+    simp [List.length_pos_iff]
+  nonzero := by
+    rw [List.head_eq_getElem]
+    simp only [List.getElem_map, List.getElem_reverse, List.length_range, List.length_map,
+      List.getElem_range]
+    rw [Ne, Digit.inj, Digit.toNat_mk]
+    have : (p.sum_digit_top q + 1 - 1 - 0) = p.sum_digit_top q := by omega
+    rw [this]
+    exact p.leading_nonzero q
+
+theorem PosintDecimal.longAddition_len (p q:PosintDecimal) :
+    (p.longAddition q).digits.length = p.sum_digit_top q + 1 := by
+  simp [longAddition]
+
+theorem PosintDecimal.longAddition_digit (p q:PosintDecimal) (i:ℕ) :
+    (((p.longAddition q).digit i):ℕ) = p.sum_digit q i := by
+  rw [digit]
+  by_cases hi : i < (p.longAddition q).digits.length
+  · rw [dif_pos hi]
+    rw [longAddition_len] at hi
+    simp only [longAddition, List.getElem_map, List.getElem_reverse, List.length_range,
+      List.length_map, List.getElem_range, Digit.toNat_mk, List.length_reverse]
+    congr 1
+    omega
+  · rw [dif_neg hi]
+    rw [longAddition_len] at hi
+    have : p.sum_digit q i = 0 := p.out_of_range_eq_zero q i (by omega)
+    rw [this]; rfl
+
+theorem PosintDecimal.longAddition_toNat (p q:PosintDecimal) :
+    (p.longAddition q:ℕ) = (p:ℕ)+(q:ℕ) := by
+  rw [toNat_eq_sum_digit, longAddition_len]
+  set N := (p:ℕ)+(q:ℕ)
+  have hNlt : N < 10^(p.sum_digit_top q + 1) := by
+    rw [sum_digit_top]; exact Nat.lt_pow_succ_log_self (by norm_num) N
+  rw [digit_decomp _ N hNlt]
+  rw [Fin.sum_univ_eq_sum_range (fun i => ((p.longAddition q).digit i:ℕ)*10^i)]
+  apply Finset.sum_congr rfl; intro i _
+  rw [longAddition_digit, sum_digit_eq]
 
 theorem PosintDecimal.sum_eq (p q:PosintDecimal) (i:ℕ) :
-    (((p.longAddition q).digit i):ℕ) = p.sum_digit q i ∧ (p.longAddition q:ℕ) = p + q := by sorry
+    (((p.longAddition q).digit i):ℕ) = p.sum_digit q i ∧ (p.longAddition q:ℕ) = p + q := by
+  exact ⟨p.longAddition_digit q i, p.longAddition_toNat q⟩
