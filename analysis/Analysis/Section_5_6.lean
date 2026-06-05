@@ -41,31 +41,31 @@ to be a `Field`), but the spirit of the exercises is to adapt the proofs of
 Proposition 4.3.10 that you previously established. -/
 
 /-- Analogue of Proposition 4.3.10(a) -/
-theorem Real.pow_add (x:Real) (m n:ℕ) : x^n * x^m = x^(n+m) := by sorry
+theorem Real.pow_add (x:Real) (m n:ℕ) : x^n * x^m = x^(n+m) := by rw [_root_.pow_add]
 
 /-- Analogue of Proposition 4.3.10(a) -/
-theorem Real.pow_mul (x:Real) (m n:ℕ) : (x^n)^m = x^(n*m) := by sorry
+theorem Real.pow_mul (x:Real) (m n:ℕ) : (x^n)^m = x^(n*m) := by rw [← _root_.pow_mul]
 
 /-- Analogue of Proposition 4.3.10(a) -/
-theorem Real.mul_pow (x y:Real) (n:ℕ) : (x*y)^n = x^n * y^n := by sorry
+theorem Real.mul_pow (x y:Real) (n:ℕ) : (x*y)^n = x^n * y^n := by rw [_root_.mul_pow]
 
 /-- Analogue of Proposition 4.3.10(b) -/
-theorem Real.pow_eq_zero (x:Real) (n:ℕ) (hn : 0 < n) : x^n = 0 ↔ x = 0 := by sorry
+theorem Real.pow_eq_zero (x:Real) (n:ℕ) (hn : 0 < n) : x^n = 0 ↔ x = 0 := by exact pow_eq_zero_iff hn.ne'
 
 /-- Analogue of Proposition 4.3.10(c) -/
-theorem Real.pow_nonneg {x:Real} (n:ℕ) (hx: x ≥ 0) : x^n ≥ 0 := by sorry
+theorem Real.pow_nonneg {x:Real} (n:ℕ) (hx: x ≥ 0) : x^n ≥ 0 := by positivity
 
 /-- Analogue of Proposition 4.3.10(c) -/
-theorem Real.pow_pos {x:Real} (n:ℕ) (hx: x > 0) : x^n > 0 := by sorry
+theorem Real.pow_pos {x:Real} (n:ℕ) (hx: x > 0) : x^n > 0 := by positivity
 
 /-- Analogue of Proposition 4.3.10(c) -/
-theorem Real.pow_ge_pow (x y:Real) (n:ℕ) (hxy: x ≥ y) (hy: y ≥ 0) : x^n ≥ y^n := by sorry
+theorem Real.pow_ge_pow (x y:Real) (n:ℕ) (hxy: x ≥ y) (hy: y ≥ 0) : x^n ≥ y^n := by exact pow_le_pow_left₀ hy hxy n
 
 /-- Analogue of Proposition 4.3.10(c) -/
-theorem Real.pow_gt_pow (x y:Real) (n:ℕ) (hxy: x > y) (hy: y ≥ 0) (hn: n > 0) : x^n > y^n := by sorry
+theorem Real.pow_gt_pow (x y:Real) (n:ℕ) (hxy: x > y) (hy: y ≥ 0) (hn: n > 0) : x^n > y^n := by exact pow_lt_pow_left₀ hxy hy hn.ne'
 
 /-- Analogue of Proposition 4.3.10(d) -/
-theorem Real.pow_abs (x:Real) (n:ℕ) : |x|^n = |x^n| := by sorry
+theorem Real.pow_abs (x:Real) (n:ℕ) : |x|^n = |x^n| := by rw [abs_pow]
 
 /-- Definition 5.6.2 (Exponentiating a real by an integer). Here we use the Mathlib definition coming from `DivInvMonoid`. -/
 lemma Real.pow_eq_pow (x: Real) (n:ℕ): x ^ (n:ℤ) = x ^ n := by rfl
@@ -76,29 +76,49 @@ lemma Real.zpow_zero (x: Real) : x ^ (0:ℤ) = 1 := by rfl
 lemma Real.zpow_neg {x:Real} (n:ℕ) : x^(-n:ℤ) = 1 / (x^n) := by simp
 
 /-- Analogue of Proposition 4.3.12(a) -/
-theorem Real.zpow_add (x:Real) (n m:ℤ) (hx: x ≠ 0): x^n * x^m = x^(n+m) := by sorry
+theorem Real.zpow_add (x:Real) (n m:ℤ) (hx: x ≠ 0): x^n * x^m = x^(n+m) := by rw [zpow_add₀ hx]
 
 /-- Analogue of Proposition 4.3.12(a) -/
-theorem Real.zpow_mul (x:Real) (n m:ℤ) : (x^n)^m = x^(n*m) := by sorry
+theorem Real.zpow_mul (x:Real) (n m:ℤ) : (x^n)^m = x^(n*m) := by rw [← _root_.zpow_mul]
 
 /-- Analogue of Proposition 4.3.12(a) -/
-theorem Real.mul_zpow (x y:Real) (n:ℤ) : (x*y)^n = x^n * y^n := by sorry
+theorem Real.mul_zpow (x y:Real) (n:ℤ) : (x*y)^n = x^n * y^n := by rw [_root_.mul_zpow]
 
 /-- Analogue of Proposition 4.3.12(b) -/
-theorem Real.zpow_pos {x:Real} (n:ℤ) (hx: x > 0) : x^n > 0 := by sorry
+theorem Real.zpow_pos {x:Real} (n:ℤ) (hx: x > 0) : x^n > 0 := by positivity
 
 /-- Analogue of Proposition 4.3.12(b) -/
-theorem Real.zpow_ge_zpow {x y:Real} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n > 0): x^n ≥ y^n := by sorry
+theorem Real.zpow_ge_zpow {x y:Real} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n > 0): x^n ≥ y^n := by
+  obtain ⟨m, rfl⟩ := Int.eq_ofNat_of_zero_le hn.le
+  rw [zpow_natCast, zpow_natCast]
+  exact pow_le_pow_left₀ hy.le hxy m
 
 theorem Real.zpow_ge_zpow_ofneg {x y:Real} {n:ℤ} (hxy: x ≥ y) (hy: y > 0) (hn: n < 0) : x^n ≤ y^n := by
-  sorry
+  obtain ⟨m, rfl⟩ : ∃ m:ℕ, n = -(m:ℤ) := ⟨(-n).toNat, by omega⟩
+  rw [_root_.zpow_neg, _root_.zpow_neg, zpow_natCast, zpow_natCast]
+  gcongr
 
 /-- Analogue of Proposition 4.3.12(c) -/
 theorem Real.zpow_inj {x y:Real} {n:ℤ} (hx: x > 0) (hy : y > 0) (hn: n ≠ 0) (hxy: x^n = y^n) : x = y := by
-  sorry
+  have pc : ∀ {a b:Real} {k:ℕ}, a > 0 → b > 0 → k ≠ 0 → a^k = b^k → a = b := by
+    intro a b k ha hb hk hab
+    apply le_antisymm <;>
+    · by_contra hc
+      push_neg at hc
+      have := pow_lt_pow_left₀ hc (by positivity) hk
+      simp [hab] at this
+  rcases lt_or_gt_of_ne hn with hneg | hpos
+  · obtain ⟨m, rfl⟩ : ∃ m:ℕ, n = -(m:ℤ) := ⟨(-n).toNat, by omega⟩
+    rw [_root_.zpow_neg, _root_.zpow_neg, zpow_natCast, zpow_natCast] at hxy
+    have hm : m ≠ 0 := by omega
+    have : x^m = y^m := by field_simp at hxy; linarith
+    exact pc hx hy (by omega) this
+  · obtain ⟨m, rfl⟩ := Int.eq_ofNat_of_zero_le hpos.le
+    rw [zpow_natCast, zpow_natCast] at hxy
+    exact pc hx hy (by omega) hxy
 
 /-- Analogue of Proposition 4.3.12(d) -/
-theorem Real.zpow_abs (x:Real) (n:ℤ) : |x|^n = |x^n| := by sorry
+theorem Real.zpow_abs (x:Real) (n:ℤ) : |x|^n = |x^n| := by rw [abs_zpow]
 
 /-- Definition 5.6.2.  We permit ``junk values'' when `x` is negative or `n` vanishes. -/
 noncomputable abbrev Real.root (x:Real) (n:ℕ) : Real := sSup { y:Real | y ≥ 0 ∧ y^n ≤ x }
@@ -108,7 +128,8 @@ noncomputable abbrev Real.sqrt (x:Real) := x.root 2
 /-- Lemma 5.6.5 (Existence of n^th roots) -/
 theorem Real.rootset_nonempty {x:Real} (hx: x ≥ 0) (n:ℕ) (hn: n ≥ 1) : { y:Real | y ≥ 0 ∧ y^n ≤ x }.Nonempty := by
   use 0
-  sorry
+  refine ⟨le_refl _, ?_⟩
+  rw [zero_pow (by omega)]; exact hx
 
 theorem Real.rootset_bddAbove {x:Real} (n:ℕ) (hn: n ≥ 1) : BddAbove { y:Real | y ≥ 0 ∧ y^n ≤ x } := by
   -- This proof is written to follow the structure of the original text.
@@ -117,12 +138,15 @@ theorem Real.rootset_bddAbove {x:Real} (n:ℕ) (hn: n ≥ 1) : BddAbove { y:Real
   . use 1; intro y hy; simp at hy
     by_contra! hy'
     replace hy' : 1 < y^n := by
-      sorry
+      calc (1:Real) = 1^n := (one_pow n).symm
+        _ < y^n := pow_lt_pow_left₀ hy' (by norm_num) (by omega)
     linarith
   use x; intro y hy; simp at hy
   by_contra! hy'
   replace hy' : x < y^n := by
-    sorry
+    calc x < y := hy'
+      _ = y^1 := (pow_one y).symm
+      _ ≤ y^n := pow_le_pow_right₀ (by linarith) (by omega)
   linarith
 
 /-- Lemma 5.6.6 (ab) / Exercise 5.6.1 -/
@@ -130,7 +154,9 @@ theorem Real.eq_root_iff_pow_eq {x y:Real} (hx: x ≥ 0) (hy: y ≥ 0) {n:ℕ} (
   y = x.root n ↔ y^n = x := by sorry
 
 /-- Lemma 5.6.6 (c) / Exercise 5.6.1 -/
-theorem Real.root_nonneg {x:Real} (hx: x ≥ 0) {n:ℕ} (hn: n ≥ 1) : x.root n ≥ 0 := by sorry
+theorem Real.root_nonneg {x:Real} (hx: x ≥ 0) {n:ℕ} (hn: n ≥ 1) : x.root n ≥ 0 := by
+  apply le_csSup (rootset_bddAbove n hn)
+  refine ⟨le_refl _, ?_⟩; rw [zero_pow (by omega)]; exact hx
 
 /-- Lemma 5.6.6 (c) / Exercise 5.6.1 -/
 theorem Real.root_pos {x:Real} (hx: x ≥ 0) {n:ℕ} (hn: n ≥ 1) : x.root n > 0 ↔ x > 0 := by sorry
@@ -151,7 +177,18 @@ theorem Real.root_mono_of_gt_one {x : Real} (hx: x > 1) {k l: ℕ} (hkl: k > l) 
 theorem Real.root_mono_of_lt_one {x : Real} (hx0: 0 < x) (hx: x < 1) {k l: ℕ} (hkl: k > l) (hl: l ≥ 1) : x.root k > x.root l := by sorry
 
 /-- Lemma 5.6.6 (e) / Exercise 5.6.1 -/
-theorem Real.root_of_one {k: ℕ} (hk: k ≥ 1): (1:Real).root k = 1 := by sorry
+theorem Real.root_of_one {k: ℕ} (hk: k ≥ 1): (1:Real).root k = 1 := by
+  show sSup { y:Real | y ≥ 0 ∧ y^k ≤ 1 } = 1
+  apply le_antisymm
+  · apply csSup_le ⟨1, by refine ⟨by norm_num, by rw [one_pow]⟩⟩
+    rintro y ⟨hy0, hyk⟩
+    by_contra! hy'
+    have : 1 < y^k := by
+      calc (1:Real) = 1^k := (one_pow k).symm
+        _ < y^k := pow_lt_pow_left₀ hy' (by norm_num) (by omega)
+    linarith
+  · apply le_csSup (rootset_bddAbove k hk)
+    exact ⟨by norm_num, by rw [one_pow]⟩
 
 /-- Lemma 5.6.6 (f) / Exercise 5.6.1 -/
 theorem Real.root_mul {x y:Real} (hx: x ≥ 0) (hy: y ≥ 0) {n:ℕ} (hn: n ≥ 1) : (x*y).root n = (x.root n) * (y.root n) := by sorry
@@ -159,10 +196,19 @@ theorem Real.root_mul {x y:Real} (hx: x ≥ 0) (hy: y ≥ 0) {n:ℕ} (hn: n ≥ 
 /-- Lemma 5.6.6 (g) / Exercise 5.6.1 -/
 theorem Real.root_root {x:Real} (hx: x ≥ 0) {n m:ℕ} (hn: n ≥ 1) (hm: m ≥ 1): (x.root n).root m = x.root (n*m) := by sorry
 
-theorem Real.root_one {x:Real} (hx: x > 0): x.root 1 = x := by sorry
+theorem Real.root_one {x:Real} (hx: x > 0): x.root 1 = x := by
+  show sSup { y:Real | y ≥ 0 ∧ y^1 ≤ x } = x
+  simp only [pow_one]
+  have h : { y:Real | y ≥ 0 ∧ y ≤ x } = Set.Icc 0 x := by ext y; simp [Set.mem_Icc]
+  rw [h, csSup_Icc hx.le]
 
 theorem Real.pow_cancel {y z:Real} (hy: y > 0) (hz: z > 0) {n:ℕ} (hn: n ≥ 1)
-  (h: y^n = z^n) : y = z := by sorry
+  (h: y^n = z^n) : y = z := by
+  apply le_antisymm <;>
+  · by_contra hc
+    push_neg at hc
+    have := pow_lt_pow_left₀ hc (by positivity) (by omega : n ≠ 0)
+    simp [h] at this
 
 example : ¬(∀ (y:Real) (z:Real) (n:ℕ) (_: n ≥ 1) (_: y^n = z^n), y = z) := by
   simp; refine ⟨ (-3), 3, 2, ?_, ?_, ?_ ⟩ <;> norm_num
