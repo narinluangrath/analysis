@@ -4,7 +4,7 @@ A fork of **[teorth/analysis](https://github.com/teorth/analysis)** (Terence Tao
 
 The upstream repository deliberately leaves exercises as `sorry` and does not host solutions; this fork is an independent solving effort. `lake build` is green at every commit.
 
-**Progress: 1580 / 2083 exercises solved (76%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
+**Progress: 1652 / 2083 exercises solved (79%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
 
 ## Chapter 2 — Natural numbers
 
@@ -133,21 +133,21 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 
 | Section | Title | Solved | Remaining | Status |
 |---|---|---:|---:|:--:|
-| MT 1.1.1 |  | 1/13 | 12 | 🟡 |
+| MT 1.1.1 |  | 9/13 | 4 | 🟡 |
 | MT 1.1.2 |  | 0/43 | 43 | ⬜ |
 | MT 1.1.3 |  | 0/25 | 25 | ⬜ |
-| MT 1.2.0 |  | 0/3 | 3 | ⬜ |
+| MT 1.2.0 |  | 1/3 | 2 | 🟡 |
 | MT 1.2.1 |  | 0/6 | 6 | ⬜ |
 | MT 1.2.2 |  | 0/46 | 46 | ⬜ |
 | MT 1.2.3 |  | 0/2 | 2 | ⬜ |
 | MT 1.3.1 |  | 0/28 | 28 | ⬜ |
 | MT 1.3.2 |  | 0/31 | 31 | ⬜ |
-| MT 1.3.3 |  | 0/30 | 30 | ⬜ |
+| MT 1.3.3 |  | 4/30 | 26 | 🟡 |
 | MT 1.3.4 |  | 0/21 | 21 | ⬜ |
 | MT 1.3.5 |  | 0/20 | 20 | ⬜ |
-| MT 1.4.1 |  | 0/80 | 80 | ⬜ |
-| MT 1.4.2 |  | 0/51 | 51 | ⬜ |
-| MT 1.4.3 |  | 0/80 | 80 | ⬜ |
+| MT 1.4.1 |  | 27/80 | 53 | 🟡 |
+| MT 1.4.2 |  | 13/51 | 38 | 🟡 |
+| MT 1.4.3 |  | 19/80 | 61 | 🟡 |
 
 ---
 
