@@ -292,9 +292,37 @@ noncomputable abbrev g_9_8_5 : ℚ → ℝ := fun q ↦ (2:ℝ)^(-q_9_8_5.symm q
 
 noncomputable abbrev f_9_8_5 : ℝ → ℝ := fun x ↦ ∑' r : {r:ℚ // (r:ℝ) < x}, g_9_8_5 r
 
+theorem g_pos_9_8_5 (q:ℚ) : 0 < g_9_8_5 q := by unfold g_9_8_5; positivity
+
+theorem g_summable_9_8_5 : Summable g_9_8_5 := by
+  have h : Summable (fun n:ℕ => (2:ℝ)^(-n:ℤ)) := by
+    have e : (fun n:ℕ => (2:ℝ)^(-n:ℤ)) = (fun n:ℕ => ((1:ℝ)/2)^n) := by
+      funext n; rw [div_pow, one_pow, zpow_neg, zpow_natCast]; ring
+    rw [e]; exact summable_geometric_of_lt_one (by norm_num) (by norm_num)
+  exact h.comp_injective q_9_8_5.symm.injective
+
+theorem f_eq_9_8_5 (x:ℝ) : f_9_8_5 x = ∑' q : ℚ, {r:ℚ | (r:ℝ) < x}.indicator g_9_8_5 q :=
+  tsum_subtype {r:ℚ | (r:ℝ) < x} g_9_8_5
+
 /-- Exercise 9.8.5(a) -/
 theorem StrictMonoOn.of_f_9_8_5 : StrictMonoOn f_9_8_5 .univ := by
-  sorry
+  intro x _ y _ hxy
+  rw [f_eq_9_8_5, f_eq_9_8_5]
+  obtain ⟨r0, hr0x, hr0y⟩ := exists_rat_btwn hxy
+  have hsumx : Summable ({r:ℚ | (r:ℝ) < x}.indicator g_9_8_5) := g_summable_9_8_5.indicator _
+  have hsumy : Summable ({r:ℚ | (r:ℝ) < y}.indicator g_9_8_5) := g_summable_9_8_5.indicator _
+  refine Summable.tsum_lt_tsum (i := r0) ?_ ?_ hsumx hsumy
+  · intro q
+    by_cases hq : q ∈ {r:ℚ | (r:ℝ) < x}
+    · rw [Set.indicator_of_mem hq, Set.indicator_of_mem (show q ∈ {r:ℚ | (r:ℝ) < y} from lt_trans hq hxy)]
+    · rw [Set.indicator_of_notMem hq]
+      by_cases hqy : q ∈ {r:ℚ | (r:ℝ) < y}
+      · rw [Set.indicator_of_mem hqy]; exact (g_pos_9_8_5 q).le
+      · rw [Set.indicator_of_notMem hqy]
+  · have hn : r0 ∉ {r:ℚ | (r:ℝ) < x} := not_lt.mpr hr0x.le
+    have hy : r0 ∈ {r:ℚ | (r:ℝ) < y} := hr0y
+    rw [Set.indicator_of_notMem hn, Set.indicator_of_mem hy]
+    exact g_pos_9_8_5 r0
 
 /-- Exercise 9.8.5(b) -/
 theorem ContinuousAt.of_f_9_8_5' (r:ℚ) : ¬ ContinuousAt f_9_8_5 r := by
