@@ -1381,11 +1381,475 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
 theorem permute_diverges_of_divergent {a: ℕ → ℝ} (ha: (a:Series).converges)
   (ha': ¬ (a:Series).absConverges)  :
   ∃ f : ℕ → ℕ,  Bijective f ∧ atTop.Tendsto (fun N ↦ ((a ∘ f:Series).partial N : EReal)) (nhds ⊤) := by
-  sorry
+  classical
+  set A_plus := { n | a n ≥ 0 } with hAplusdef
+  set A_minus := {n | a n < 0 } with hAminusdef
+  have hunion : A_plus ∪ A_minus = .univ := by
+    ext; simp [A_plus, A_minus]; grind
+  obtain ⟨hAp_inf, hAm_inf⟩ := divergent_parts_infinite ha ha'
+  -- greedy recursion: pull a positive index while the running sum is below a growing threshold
+  -- threshold at step j = 1 + (number of negative picks so far)
+  let F : (n : ℕ) → ((m : ℕ) → m < n → ℕ) → ℕ :=
+    fun j n' ↦
+      if (∑ i:Fin j, a (n' i (by simp))) <
+          ((((Finset.univ : Finset (Fin j)).filter (fun i => a (n' i.1 i.2) < 0)).card : ℝ) + 1) then
+        Nat.min { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i (by simp) }
+      else
+        Nat.min { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i (by simp) }
+  let n' : ℕ → ℕ := Nat.strongRec F
+  set thr : ℕ → ℝ :=
+    fun j => ((((Finset.univ : Finset (Fin j)).filter (fun i => a (n' i.1) < 0)).card : ℝ) + 1)
+    with hthr
+  have hn' (j:ℕ) : n' j = if (∑ i:Fin j, a (n' i)) < thr j then
+      Nat.min { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i }
+    else
+      Nat.min { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i }
+    := Nat.strongRec.eq_def _ j
+  have hn'_plus_inf (j:ℕ) : Infinite { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := by
+    have hsub : { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } = A_plus \ Set.range (fun i:Fin j => n' i) := by
+      ext n; simp [Set.mem_diff, A_plus]; tauto
+    rw [hsub]; apply Set.Infinite.to_subtype
+    apply Set.Infinite.diff hAp_inf (Set.finite_range _)
+  have hn'_minus_inf (j:ℕ) : Infinite { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := by
+    have hsub : { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } = A_minus \ Set.range (fun i:Fin j => n' i) := by
+      ext n; simp [Set.mem_diff, A_minus]; tauto
+    rw [hsub]; apply Set.Infinite.to_subtype
+    apply Set.Infinite.diff hAm_inf (Set.finite_range _)
+  have hnep : ∀ j:ℕ, { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i }.Nonempty := by
+    intro j; have := hn'_plus_inf j; exact Set.nonempty_coe_sort.mp inferInstance
+  have hnem : ∀ j:ℕ, { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i }.Nonempty := by
+    intro j; have := hn'_minus_inf j; exact Set.nonempty_coe_sort.mp inferInstance
+  have hn'_ne : ∀ (j:ℕ) (i:ℕ), i < j → n' j ≠ n' i := by
+    intro j i hij
+    have key := hn' j
+    by_cases hc : (∑ i:Fin j, a (n' i)) < thr j
+    · rw [if_pos hc] at key; rw [key]
+      have hne := (Nat.min_spec (hnep j)).1
+      simp only [Set.mem_setOf_eq] at hne; exact hne.2 ⟨i, hij⟩
+    · rw [if_neg hc] at key; rw [key]
+      have hne := (Nat.min_spec (hnem j)).1
+      simp only [Set.mem_setOf_eq] at hne; exact hne.2 ⟨i, hij⟩
+  have hn'_inj : Injective n' := by
+    intro x y hxy
+    rcases lt_trichotomy x y with h | h | h
+    · exact absurd hxy.symm (hn'_ne y x h)
+    · exact h
+    · exact absurd hxy (hn'_ne x y h)
+  -- membership + sign
+  have hmem_pos : ∀ j:ℕ, (∑ i:Fin j, a (n' i)) < thr j →
+      n' j ∈ { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := by
+    intro j hc; have key := hn' j; rw [if_pos hc] at key; rw [key]
+    exact (Nat.min_spec (hnep j)).1
+  have hmem_neg : ∀ j:ℕ, ¬ ((∑ i:Fin j, a (n' i)) < thr j) →
+      n' j ∈ { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := by
+    intro j hc; have key := hn' j; rw [if_neg hc] at key; rw [key]
+    exact (Nat.min_spec (hnem j)).1
+  have hsign_pos : ∀ j:ℕ, (∑ i:Fin j, a (n' i)) < thr j → 0 ≤ a (n' j) := by
+    intro j hc; have h := hmem_pos j hc
+    simp only [Set.mem_setOf_eq, A_plus] at h; exact h.1
+  have hsign_neg : ∀ j:ℕ, ¬ ((∑ i:Fin j, a (n' i)) < thr j) → a (n' j) < 0 := by
+    intro j hc; have h := hmem_neg j hc
+    simp only [Set.mem_setOf_eq, A_minus] at h; exact h.1
+  -- bridge to the series partials
+  have hbridge : ∀ j:ℕ, ((a ∘ n':Series).partial ((j:ℤ) - 1)) = ∑ i:Fin j, a (n' i) := by
+    intro j; induction j with
+    | zero =>
+      rw [show ((0:ℕ):ℤ)-1 = -1 by ring,
+        Series.partial_of_lt (show (-1:ℤ) < ((a∘n':Series)).m by norm_num [Series.instCoe])]
+      simp
+    | succ k ih =>
+      have hstep : ((a ∘ n':Series).partial (((k:ℤ)+1) - 1))
+          = ((a ∘ n':Series).partial ((k:ℤ) - 1)) + (a ∘ n':Series).seq (k:ℤ) := by
+        have hm0 : ((a∘n':Series)).m = 0 := rfl
+        have := (a ∘ n':Series).partial_succ (N := (k:ℤ)-1) (by rw [hm0]; omega)
+        rw [show (k:ℤ)-1+1 = (k:ℤ)+1-1 by ring] at this
+        convert this using 2 <;> ring
+      rw [show ((k:ℕ):ℤ)+1-1 = ((k+1:ℕ):ℤ)-1 by push_cast; ring] at hstep
+      rw [hstep, ih, Fin.sum_univ_castSucc]
+      simp [Function.comp]
+  -- unboundedness of the positive part's finite-subset sums
+  have hA_plus_inf : Infinite A_plus := hAp_inf.to_subtype
+  have hCIp : CountablyInfinite (↥A_plus) := by
+    obtain ⟨ a_plus, ha_plus_bij, _ ⟩ := (Nat.monotone_enum_of_infinite A_plus).exists
+    exact (show Chapter8.EqualCard ℕ _ from ⟨a_plus, ha_plus_bij⟩).symm
+  have hunbdd_plus : ∀ B : ℝ, ∃ S : Finset ℕ, (↑S ⊆ A_plus) ∧ ∑ n ∈ S, |a n| > B := by
+    have h1 : ¬ AbsConvergent (fun n : ↥A_plus ↦ a n) := (divergent_parts_of_divergent ha ha').1
+    rw [← AbsConvergent'.of_countable hCIp] at h1
+    unfold AbsConvergent' at h1
+    rw [not_bddAbove_iff] at h1
+    intro B
+    obtain ⟨y, hy, hyB⟩ := h1 B
+    simp only [Set.mem_image, Set.mem_univ, true_and] at hy
+    obtain ⟨S, rfl⟩ := hy
+    refine ⟨S.map (Embedding.subtype _), ?_, ?_⟩
+    · intro x hx; rw [Finset.mem_coe, Finset.mem_map] at hx
+      obtain ⟨b, _, rfl⟩ := hx; exact b.2
+    · rw [Finset.sum_map]; simpa using hyB
+  -- terms tend to zero
+  have ha0 : atTop.Tendsto a (nhds 0) := by
+    have hd := Series.decay_of_converges ha
+    have hcast : Tendsto (fun n:ℕ => (a:Series).seq (n:ℤ)) atTop (nhds 0) :=
+      hd.comp (tendsto_natCast_atTop_atTop)
+    apply hcast.congr; intro n; simp
+  have hconv : atTop.Tendsto (a ∘ n') (nhds 0) := by
+    rw [← Nat.cofinite_eq_atTop, tendsto_iff_forall_eventually_mem] at ha0 ⊢
+    intro s hs
+    have hfin := ha0 s hs
+    rw [eventually_cofinite] at hfin ⊢
+    apply Set.Finite.subset (hfin.preimage (Set.injOn_of_injective hn'_inj))
+    intro x hx; exact hx
+  -- the key divergence: partial sums → +∞, and surjectivity
+  -- count of negative picks among first j
+  set cN : ℕ → ℕ :=
+    fun j => ((Finset.univ : Finset (Fin j)).filter (fun i => a (n' i.1) < 0)).card with hcN
+  have hthr_eq : ∀ j, thr j = (cN j : ℝ) + 1 := fun j => rfl
+  have hcN_range : ∀ j, cN j = ((Finset.range j).filter (fun i => a (n' i) < 0)).card := by
+    intro j; rw [hcN]; simp only
+    rw [← Finset.card_image_of_injective _ (Fin.val_injective)]
+    congr 1; ext n
+    simp only [Finset.mem_image, Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_range]
+    constructor
+    · rintro ⟨i, hi, rfl⟩; exact ⟨i.2, hi⟩
+    · rintro ⟨hn, hp⟩; exact ⟨⟨n, hn⟩, hp, rfl⟩
+  have hcN_succ : ∀ j, cN (j+1) = cN j + (if a (n' j) < 0 then 1 else 0) := by
+    intro j
+    rw [hcN_range, hcN_range, Finset.range_succ, Finset.filter_insert]
+    by_cases h : a (n' j) < 0
+    · rw [if_pos h, Finset.card_insert_of_notMem (by simp), if_pos h]
+    · rw [if_neg h, if_neg h, add_zero]
+  -- cN is monotone and only increases on negative-branch steps
+  have hcN_mono : Monotone cN := by
+    apply monotone_nat_of_le_succ; intro j; rw [hcN_succ]; split <;> omega
+  -- "infinitely many negative picks": otherwise all-positive past J forces S→∞ above a fixed threshold
+  have hnegbranch_inf : ({j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)}).Infinite := by
+    by_contra hfin; rw [Set.not_infinite] at hfin
+    obtain ⟨J, hJ⟩ : ∃ J, ∀ j ≥ J, ((∑ i:Fin j, a (n' i)) < thr j) := by
+      have hJ' : ∃ J, ∀ j ≥ J, ¬ (j ∈ {j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)}) := by
+        by_cases hne : ({j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)}).Nonempty
+        · obtain ⟨J, hJ⟩ := hfin.bddAbove
+          exact ⟨J + 1, fun j hj hc => absurd (hJ hc) (by omega)⟩
+        · rw [Set.not_nonempty_iff_eq_empty] at hne
+          exact ⟨0, fun j _ hc => by rw [hne] at hc; exact hc⟩
+      obtain ⟨J, hJ⟩ := hJ'
+      exact ⟨J, fun j hj => not_not.mp (hJ j hj)⟩
+    -- threshold is constant past J (no negatives), call it T
+    have hconst : ∀ j ≥ J, cN j = cN J := by
+      intro j hj
+      induction j, hj using Nat.le_induction with
+      | base => rfl
+      | succ k hk ih =>
+        rw [hcN_succ, ih]
+        have hpos := hJ k hk
+        have : ¬ a (n' k) < 0 := not_lt.mpr (hsign_pos k hpos)
+        rw [if_neg this, add_zero]
+    -- localized exhaustion of A_plus
+    have hexhloc : ∀ x ∈ A_plus, ∃ j, n' j = x := by
+      intro x hx
+      by_contra hcon; push_neg at hcon
+      have hstep_in : ∀ j ≥ J, n' j ≤ x := by
+        intro j hj
+        have hc := hJ j hj
+        have hxelig : x ∈ { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := ⟨hx, fun i h => hcon i h.symm⟩
+        have key := hn' j; rw [if_pos hc] at key
+        rw [key]; exact (Nat.min_spec (hnep j)).2 x hxelig
+      have hinfimg : (n' '' { j | J ≤ j }).Infinite := by
+        apply Set.infinite_of_injective_forall_mem (f := fun k : ℕ => n' (J + k))
+        · intro p q hpq; have := hn'_inj hpq; omega
+        · intro k; exact ⟨J + k, by simp, rfl⟩
+      have hsub : n' '' { j | J ≤ j } ⊆ Set.Iic x := by
+        rintro y ⟨j, hj, rfl⟩; exact hstep_in j hj
+      exact (Set.finite_Iic x |>.subset hsub).not_infinite hinfimg
+    -- pick a big positive subset to overshoot the constant threshold
+    set Pre : Finset ℕ := (Finset.range J).image n' with hPre
+    obtain ⟨Sp, hSpsub, hSpbig⟩ :=
+      hunbdd_plus (((cN J : ℝ) + 1) - (∑ i:Fin J, a (n' i)) + ∑ n ∈ Pre, |a n|)
+    have hScov : ∀ x ∈ Sp, ∃ j, n' j = x := fun x hx => hexhloc x (hSpsub hx)
+    choose pick hpick using hScov
+    set K : ℕ := max J (Sp.attach.sup (fun p => pick p.1 p.2) + 1) with hK
+    have hKJ : J ≤ K := le_max_left _ _
+    have hcovered : ∀ x ∈ Sp, ∃ i, i < K ∧ n' i = x := by
+      intro x hx
+      refine ⟨pick x hx, ?_, hpick x hx⟩
+      have hle : pick x hx ≤ Sp.attach.sup (fun p => pick p.1 p.2) :=
+        Finset.le_sup (f := fun p => pick p.1 p.2) (Finset.mem_attach Sp ⟨x, hx⟩)
+      have : Sp.attach.sup (fun p => pick p.1 p.2) + 1 ≤ K := le_max_right _ _
+      omega
+    have hSK_eq : (∑ i:Fin K, a (n' i)) = (∑ i:Fin J, a (n' i)) + ∑ i ∈ Finset.Ico J K, a (n' i) := by
+      rw [Fin.sum_univ_eq_sum_range (fun i => a (n' i)) K,
+          Fin.sum_univ_eq_sum_range (fun i => a (n' i)) J]
+      exact (Finset.sum_range_add_sum_Ico _ hKJ).symm
+    have hImg_sub : (Sp \ Pre) ⊆ (Finset.Ico J K).image n' := by
+      intro x hx; rw [Finset.mem_sdiff] at hx
+      obtain ⟨i, hiK, hni⟩ := hcovered x hx.1
+      rw [Finset.mem_image]; refine ⟨i, ?_, hni⟩
+      rw [Finset.mem_Ico]; refine ⟨?_, hiK⟩
+      by_contra hlt; push_neg at hlt
+      exact hx.2 (by rw [hPre, Finset.mem_image]; exact ⟨i, Finset.mem_range.mpr hlt, hni⟩)
+    have hIco_ge : ∑ x ∈ (Sp \ Pre), a x ≤ ∑ i ∈ Finset.Ico J K, a (n' i) := by
+      have himg : ∑ i ∈ Finset.Ico J K, a (n' i) = ∑ x ∈ (Finset.Ico J K).image n', a x := by
+        rw [Finset.sum_image]; intro i _ j _ h; exact hn'_inj h
+      rw [himg]
+      apply Finset.sum_le_sum_of_subset_of_nonneg hImg_sub
+      intro i hi _
+      rw [Finset.mem_image] at hi; obtain ⟨k, hk, rfl⟩ := hi
+      rw [Finset.mem_Ico] at hk
+      exact hsign_pos k (hJ k hk.1)
+    have hsplit : (∑ x ∈ Sp, a x) - ∑ n ∈ Pre, |a n| ≤ ∑ x ∈ (Sp \ Pre), a x := by
+      have h1 : ∑ x ∈ Sp, a x = ∑ x ∈ (Sp \ Pre), a x + ∑ x ∈ (Sp ∩ Pre), a x := by
+        rw [← Finset.sum_union (Finset.disjoint_sdiff_inter Sp Pre)]
+        congr 1; rw [Finset.sdiff_union_inter]
+      have h2 : ∑ x ∈ (Sp ∩ Pre), a x ≤ ∑ n ∈ Pre, |a n| := by
+        calc ∑ x ∈ (Sp ∩ Pre), a x ≤ ∑ x ∈ (Sp ∩ Pre), |a x| := by
+                apply Finset.sum_le_sum; intro x _; exact le_abs_self _
+          _ ≤ ∑ n ∈ Pre, |a n| := by
+                apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.inter_subset_right)
+                intro i _ _; exact abs_nonneg _
+      linarith
+    have hSval : ∑ x ∈ Sp, a x = ∑ n ∈ Sp, |a n| := by
+      apply Finset.sum_congr rfl; intro x hx
+      have : 0 ≤ a x := hSpsub hx; rw [abs_of_nonneg this]
+    have hbad : ¬ ((∑ i:Fin K, a (n' i)) < thr K) := by
+      rw [hthr_eq, hconst K hKJ, not_lt, hSK_eq]
+      have hchain : (∑ x ∈ Sp, a x) - ∑ n ∈ Pre, |a n| ≤ ∑ i ∈ Finset.Ico J K, a (n' i) :=
+        le_trans hsplit hIco_ge
+      rw [hSval] at hchain
+      have hbig : ∑ n ∈ Sp, |a n| >
+          ((cN J : ℝ) + 1) - (∑ i:Fin J, a (n' i)) + ∑ n ∈ Pre, |a n| := hSpbig
+      linarith
+    exact hbad (hJ K hKJ)
+  -- "infinitely many positive picks": otherwise all-negative past J forces the (increasing) threshold
+  -- to exceed the (decreasing) partial sum, contradicting the branch condition.
+  have hposbranch_inf : ({j | (∑ i:Fin j, a (n' i)) < thr j}).Infinite := by
+    by_contra hfin; rw [Set.not_infinite] at hfin
+    obtain ⟨J, hJ⟩ : ∃ J, ∀ j ≥ J, ¬ ((∑ i:Fin j, a (n' i)) < thr j) := by
+      by_cases hne : ({j | (∑ i:Fin j, a (n' i)) < thr j}).Nonempty
+      · obtain ⟨J, hJ⟩ := hfin.bddAbove
+        exact ⟨J + 1, fun j hj hc => absurd (hJ hc) (by omega)⟩
+      · rw [Set.not_nonempty_iff_eq_empty] at hne
+        refine ⟨0, fun j _ hc => ?_⟩
+        have : j ∈ {j | (∑ i:Fin j, a (n' i)) < thr j} := hc
+        rw [hne] at this; exact this
+    -- the partial sums are nonincreasing past J
+    have hdec : ∀ j ≥ J, (∑ i:Fin (j+1), a (n' i)) ≤ (∑ i:Fin j, a (n' i)) := by
+      intro j hj
+      rw [Fin.sum_univ_castSucc]
+      have : a (n' j) < 0 := hsign_neg j (hJ j hj)
+      simp only [Fin.coe_castSucc, Fin.val_last]; linarith
+    have hSle : ∀ j ≥ J, (∑ i:Fin j, a (n' i)) ≤ (∑ i:Fin J, a (n' i)) := by
+      intro j hj
+      induction j, hj using Nat.le_induction with
+      | base => exact le_refl _
+      | succ k hk ih => exact le_trans (hdec k hk) ih
+    -- cN grows by 1 each step past J
+    have hcNgrow : ∀ j ≥ J, cN j = cN J + (j - J) := by
+      intro j hj
+      induction j, hj using Nat.le_induction with
+      | base => simp
+      | succ k hk ih =>
+        rw [hcN_succ, ih]
+        have : a (n' k) < 0 := hsign_neg k (hJ k hk)
+        rw [if_pos this]; omega
+    -- choose j large so that the threshold beats the sum bound
+    obtain ⟨m, hm⟩ := exists_nat_gt ((∑ i:Fin J, a (n' i)) - (cN J : ℝ) - 1)
+    have hjJ : J + m ≥ J := by omega
+    have hbranch : ¬ ((∑ i:Fin (J+m), a (n' i)) < thr (J+m)) := hJ (J+m) hjJ
+    rw [not_lt, hthr_eq] at hbranch
+    have hcv : cN (J + m) = cN J + m := by rw [hcNgrow (J+m) hjJ]; omega
+    rw [hcv] at hbranch
+    have hSb : (∑ i:Fin (J+m), a (n' i)) ≤ (∑ i:Fin J, a (n' i)) := hSle (J+m) hjJ
+    have : ((cN J + m : ℕ) : ℝ) = (cN J : ℝ) + (m : ℝ) := by push_cast; ring
+    rw [this] at hbranch
+    linarith
+  -- cN is unbounded (infinitely many negatives), in fact cN j ≥ any m eventually
+  have hcN_unbdd : ∀ m : ℕ, ∃ J, ∀ j ≥ J, cN j ≥ m := by
+    intro m
+    -- pick m distinct negative-branch steps, the largest +1 forces cN ≥ m
+    have hinf := hnegbranch_inf
+    -- the set of negative steps is infinite; take m+1 of them
+    obtain ⟨T, hTsub, hTcard⟩ := hinf.exists_subset_card_eq m
+    refine ⟨(T.sup id) + 1, fun j hj => ?_⟩
+    -- every element of T is a negative-branch index < j, contributing to cN j
+    have hTlt : ∀ t ∈ T, t < j := by
+      intro t ht
+      have : t ≤ T.sup id := Finset.le_sup (f := id) ht
+      omega
+    -- T ⊆ (range j).filter (negative)
+    have hTsub2 : T ⊆ (Finset.range j).filter (fun i => a (n' i) < 0) := by
+      intro t ht
+      rw [Finset.mem_filter, Finset.mem_range]
+      have htneg : t ∈ {j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)} := hTsub ht
+      simp only [Set.mem_setOf_eq] at htneg
+      exact ⟨hTlt t ht, hsign_neg t htneg⟩
+    have : m = T.card := hTcard.symm
+    rw [hcN_range, this]
+    exact Finset.card_le_card hTsub2
+  have hcNtop : atTop.Tendsto (fun j => (cN j : ℝ)) atTop := by
+    rw [tendsto_atTop_atTop]
+    intro b
+    obtain ⟨m, hm⟩ := exists_nat_gt b
+    obtain ⟨J, hJ⟩ := hcN_unbdd m
+    exact ⟨J, fun j hj => le_trans (le_of_lt hm) (by exact_mod_cast hJ j hj)⟩
+  -- a uniform bound on step magnitudes: |a (n' j)| ≤ 1 + K
+  obtain ⟨N₁, hN₁⟩ : ∃ N₁, ∀ j ≥ N₁, |a (n' j)| < 1 := by
+    rw [Metric.tendsto_atTop] at hconv
+    obtain ⟨N₁, hN₁⟩ := hconv 1 (by norm_num)
+    exact ⟨N₁, fun j hj => by have := hN₁ j hj; simpa [Real.dist_eq] using this⟩
+  set K : ℝ := ∑ i ∈ Finset.range N₁, |a (n' i)| with hKdef
+  have hKnn : 0 ≤ K := Finset.sum_nonneg (fun i _ => abs_nonneg _)
+  have hampbd : ∀ j, |a (n' j)| ≤ 1 + K := by
+    intro j
+    rcases Nat.lt_or_ge j N₁ with hjlt | hjge
+    · have : |a (n' j)| ≤ K := by
+        rw [hKdef]
+        apply Finset.single_le_sum (f := fun i => |a (n' i)|) (fun i _ => abs_nonneg _)
+        exact Finset.mem_range.mpr hjlt
+      linarith
+    · linarith [hN₁ j hjge]
+  -- the invariant: S j ≥ cN j - 1 - K
+  have hinv : ∀ j, (∑ i:Fin j, a (n' i)) ≥ (cN j : ℝ) - 1 - K := by
+    intro j; induction j with
+    | zero => simp [hcN]; linarith [hKnn]
+    | succ k ih =>
+      have hstep : (∑ i:Fin (k+1), a (n' i)) = (∑ i:Fin k, a (n' i)) + a (n' k) := by
+        rw [Fin.sum_univ_castSucc]; simp
+      rw [hstep]
+      by_cases hc : (∑ i:Fin k, a (n' i)) < thr k
+      · -- positive branch: cN unchanged, term ≥ 0
+        have hsgn := hsign_pos k hc
+        have hcNe : cN (k+1) = cN k := by
+          rw [hcN_succ]; rw [if_neg (not_lt.mpr hsgn), add_zero]
+        rw [hcNe]; linarith
+      · -- negative branch: S k ≥ thr k = cN k + 1
+        have hge : (∑ i:Fin k, a (n' i)) ≥ (cN k : ℝ) + 1 := by
+          rw [← hthr_eq]; exact not_lt.mp hc
+        have hsgn := hsign_neg k hc
+        have hcNe : cN (k+1) = cN k + 1 := by rw [hcN_succ, if_pos hsgn]
+        have hamp : |a (n' k)| ≤ 1 + K := hampbd k
+        have habs : a (n' k) ≥ -(1 + K) := by
+          have := neg_abs_le (a (n' k)); linarith
+        rw [hcNe]; push_cast; linarith
+  have hdiv : atTop.Tendsto (fun j:ℕ => ∑ i:Fin j, a (n' i)) atTop := by
+    rw [tendsto_atTop_atTop]
+    intro b
+    -- want S j ≥ b; use cN j ≥ b + 1 + K eventually, then invariant
+    rw [tendsto_atTop_atTop] at hcNtop
+    obtain ⟨J, hJ⟩ := hcNtop (b + 1 + K)
+    refine ⟨J, fun j hj => ?_⟩
+    have h1 := hJ j hj
+    have h2 := hinv j
+    linarith
+  -- greedy exhaustion of each part, using the corresponding branch-infinite fact
+  have hexh_plus : ∀ x ∈ A_plus, ∃ j, n' j = x := by
+    intro x hx
+    by_contra hcon; push_neg at hcon
+    set Pos := { n ∈ A_plus | n ≤ x } with hPos
+    have hPosfin : Pos.Finite := Set.Finite.subset (Set.finite_Iic x) (by
+      intro n hn; simp only [hPos, Set.mem_setOf_eq] at hn; exact hn.2)
+    have hstep_in : ∀ j, ((∑ i:Fin j, a (n' i)) < thr j) → n' j ∈ Pos := by
+      intro j hc
+      have hmem := hmem_pos j hc
+      have hxelig : x ∈ { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := ⟨hx, fun i h => hcon i h.symm⟩
+      have key := hn' j; rw [if_pos hc] at key
+      have hle : n' j ≤ x := by rw [key]; exact (Nat.min_spec (hnep j)).2 x hxelig
+      simp only [hPos, Set.mem_setOf_eq]
+      exact ⟨(by simp only [Set.mem_setOf_eq, A_plus] at hmem ⊢; exact hmem.1), hle⟩
+    have hPsetinf : ({j | (∑ i:Fin j, a (n' i)) < thr j}).Infinite := hposbranch_inf
+    have himg_sub : n' '' {j | (∑ i:Fin j, a (n' i)) < thr j} ⊆ Pos := by
+      rintro y ⟨j, hj, rfl⟩; exact hstep_in j hj
+    have himg_inf : (n' '' {j | (∑ i:Fin j, a (n' i)) < thr j}).Infinite :=
+      hPsetinf.image (Set.injOn_of_injective hn'_inj)
+    exact (hPosfin.subset himg_sub).not_infinite himg_inf
+  have hexh_minus : ∀ x ∈ A_minus, ∃ j, n' j = x := by
+    intro x hx
+    by_contra hcon; push_neg at hcon
+    set Neg := { n ∈ A_minus | n ≤ x } with hNeg
+    have hNegfin : Neg.Finite := Set.Finite.subset (Set.finite_Iic x) (by
+      intro n hn; simp only [hNeg, Set.mem_setOf_eq] at hn; exact hn.2)
+    have hstep_in : ∀ j, ¬ ((∑ i:Fin j, a (n' i)) < thr j) → n' j ∈ Neg := by
+      intro j hc
+      have hmem := hmem_neg j hc
+      have hxelig : x ∈ { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := ⟨hx, fun i h => hcon i h.symm⟩
+      have key := hn' j; rw [if_neg hc] at key
+      have hle : n' j ≤ x := by rw [key]; exact (Nat.min_spec (hnem j)).2 x hxelig
+      simp only [hNeg, Set.mem_setOf_eq]
+      exact ⟨(by simp only [Set.mem_setOf_eq, A_minus] at hmem ⊢; exact hmem.1), hle⟩
+    have hPsetinf : ({j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)}).Infinite := hnegbranch_inf
+    have himg_sub : n' '' {j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)} ⊆ Neg := by
+      rintro y ⟨j, hj, rfl⟩; exact hstep_in j hj
+    have himg_inf : (n' '' {j | ¬ ((∑ i:Fin j, a (n' i)) < thr j)}).Infinite :=
+      hPsetinf.image (Set.injOn_of_injective hn'_inj)
+    exact (hNegfin.subset himg_sub).not_infinite himg_inf
+  have hn'_surj : Surjective n' := by
+    intro x
+    rcases (show x ∈ A_plus ∨ x ∈ A_minus by
+      have : x ∈ A_plus ∪ A_minus := by rw [hunion]; trivial
+      exact this) with hx | hx
+    · exact hexh_plus x hx
+    · exact hexh_minus x hx
+  refine ⟨ n', ⟨ hn'_inj, hn'_surj ⟩, ?_ ⟩
+  -- transfer divergence to the series partials in EReal: partial N = S(N+1) for N ≥ 0
+  have hStop : atTop.Tendsto (fun N:ℤ => (a ∘ n':Series).partial N) atTop := by
+    rw [tendsto_atTop_atTop] at hdiv ⊢
+    intro b
+    obtain ⟨M, hM⟩ := hdiv b
+    refine ⟨(M:ℤ), fun N hN => ?_⟩
+    have hN0 : (0:ℤ) ≤ N := le_trans (by positivity) hN
+    lift N to ℕ using hN0 with n hn
+    have hbr : (a ∘ n':Series).partial ((n:ℤ)) = ∑ i:Fin (n+1), a (n' i) := by
+      have := hbridge (n + 1)
+      rwa [show ((n+1:ℕ):ℤ) - 1 = (n:ℤ) by push_cast; ring] at this
+    rw [hbr]
+    apply hM (n + 1)
+    have : M ≤ n := by exact_mod_cast hN
+    omega
+  -- lift to EReal
+  exact EReal.tendsto_coe_nhds_top_iff.mpr hStop
 
 theorem permute_diverges_of_divergent' {a: ℕ → ℝ} (ha: (a:Series).converges)
   (ha': ¬ (a:Series).absConverges)  :
   ∃ f : ℕ → ℕ,  Bijective f ∧ atTop.Tendsto (fun N ↦ ((a ∘ f:Series).partial N : EReal)) (nhds ⊥) := by
-  sorry
+  -- apply the +∞ result to the negated sequence
+  set b : ℕ → ℝ := fun n => -a n with hb
+  -- partial sums of b equal the negation of those of a
+  have hpartial_neg : ∀ (g : ℕ → ℕ) (N : ℤ),
+      ((b ∘ g:Series).partial N) = - ((a ∘ g:Series).partial N) := by
+    intro g N
+    simp only [Series.partial, ← Finset.sum_neg_distrib]
+    apply Finset.sum_congr rfl; intro n hn
+    show (if n ≥ 0 then (b∘g) n.toNat else 0) = -(if n ≥ 0 then (a∘g) n.toNat else 0)
+    split_ifs <;> simp [hb, Function.comp]
+  -- b converges
+  have hbconv : (b:Series).converges := by
+    obtain ⟨L, hL⟩ := ha
+    refine ⟨-L, ?_⟩
+    have hpn : ((b:Series)).partial = fun N => - ((a:ℕ→ℝ):Series).partial N := by
+      ext N; have := hpartial_neg id N; simpa [Function.comp] using this
+    show atTop.Tendsto _ _
+    rw [hpn]; exact hL.neg
+  -- b is not absolutely convergent
+  have hbabs : ¬ (b:Series).absConverges := by
+    intro hc; apply ha'
+    unfold Series.absConverges at *
+    have hseq : ∀ n:ℤ, (a:Series).abs.seq n = (b:Series).abs.seq n := by
+      intro n; simp only [Series.abs, Series.mk', Series.instCoe]
+      split_ifs <;> simp [hb, abs_neg]
+    have hpart : ∀ N:ℤ, (a:Series).abs.partial N = (b:Series).abs.partial N := by
+      intro N; simp only [Series.partial]
+      apply Finset.sum_congr rfl; intro n hn; exact hseq n
+    obtain ⟨L, hL⟩ := hc
+    refine ⟨L, ?_⟩
+    show atTop.Tendsto _ _
+    have : (a:Series).abs.partial = (b:Series).abs.partial := funext hpart
+    rw [this]; exact hL
+  -- get the +∞ rearrangement for b
+  obtain ⟨f, hfbij, hftop⟩ := permute_diverges_of_divergent hbconv hbabs
+  refine ⟨f, hfbij, ?_⟩
+  -- transfer ⊤ for b to ⊥ for a via negation
+  have hcong : (fun N:ℤ => (((a ∘ f:Series).partial N : ℝ) : EReal))
+      = (fun N:ℤ => - (((b ∘ f:Series).partial N : ℝ) : EReal)) := by
+    ext N; rw [hpartial_neg f N, EReal.coe_neg, neg_neg]
+  rw [hcong]
+  have := (continuous_neg.tendsto (⊤:EReal)).comp hftop
+  simpa using this
 
 end Chapter8
