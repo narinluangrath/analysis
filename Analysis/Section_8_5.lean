@@ -1267,7 +1267,79 @@ theorem WellOrderedSubset.isMax_iff_full (X : Type) (W : WellOrderedSubset X) :
     W.carrier = Set.univ := by
   constructor
   · -- IsMax → carrier = univ  (build a strictly larger extension if not full)
-    sorry
+    intro hmax
+    by_contra hne
+    rw [Set.eq_univ_iff_forall] at hne
+    push_neg at hne
+    obtain ⟨x, hx⟩ := hne
+    -- Build W' = W with x appended as a new top element.
+    classical
+    set C : Set X := W.carrier with hCdef
+    letI hloC : LinearOrder C := W.ord
+    haveI hwfC : WellFoundedLT C := W.wf
+    set C' : Set X := insert x C with hC'
+    let f : C' → WithTop C :=
+      fun a => if ha : a.1 ∈ C then ((⟨a.1, ha⟩ : C) : WithTop C) else (⊤ : WithTop C)
+    have hfx : ∀ (a : C') (ha : a.1 ∈ C), f a = ((⟨a.1, ha⟩ : C) : WithTop C) := by
+      intro a ha; simp only [f, dif_pos ha]
+    have hftop : ∀ (a : C'), a.1 = x → f a = ⊤ := by
+      intro a ha
+      have hnotC : a.1 ∉ C := by rw [ha]; exact hx
+      simp only [f, dif_neg hnotC]
+    have hinj : Function.Injective f := by
+      intro a b hab
+      apply Subtype.ext
+      rcases Set.mem_insert_iff.mp a.2 with haX | haC <;>
+        rcases Set.mem_insert_iff.mp b.2 with hbX | hbC
+      · rw [haX, hbX]
+      · rw [hftop a haX, hfx b hbC] at hab; exact absurd hab.symm (by simp)
+      · rw [hfx a haC, hftop b hbX] at hab; exact absurd hab (by simp)
+      · rw [hfx a haC, hfx b hbC] at hab
+        have h2 : (⟨a.1, haC⟩ : C) = ⟨b.1, hbC⟩ := by exact_mod_cast hab
+        exact congrArg (fun (c : C) => (c : X)) h2
+    let lo' : LinearOrder C' := LinearOrder.lift' f hinj
+    have wf' : @WellFoundedLT C' lo'.toLT := by
+      constructor
+      exact Subrelation.wf (r := InvImage (·<·) f) (fun {a b} h => h)
+        (InvImage.wf f (wellFounded_lt (α := WithTop C)))
+    let W' : WellOrderedSubset X := ⟨C', lo', wf'⟩
+    have hxC' : x ∈ C' := Set.mem_insert _ _
+    -- W is an initial segment of W' with witness x.
+    have hseg : W.IsInitialSegment W' := by
+      refine ⟨⟨x, hxC'⟩, ?_, ?_⟩
+      · have hfxtop : f ⟨x, hxC'⟩ = ⊤ := hftop _ rfl
+        ext y
+        simp only [Set.mem_image, Set.mem_setOf_eq]
+        constructor
+        · intro hyC
+          refine ⟨⟨y, Set.mem_insert_of_mem _ hyC⟩, ?_, rfl⟩
+          show f ⟨y, _⟩ < f ⟨x, hxC'⟩
+          rw [hfxtop, hfx ⟨y, _⟩ hyC]
+          exact WithTop.coe_lt_top _
+        · rintro ⟨z, hzlt, rfl⟩
+          show z.1 ∈ C
+          by_contra hzC
+          have hzx : z.1 = x := (Set.mem_insert_iff.mp z.2).resolve_right hzC
+          rw [show lo'.lt z ⟨x, hxC'⟩ = (f z < f ⟨x, hxC'⟩) from rfl, hftop z hzx, hfxtop] at hzlt
+          exact absurd hzlt (lt_irrefl _)
+      · intro a b ha hb
+        show W.ord.le a b ↔ lo'.le ⟨a, ha⟩ ⟨b, hb⟩
+        have haC : (a:X) ∈ C := a.2
+        have hbC : (b:X) ∈ C := b.2
+        show W.ord.le a b ↔ (f ⟨a, ha⟩ ≤ f ⟨b, hb⟩)
+        rw [hfx ⟨a, ha⟩ haC, hfx ⟨b, hb⟩ hbC, WithTop.coe_le_coe]
+    -- so W ≤ W', hence W' ≤ W by maximality, forcing x ∈ W.carrier.
+    have hWW' : W ≤ W' := Or.inr hseg
+    have hW'W : W' ≤ W := hmax hWW'
+    have hxW : x ∈ W.carrier := by
+      rcases hW'W with heq | hseg'
+      · -- W' = W : then x ∈ W'.carrier = W.carrier
+        have : W'.carrier = W.carrier := by rw [heq]
+        rw [← this]; exact hxC'
+      · -- W'.IsInitialSegment W : carrier ⊆
+        have hss := IsInitialSegment.subset hseg'
+        exact hss.1 hxC'
+    exact hx hxW
   · -- carrier = univ → IsMax
     intro hfull
     intro W' hWW'
