@@ -562,10 +562,6 @@ private theorem E9_eval {n:ℤ} (hn: 0 ≤ n) :
 
 example (n:ℕ) : Example_6_4_9.upperseq n = if Even n then (n+1:ℝ)⁻¹ else (n+2:ℝ)⁻¹ := by sorry
 
-example : Example_6_4_9.limsup = 0 := by sorry
-
-example (n:ℕ) : Example_6_4_9.upperseq n = if Even n then (n+1:ℝ)⁻¹ else -(n+2:ℝ)⁻¹ := by sorry
-
 example : Example_6_4_9.limsup = 0 := by
   have hub : ∀ N:ℤ, 0 ≤ N → Example_6_4_9.upperseq N ≤ ((((N:ℝ)+1)⁻¹:ℝ):EReal) := by
     intro N hN
@@ -730,7 +726,7 @@ private theorem E10_not_bddAbove : ¬ Example_6_4_10.BddAbove := by
 
 example (n:ℕ) : Example_6_4_10.upperseq n = ⊤ := tail_sup_top E10_not_bddAbove (by positivity)
 
-example : Example_6_4_10.limsup = ⊤ := by sorry
+example : Example_6_4_10.limsup = ⊤ := limsup_top_of_not_bddAbove E10_not_bddAbove
 
 example (n:ℕ) : Example_6_4_10.lowerseq n = n+1 := by sorry
 
