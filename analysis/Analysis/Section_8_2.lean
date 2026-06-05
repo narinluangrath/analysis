@@ -93,7 +93,31 @@ theorem sum_of_sum_of_AbsConvergent_nonneg {f:ℕ × ℕ → ℝ} (hf:AbsConverg
   set a : ℕ → Series := fun n ↦ ((fun m ↦ f (n, m)):Series)
   have hLpos : 0 ≤ L := by
     simp [L, Sum, hf]; apply sum_of_nonneg; intro n; by_cases h: n ≥ 0 <;> simp [h]; grind
-  have hfinsum (X: Finset (ℕ × ℕ)) : ∑ p ∈ X, f p ≤ L := by sorry
+  have hfinsum (X: Finset (ℕ × ℕ)) : ∑ p ∈ X, f p ≤ L := by
+    obtain ⟨g, hg, hconv⟩ := hf
+    have hL : ((f ∘ g:ℕ→ℝ):Series).convergesTo (Sum f) := Sum.eq hg (AbsConvergent.comp hg ⟨g,hg,hconv⟩)
+    set s : Series := ((f ∘ g:ℕ→ℝ):Series)
+    have hpos' : ∀ p, 0 ≤ f p := by rintro ⟨n,m⟩; exact hpos n m
+    have hnon : s.nonneg := by intro n; simp only [s]; by_cases h: n ≥ 0 <;> simp [h, hpos']
+    have hsconv : s.converges := ⟨_, hL⟩
+    have hssum : s.sum = L := convergesTo_uniq (convergesTo_sum hsconv) hL
+    choose g_inv hleft hright using bijective_iff_has_inverse.mp hg
+    classical
+    set B : Finset ℕ := X.image g_inv
+    obtain ⟨N, hN⟩ : ∃ N:ℕ, ∀ b ∈ B, b ≤ N := ⟨B.sup id, fun b hb => Finset.le_sup (f := id) hb⟩
+    have hsum_eq : ∑ p ∈ X, f p = ∑ n ∈ B, (f ∘ g) n := by
+      rw [Finset.sum_image]
+      · apply Finset.sum_congr rfl; intro x hx; simp [hright x]
+      · intro a _ b _ h; rw [← hright a, ← hright b, h]
+    rw [hsum_eq]
+    have hBsub : B ⊆ Finset.Icc 0 N := by intro b hb; simp [hN b hb]
+    have h1 : ∑ n ∈ B, (f ∘ g) n ≤ ∑ n ∈ Finset.Icc (0:ℕ) N, (f ∘ g) n := by
+      apply Finset.sum_le_sum_of_subset_of_nonneg hBsub; intros; exact hpos' _
+    have h2 : ∑ n ∈ Finset.Icc (0:ℕ) N, (f ∘ g) n = s.partial (N:ℤ) := by
+      simp [Series.partial, s, Finset.Icc_eq_cast]
+    rw [h2] at h1
+    rw [← hssum]
+    exact h1.trans (Series.partial_le_sum_of_nonneg hnon hsconv N)
   have hfinsum' (n M:ℕ) : (a n).partial M ≤ L := by
     simp [a, Series.partial, Finset.Icc_eq_cast]
     convert_to ∑ x ∈ .map (Embedding.sectR n ℕ) (.Icc 0 M), f x ≤ L
@@ -133,10 +157,37 @@ theorem sum_of_sum_of_AbsConvergent_nonneg {f:ℕ × ℕ → ℝ} (hf:AbsConverg
   replace : (fun n ↦ (a n).sum:Series).sum = L := by
     apply le_antisymm this (le_of_forall_sub_le _); intro ε hε
     replace : ∃ X, ∑ p ∈ X, f p ≥ L - ε := by
-      sorry
+      obtain ⟨g, hg, hconv⟩ := hf
+      have hL : ((f ∘ g:ℕ→ℝ):Series).convergesTo L := Sum.eq hg (AbsConvergent.comp hg ⟨g,hg,hconv⟩)
+      set s : Series := ((f ∘ g:ℕ→ℝ):Series)
+      have htend := hL
+      rw [Series.convergesTo, Metric.tendsto_atTop] at htend
+      obtain ⟨N₀, hN₀⟩ := htend ε hε
+      set N : ℤ := max N₀ 0 with hNdef
+      have hNN : N ≥ N₀ := le_max_left _ _
+      have hNnn : N ≥ 0 := le_max_right _ _
+      have hd := hN₀ N hNN
+      rw [Real.dist_eq] at hd
+      lift N to ℕ using hNnn with Nn
+      classical
+      set X : Finset (ℕ × ℕ) := (Finset.Icc 0 Nn).image g
+      refine ⟨X, ?_⟩
+      have hsum_eq : ∑ p ∈ X, f p = s.partial (Nn:ℤ) := by
+        rw [show (s.partial (Nn:ℤ)) = ∑ n ∈ Finset.Icc (0:ℕ) Nn, (f ∘ g) n by
+            simp [Series.partial, s, Finset.Icc_eq_cast]]
+        rw [Finset.sum_image (by intro a _ b _ h; exact hg.1 h)]
+        rfl
+      rw [hsum_eq]
+      have hlt : |s.partial (Nn:ℤ) - L| < ε := hd
+      rw [abs_lt] at hlt
+      linarith [hlt.1]
     choose X hX using this
     have : ∃ N, ∃ M, X ⊆ (Icc 0 N) ×ˢ (Icc 0 M) := by
-      sorry
+      refine ⟨X.sup (·.1), X.sup (·.2), ?_⟩
+      intro p hp
+      simp only [Finset.mem_product, Finset.mem_Icc]
+      exact ⟨⟨Nat.zero_le _, Finset.le_sup (f := (·.1)) hp⟩,
+             ⟨Nat.zero_le _, Finset.le_sup (f := (·.2)) hp⟩⟩
     choose N M hX' using this
     calc
       _ ≤ ∑ p ∈ X, f p := hX
@@ -158,14 +209,58 @@ theorem sum_of_sum_of_AbsConvergent {f:ℕ × ℕ → ℝ} (hf:AbsConvergent f) 
   set fminus := max (-f) 0
   have hfplus_nonneg : ∀ n m, 0 ≤ fplus (n, m) := by intro n m; simp [fplus]
   have hfminus_nonneg : ∀ n m, 0 ≤ fminus (n, m) := by intro n m; simp [fminus]
-  have hdiff : f = fplus - fminus := by sorry
-  have hfplus_conv : AbsConvergent fplus := by sorry
-  have hfminus_conv : AbsConvergent fminus := by sorry
+  have hdiff : f = fplus - fminus := by
+    funext p; simp [fplus, fminus, max_def]; split_ifs <;> simp_all <;> linarith
+  have hfplus_conv : AbsConvergent fplus := by
+    obtain ⟨g, hg, hconv⟩ := hf
+    refine ⟨g, hg, ?_⟩
+    apply (Series.converges_of_le (s := ((fplus ∘ g : ℕ→ℝ):Series)) (t := ((f ∘ g:ℕ→ℝ):Series).abs) rfl ?_ hconv).1
+    intro n hn
+    simp only [Series.abs, Series.mk', Series.eval_coe, ge_iff_le]
+    simp only [show ((fplus ∘ g : ℕ→ℝ):Series).m = 0 from rfl, le_refl] at hn ⊢
+    rw [if_pos hn]
+    split
+    · show |((f ⊔ 0) ∘ g) n.toNat| ≤ |(f ∘ g) n.toNat|
+      simp only [comp_apply, Pi.sup_apply, Pi.zero_apply]
+      rcases le_total (f (g n.toNat)) 0 with h|h
+      · rw [sup_eq_right.2 h]; simp
+      · rw [sup_eq_left.2 h]
+    · simp at *; omega
+  have hfminus_conv : AbsConvergent fminus := by
+    obtain ⟨g, hg, hconv⟩ := hf
+    refine ⟨g, hg, ?_⟩
+    apply (Series.converges_of_le (s := ((fminus ∘ g : ℕ→ℝ):Series)) (t := ((f ∘ g:ℕ→ℝ):Series).abs) rfl ?_ hconv).1
+    intro n hn
+    simp only [Series.abs, Series.mk', Series.eval_coe, ge_iff_le]
+    simp only [show ((fminus ∘ g : ℕ→ℝ):Series).m = 0 from rfl, le_refl] at hn ⊢
+    rw [if_pos hn]
+    split
+    · show |((-f ⊔ 0) ∘ g) n.toNat| ≤ |(f ∘ g) n.toNat|
+      simp only [comp_apply, Pi.sup_apply, Pi.zero_apply, Pi.neg_apply]
+      rcases le_total (f (g n.toNat)) 0 with h|h
+      · rw [sup_eq_left.2 (by linarith), abs_neg]
+      · rw [sup_eq_right.2 (by linarith)]; simp
+    · simp at *; omega
   choose hfplus_conv' hfplus_sum using sum_of_sum_of_AbsConvergent_nonneg hfplus_conv hfplus_nonneg
   choose hfminus_conv' hfminus_sum using sum_of_sum_of_AbsConvergent_nonneg hfminus_conv hfminus_nonneg
   split_ands
   . intro n
-    sorry
+    set t : Series := ((fun m ↦ fplus (n,m)):Series) + ((fun m ↦ fminus (n,m)):Series) with ht
+    have hsum_conv : t.converges := (Series.add (hfplus_conv' n) (hfminus_conv' n)).1
+    have htm : t.m = 0 := rfl
+    have htseq : ∀ k:ℤ, t.seq k = (if k ≥ 0 then fplus (n,k.toNat) else 0) + (if k ≥ 0 then fminus (n,k.toNat) else 0) := by
+      intro k; simp [ht, HAdd.hAdd, Add.add, Series.add]
+    apply (Series.converges_of_le (s := ((fun m ↦ f (n,m)):Series)) (t := t) htm.symm ?_ hsum_conv).1
+    intro k hk
+    simp only [Series.eval_coe, show ((fun m ↦ f (n,m)):Series).m = 0 from rfl] at hk
+    simp only [Series.eval_coe]
+    rw [if_pos hk, htseq, if_pos hk, if_pos hk]
+    have e1 : f (n, k.toNat) = fplus (n, k.toNat) - fminus (n, k.toNat) := by rw [hdiff]; rfl
+    rw [e1]
+    have h1 := hfplus_nonneg n k.toNat
+    have h2 := hfminus_nonneg n k.toNat
+    rw [abs_sub_le_iff]
+    constructor <;> linarith [abs_nonneg (fplus (n,k.toNat))]
   convert convergesTo.sub hfplus_sum hfminus_sum using 1
   . -- encountered surprising difficulty with definitional equivalence here
     simp [hdiff]
@@ -209,7 +304,46 @@ theorem sum_comm {f:ℕ × ℕ → ℝ} (hf:AbsConvergent f) :
 /-- Lemma 8.2.3 / Exercise 8.2.1 -/
 theorem AbsConvergent.iff {X:Type} (hX:CountablyInfinite X) (f : X → ℝ) :
   AbsConvergent f ↔ BddAbove ( (fun A ↦ ∑ x ∈ A, |f x|) '' .univ ) := by
-    sorry
+  constructor
+  · intro hf
+    obtain ⟨g, hg, hconv⟩ := hf
+    set s : Series := ((f ∘ g : ℕ → ℝ) : Series)
+    have hnon : s.abs.nonneg := by
+      intro n; simp [Series.abs, s]; positivity
+    have habsconv : s.abs.converges := hconv
+    set S := s.abs.sum
+    rw [bddAbove_def]; use S
+    rintro y ⟨A, -, rfl⟩
+    choose g_inv hleft hright using bijective_iff_has_inverse.mp hg
+    classical
+    set B : Finset ℕ := A.image g_inv
+    obtain ⟨N, hN⟩ : ∃ N:ℕ, ∀ b ∈ B, b ≤ N := ⟨B.sup id, fun b hb => Finset.le_sup (f := id) hb⟩
+    have hsum_eq : ∑ x ∈ A, |f x| = ∑ n ∈ B, |(f ∘ g) n| := by
+      rw [Finset.sum_image]
+      · apply Finset.sum_congr rfl; intro x hx; simp [hright x]
+      · intro a _ b _ h; rw [← hright a, ← hright b, h]
+    simp only []
+    rw [hsum_eq]
+    have hBsub : B ⊆ Finset.Icc 0 N := by intro b hb; simp [hN b hb]
+    have h1 : ∑ n ∈ B, |(f ∘ g) n| ≤ ∑ n ∈ Finset.Icc (0:ℕ) N, |(f ∘ g) n| := by
+      apply Finset.sum_le_sum_of_subset_of_nonneg hBsub; intros; positivity
+    have h2 : ∑ n ∈ Finset.Icc (0:ℕ) N, |(f ∘ g) n| = s.abs.partial (N:ℤ) := by
+      simp [Series.partial, s, Finset.Icc_eq_cast]
+    rw [h2] at h1
+    exact h1.trans (Series.partial_le_sum_of_nonneg hnon habsconv N)
+  · intro hf
+    simp [bddAbove_def] at hf; choose L hL using hf
+    have ⟨ g, hg ⟩ := hX.symm; refine ⟨ g, hg, ?_ ⟩
+    unfold absConverges; rw [converges_of_nonneg_iff]
+    · use L; intro N; by_cases hN: N ≥ 0
+      · lift N to ℕ using hN
+        set g':= Embedding.mk g hg.1
+        convert hL (Finset.map g' (Finset.Icc 0 N))
+        simp [Series.partial]; rfl
+      convert hL ∅
+      simp; apply partial_of_lt; grind
+    simp [nonneg]
+    intro n; by_cases h: n ≥ 0 <;> simp [h]
 
 abbrev AbsConvergent' {X:Type} (f: X → ℝ) : Prop := BddAbove ( (fun A ↦ ∑ x ∈ A, |f x|) '' .univ )
 
@@ -238,7 +372,13 @@ theorem AbsConvergent'.of_countable {X:Type} (hX:CountablyInfinite X) {f:X → �
 /-- Lemma 8.2.5 / Exercise 8.2.2-/
 theorem AbsConvergent'.countable_supp {X:Type} {f:X → ℝ} (hf: AbsConvergent' f) :
   AtMostCountable { x | f x ≠ 0 } := by
-    sorry
+  rw [AtMostCountable.iff, Set.countable_coe_iff]
+  have hsummable : Summable f := by
+    rw [← summable_abs_iff]
+    obtain ⟨c, hc⟩ := hf
+    apply summable_of_sum_le (c := c) (fun _ => abs_nonneg _)
+    intro s; apply hc; exact ⟨s, by simp⟩
+  exact hsummable.countable_support
 
 /-- Compare with Mathlib's `Summable.subtype`-/
 theorem AbsConvergent'.subtype {X:Type} {f:X → ℝ} (hf: AbsConvergent' f) (A: Set X) :
@@ -412,12 +552,21 @@ theorem Sum'.eq_tsum {X:Type} (f:X → ℝ) (h: AbsConvergent' f) :
 /-- Proposition 8.2.6 (a) (Absolutely convergent series laws) / Exercise 8.2.3 -/
 theorem Sum'.add {X:Type} {f g:X → ℝ} (hf: AbsConvergent' f) (hg: AbsConvergent' g) :
   AbsConvergent' (f+g) ∧ Sum' (f + g) = Sum' f + Sum' g := by
-  sorry
+  rw [AbsConvergent'.iff_Summable] at hf hg
+  have hfg : AbsConvergent' (f+g) := by rw [AbsConvergent'.iff_Summable]; exact hf.add hg
+  refine ⟨hfg, ?_⟩
+  rw [Sum'.eq_tsum _ hfg, Sum'.eq_tsum _ (by rw [AbsConvergent'.iff_Summable]; exact hf),
+      Sum'.eq_tsum _ (by rw [AbsConvergent'.iff_Summable]; exact hg)]
+  rw [← Summable.tsum_add hf hg]; rfl
 
 /-- Proposition 8.2.6 (b) (Absolutely convergent series laws) / Exercise 8.2.3 -/
 theorem Sum'.smul {X:Type} {f:X → ℝ} (hf: AbsConvergent' f) (c: ℝ) :
   AbsConvergent' (c • f) ∧ Sum' (c • f) = c * Sum' f := by
-  sorry
+  rw [AbsConvergent'.iff_Summable] at hf
+  have hcf : AbsConvergent' (c • f) := by rw [AbsConvergent'.iff_Summable]; exact hf.const_smul c
+  refine ⟨hcf, ?_⟩
+  rw [Sum'.eq_tsum _ hcf, Sum'.eq_tsum _ (by rw [AbsConvergent'.iff_Summable]; exact hf)]
+  rw [← tsum_mul_left]; rfl
 
 /-- This law is not explicitly stated in Proposition 8.2.6, but follows easily from parts (a) and (b).-/
 theorem Sum'.sub {X:Type} {f g:X → ℝ} (hf: AbsConvergent' f) (hg: AbsConvergent' g) :
@@ -431,18 +580,32 @@ theorem Sum'.sub {X:Type} {f g:X → ℝ} (hf: AbsConvergent' f) (hg: AbsConverg
     part of this proposition has been moved to `AbsConvergent'.subtype`. -/
 theorem Sum'.of_disjoint_union {X:Type} {f:X → ℝ} (hf: AbsConvergent' f) {X₁ X₂ : Set X} (hdisj: Disjoint X₁ X₂):
   Sum' (fun x: (X₁ ∪ X₂: Set X) ↦ f x) = Sum' (fun x : X₁ ↦ f x) + Sum' (fun x : X₂ ↦ f x) := by
-  sorry
+  have h12 : AbsConvergent' (fun x: (X₁ ∪ X₂: Set X) ↦ f x) := hf.subtype _
+  have h1 : AbsConvergent' (fun x : X₁ ↦ f x) := hf.subtype _
+  have h2 : AbsConvergent' (fun x : X₂ ↦ f x) := hf.subtype _
+  rw [Sum'.eq_tsum _ h12, Sum'.eq_tsum _ h1, Sum'.eq_tsum _ h2]
+  rw [AbsConvergent'.iff_Summable] at hf
+  rw [tsum_subtype (X₁ ∪ X₂) f, tsum_subtype X₁ f, tsum_subtype X₂ f]
+  rw [Set.indicator_union_of_disjoint hdisj]
+  exact (Summable.tsum_add (hf.indicator X₁) (hf.indicator X₂))
 
 /-- This technical claim, the analogue of `tsum_univ`, is required due to the way Mathlib handles
     sets.-/
 theorem Sum'.of_univ {X:Type} {f:X → ℝ} (hf: AbsConvergent' f) :
   Sum' (fun x: (.univ : Set X) ↦ f x) = Sum' f := by
-  sorry
+  have h1 : AbsConvergent' (fun x: (.univ : Set X) ↦ f x) := hf.subtype _
+  rw [Sum'.eq_tsum _ h1, Sum'.eq_tsum _ hf]
+  exact tsum_univ f
 
 theorem Sum'.of_comp {X Y:Type} {f:X → ℝ} (hf: AbsConvergent' f) {φ: Y → X}
   (hφ: Function.Bijective φ) :
   AbsConvergent' (f ∘ φ) ∧ Sum' f = Sum' (f ∘ φ) := by
-  sorry
+  rw [AbsConvergent'.iff_Summable] at hf
+  have hcomp : AbsConvergent' (f ∘ φ) := by
+    rw [AbsConvergent'.iff_Summable]; exact (Equiv.ofBijective φ hφ).summable_iff.mpr hf
+  refine ⟨hcomp, ?_⟩
+  rw [Sum'.eq_tsum _ hcomp, Sum'.eq_tsum _ (by rw [AbsConvergent'.iff_Summable]; exact hf)]
+  exact ((Equiv.ofBijective φ hφ).tsum_eq f).symm
 
 /-- Lemma 8.2.7 / Exercise 8.2.4 -/
 theorem divergent_parts_of_divergent {a: ℕ → ℝ} (ha: (a:Series).converges)
