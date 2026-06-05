@@ -4,7 +4,7 @@ A fork of **[teorth/analysis](https://github.com/teorth/analysis)** (Terence Tao
 
 The upstream repository deliberately leaves exercises as `sorry` and does not host solutions; this fork is an independent solving effort. `lake build` is green at every commit.
 
-**Progress: 1542 / 2083 exercises solved (74%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
+**Progress: 1567 / 2083 exercises solved (75%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
 
 ## Chapter 2 — Natural numbers
 
@@ -54,7 +54,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | 6.1 | Convergence and limit laws | 37/37 | 0 | ✅ |
 | 6.2 | The extended real number system | 24/24 | 0 | ✅ |
 | 6.3 | Suprema and infima of sequences | 28/28 | 0 | ✅ |
-| 6.4 | Limsup, liminf, and limit points | 53/56 | 3 | 🟡 |
+| 6.4 | Limsup, liminf, and limit points | 56/56 | 0 | ✅ |
 | 6.5 | Some standard limits | 7/7 | 0 | ✅ |
 | 6.6 | Subsequences | 10/10 | 0 | ✅ |
 | 6.7 | Real exponentiation, part II | 9/9 | 0 | ✅ |
@@ -77,7 +77,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | 8.2 | Summation on infinite sets | 20/27 | 7 | 🟡 |
 | 8.3 | Uncountable sets | 9/9 | 0 | ✅ |
 | 8.4 | The axiom of choice | 6/6 | 0 | ✅ |
-| 8.5 | Ordered sets | 52/75 | 23 | 🟡 |
+| 8.5 | Ordered sets | 72/75 | 3 | 🟡 |
 
 ## Chapter 9 — Continuous functions on ℝ
 
@@ -101,7 +101,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | 10.1 | Basic definitions | 26/26 | 0 | ✅ |
 | 10.2 | Local maxima, local minima, and derivatives | 15/18 | 3 | 🟡 |
 | 10.3 | Monotone functions and derivatives | 7/7 | 0 | ✅ |
-| 10.4 | Inverse functions and derivatives | 6/8 | 2 | 🟡 |
+| 10.4 | Inverse functions and derivatives | 8/8 | 0 | ✅ |
 | 10.5 | L'Hôpital's rule | 1/1 | 0 | ✅ |
 
 ## Chapter 11 — The Riemann integral
