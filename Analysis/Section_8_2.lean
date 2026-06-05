@@ -965,8 +965,242 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
       rw [show ((k:ℕ):ℤ)+1-1 = ((k+1:ℕ):ℤ)-1 by push_cast; ring] at hstep
       rw [hstep, ih, Fin.sum_univ_castSucc]
       simp [Function.comp]
-  have h_case_I : Infinite { j | ∑ i:Fin j, a (n' i) < L } := by sorry
-  have h_case_II : Infinite { j | ∑ i:Fin j, a (n' i) ≥ L } := by sorry
+  -- Unboundedness of finite-subset abs-sums for each divergent part.
+  have hunbdd_minus : ∀ B : ℝ, ∃ S : Finset ℕ, (↑S ⊆ A_minus) ∧ ∑ n ∈ S, |a n| > B := by
+    have hCI : CountablyInfinite (↥A_minus) :=
+      (show Chapter8.EqualCard ℕ _ from ⟨a_minus, ha_minus_bij⟩).symm
+    rw [← AbsConvergent'.of_countable hCI] at h2
+    unfold AbsConvergent' at h2
+    rw [not_bddAbove_iff] at h2
+    intro B
+    obtain ⟨y, hy, hyB⟩ := h2 B
+    simp only [Set.mem_image, Set.mem_univ, true_and] at hy
+    obtain ⟨S, rfl⟩ := hy
+    refine ⟨S.map (Embedding.subtype _), ?_, ?_⟩
+    · intro x hx; rw [Finset.mem_coe, Finset.mem_map] at hx
+      obtain ⟨b, _, rfl⟩ := hx; exact b.2
+    · rw [Finset.sum_map]; simpa using hyB
+  have hunbdd_plus : ∀ B : ℝ, ∃ S : Finset ℕ, (↑S ⊆ A_plus) ∧ ∑ n ∈ S, |a n| > B := by
+    have hCI : CountablyInfinite (↥A_plus) :=
+      (show Chapter8.EqualCard ℕ _ from ⟨a_plus, ha_plus_bij⟩).symm
+    rw [← AbsConvergent'.of_countable hCI] at h1
+    unfold AbsConvergent' at h1
+    rw [not_bddAbove_iff] at h1
+    intro B
+    obtain ⟨y, hy, hyB⟩ := h1 B
+    simp only [Set.mem_image, Set.mem_univ, true_and] at hy
+    obtain ⟨S, rfl⟩ := hy
+    refine ⟨S.map (Embedding.subtype _), ?_, ?_⟩
+    · intro x hx; rw [Finset.mem_coe, Finset.mem_map] at hx
+      obtain ⟨b, _, rfl⟩ := hx; exact b.2
+    · rw [Finset.sum_map]; simpa using hyB
+  -- abbreviation (local notation only)
+  have h_case_I : Infinite { j | ∑ i:Fin j, a (n' i) < L } := by
+    rw [Set.infinite_coe_iff]
+    by_contra hfin; rw [Set.not_infinite] at hfin
+    -- bound J past which all steps are negative branch
+    obtain ⟨J, hJ⟩ : ∃ J, ∀ j ≥ J, ¬ (∑ i:Fin j, a (n' i) < L) := by
+      by_cases hne : { j | ∑ i:Fin j, a (n' i) < L }.Nonempty
+      · obtain ⟨J, hJ⟩ := hfin.bddAbove
+        refine ⟨J + 1, fun j hj hc => ?_⟩
+        have : j ∈ { j | ∑ i:Fin j, a (n' i) < L } := hc
+        exact absurd (hJ this) (by omega)
+      · rw [Set.not_nonempty_iff_eq_empty] at hne
+        refine ⟨0, fun j _ hc => ?_⟩
+        have : j ∈ { j | ∑ i:Fin j, a (n' i) < L } := hc
+        rw [hne] at this; exact this
+    -- localized exhaustion: every x ∈ A_minus is picked (using negative branch past J)
+    have hexhloc : ∀ x ∈ A_minus, ∃ j, n' j = x := by
+      intro x hx
+      by_contra hcon; push_neg at hcon
+      have hstep_in : ∀ j ≥ J, n' j ≤ x := by
+        intro j hj
+        have hc : ¬ (∑ i:Fin j, a (n' i) < L) := hJ j hj
+        have hxelig : x ∈ { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } :=
+          ⟨hx, fun i h => hcon i h.symm⟩
+        have key := hn' j; rw [if_neg hc] at key
+        rw [key]; exact (Nat.min_spec (hnem j)).2 x hxelig
+      -- {n' j : j ≥ J} ⊆ [0,x] finite, but n' injective on infinite domain
+      have : (n' '' { j | J ≤ j }).Infinite := by
+        apply Set.infinite_of_injective_forall_mem (f := fun k : ℕ => n' (J + k))
+        · intro p q hpq
+          have := hn'_inj hpq; omega
+        · intro k; exact ⟨J + k, by simp, rfl⟩
+      have hsub : n' '' { j | J ≤ j } ⊆ Set.Iic x := by
+        rintro y ⟨j, hj, rfl⟩; exact hstep_in j hj
+      exact (Set.finite_Iic x |>.subset hsub).not_infinite this
+    -- choose a finite negative subset whose sum drowns S' J
+    set Pre : Finset ℕ := (Finset.range J).image n' with hPre
+    obtain ⟨S, hSsub, hSbig⟩ := hunbdd_minus (((∑ i:Fin J, a (n' i)) - L) + ∑ n ∈ Pre, |a n|)
+    -- all of S is picked; take K large enough to cover S and ≥ J
+    have hScov : ∀ x ∈ S, ∃ j, n' j = x := fun x hx => hexhloc x (hSsub hx)
+    choose pick hpick using hScov
+    set K : ℕ := max J (S.attach.sup (fun p => pick p.1 p.2) + 1) with hK
+    have hKJ : J ≤ K := le_max_left _ _
+    have hcovered : ∀ x ∈ S, ∃ i, i < K ∧ n' i = x := by
+      intro x hx
+      refine ⟨pick x hx, ?_, hpick x hx⟩
+      have hle : pick x hx ≤ S.attach.sup (fun p => pick p.1 p.2) :=
+        Finset.le_sup (f := fun p => pick p.1 p.2) (Finset.mem_attach S ⟨x, hx⟩)
+      have : S.attach.sup (fun p => pick p.1 p.2) + 1 ≤ K := le_max_right _ _
+      omega
+    -- S(K) = S(J) + ∑_{J≤i<K} a(n' i), all those terms negative
+    have hSK_eq : (∑ i:Fin K, a (n' i))
+        = (∑ i:Fin J, a (n' i)) + ∑ i ∈ Finset.Ico J K, a (n' i) := by
+      rw [Fin.sum_univ_eq_sum_range (fun i => a (n' i)) K,
+          Fin.sum_univ_eq_sum_range (fun i => a (n' i)) J]
+      exact (Finset.sum_range_add_sum_Ico _ hKJ).symm
+    -- all terms in the Ico sum are negative
+    have hIco_neg : ∀ i ∈ Finset.Ico J K, a (n' i) ≤ 0 := by
+      intro i hi; rw [Finset.mem_Ico] at hi
+      exact le_of_lt (hsign_neg i (hJ i hi.1))
+    -- the negative subset S \ Pre injects into the picked indices Ico J K
+    have hImg_sub : (S \ Pre) ⊆ (Finset.Ico J K).image n' := by
+      intro x hx; rw [Finset.mem_sdiff] at hx
+      obtain ⟨i, hiK, hni⟩ := hcovered x hx.1
+      rw [Finset.mem_image]
+      refine ⟨i, ?_, hni⟩
+      rw [Finset.mem_Ico]; refine ⟨?_, hiK⟩
+      by_contra hlt; push_neg at hlt
+      exact hx.2 (by rw [hPre, Finset.mem_image]; exact ⟨i, Finset.mem_range.mpr hlt, hni⟩)
+    -- bound the Ico sum above by the sum over S \ Pre (adding more negative terms)
+    have hIco_le : ∑ i ∈ Finset.Ico J K, a (n' i) ≤ ∑ x ∈ (S \ Pre), a x := by
+      have himg : ∑ i ∈ Finset.Ico J K, a (n' i) = ∑ x ∈ (Finset.Ico J K).image n', a x := by
+        rw [Finset.sum_image]; intro i _ j _ h; exact hn'_inj h
+      rw [himg]
+      apply Finset.sum_le_sum_of_subset_of_nonpos' hImg_sub
+      intro i hi _
+      rw [Finset.mem_image] at hi; obtain ⟨k, hk, rfl⟩ := hi
+      rw [Finset.mem_Ico] at hk
+      exact le_of_lt (hsign_neg k (hJ k hk.1))
+    -- value bound: ∑_{S\Pre} a ≤ ∑_S a + ∑_Pre |a|
+    have hsplit : ∑ x ∈ (S \ Pre), a x ≤ (∑ x ∈ S, a x) + ∑ n ∈ Pre, |a n| := by
+      have h1 : ∑ x ∈ S, a x = ∑ x ∈ (S \ Pre), a x + ∑ x ∈ (S ∩ Pre), a x := by
+        rw [← Finset.sum_union (Finset.disjoint_sdiff_inter S Pre)]
+        congr 1; rw [Finset.sdiff_union_inter]
+      have h2 : - ∑ x ∈ (S ∩ Pre), a x ≤ ∑ n ∈ Pre, |a n| := by
+        calc - ∑ x ∈ (S ∩ Pre), a x = ∑ x ∈ (S ∩ Pre), (- a x) := by rw [Finset.sum_neg_distrib]
+          _ ≤ ∑ x ∈ (S ∩ Pre), |a x| := by
+                apply Finset.sum_le_sum; intro x _; exact neg_le_abs _
+          _ ≤ ∑ n ∈ Pre, |a n| := by
+                apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.inter_subset_right)
+                intro i _ _; exact abs_nonneg _
+      linarith
+    -- value of ∑_S a from the abs-sum
+    have hSval : ∑ x ∈ S, a x = - ∑ n ∈ S, |a n| := by
+      rw [← Finset.sum_neg_distrib]; apply Finset.sum_congr rfl
+      intro x hx; have : a x < 0 := hSsub hx; rw [abs_of_neg this]; ring
+    -- combine: S' K < L, contradicting S' K ≥ L
+    have hbad : ∑ i:Fin K, a (n' i) < L := by
+      have hSJ : ¬ (∑ i:Fin K, a (n' i) < L) := hJ K hKJ
+      rw [hSK_eq]
+      have : ∑ i ∈ Finset.Ico J K, a (n' i) ≤ ∑ x ∈ S, a x + ∑ n ∈ Pre, |a n| :=
+        le_trans hIco_le hsplit
+      rw [hSval] at this
+      have : ∑ i:Fin J, a (n' i) + ∑ i ∈ Finset.Ico J K, a (n' i)
+          ≤ ∑ i:Fin J, a (n' i) + (- ∑ n ∈ S, |a n| + ∑ n ∈ Pre, |a n|) := by linarith
+      have hbig : ∑ n ∈ S, |a n| > (∑ i:Fin J, a (n' i) - L) + ∑ n ∈ Pre, |a n| := hSbig
+      linarith
+    exact (hJ K hKJ) hbad
+  have h_case_II : Infinite { j | ∑ i:Fin j, a (n' i) ≥ L } := by
+    rw [Set.infinite_coe_iff]
+    by_contra hfin; rw [Set.not_infinite] at hfin
+    -- bound J past which all steps are positive branch
+    obtain ⟨J, hJ⟩ : ∃ J, ∀ j ≥ J, (∑ i:Fin j, a (n' i) < L) := by
+      have hJ' : ∃ J, ∀ j ≥ J, ¬ (L ≤ ∑ i:Fin j, a (n' i)) := by
+        by_cases hne : { j | ∑ i:Fin j, a (n' i) ≥ L }.Nonempty
+        · obtain ⟨J, hJ⟩ := hfin.bddAbove
+          refine ⟨J + 1, fun j hj hc => ?_⟩
+          have : j ∈ { j | ∑ i:Fin j, a (n' i) ≥ L } := hc
+          exact absurd (hJ this) (by omega)
+        · rw [Set.not_nonempty_iff_eq_empty] at hne
+          refine ⟨0, fun j _ hc => ?_⟩
+          have : j ∈ { j | ∑ i:Fin j, a (n' i) ≥ L } := hc
+          rw [hne] at this; exact this
+      obtain ⟨J, hJ⟩ := hJ'
+      exact ⟨J, fun j hj => not_le.mp (hJ j hj)⟩
+    -- localized exhaustion: every x ∈ A_plus is picked (using positive branch past J)
+    have hexhloc : ∀ x ∈ A_plus, ∃ j, n' j = x := by
+      intro x hx
+      by_contra hcon; push_neg at hcon
+      have hstep_in : ∀ j ≥ J, n' j ≤ x := by
+        intro j hj
+        have hc : (∑ i:Fin j, a (n' i) < L) := hJ j hj
+        have hxelig : x ∈ { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } :=
+          ⟨hx, fun i h => hcon i h.symm⟩
+        have key := hn' j; rw [if_pos hc] at key
+        rw [key]; exact (Nat.min_spec (hnep j)).2 x hxelig
+      have : (n' '' { j | J ≤ j }).Infinite := by
+        apply Set.infinite_of_injective_forall_mem (f := fun k : ℕ => n' (J + k))
+        · intro p q hpq
+          have := hn'_inj hpq; omega
+        · intro k; exact ⟨J + k, by simp, rfl⟩
+      have hsub : n' '' { j | J ≤ j } ⊆ Set.Iic x := by
+        rintro y ⟨j, hj, rfl⟩; exact hstep_in j hj
+      exact (Set.finite_Iic x |>.subset hsub).not_infinite this
+    -- choose a finite positive subset whose sum exceeds L - S' J (plus Pre corrections)
+    set Pre : Finset ℕ := (Finset.range J).image n' with hPre
+    obtain ⟨S, hSsub, hSbig⟩ := hunbdd_plus ((L - (∑ i:Fin J, a (n' i))) + ∑ n ∈ Pre, |a n|)
+    have hScov : ∀ x ∈ S, ∃ j, n' j = x := fun x hx => hexhloc x (hSsub hx)
+    choose pick hpick using hScov
+    set K : ℕ := max J (S.attach.sup (fun p => pick p.1 p.2) + 1) with hK
+    have hKJ : J ≤ K := le_max_left _ _
+    have hcovered : ∀ x ∈ S, ∃ i, i < K ∧ n' i = x := by
+      intro x hx
+      refine ⟨pick x hx, ?_, hpick x hx⟩
+      have hle : pick x hx ≤ S.attach.sup (fun p => pick p.1 p.2) :=
+        Finset.le_sup (f := fun p => pick p.1 p.2) (Finset.mem_attach S ⟨x, hx⟩)
+      have : S.attach.sup (fun p => pick p.1 p.2) + 1 ≤ K := le_max_right _ _
+      omega
+    have hSK_eq : (∑ i:Fin K, a (n' i))
+        = (∑ i:Fin J, a (n' i)) + ∑ i ∈ Finset.Ico J K, a (n' i) := by
+      rw [Fin.sum_univ_eq_sum_range (fun i => a (n' i)) K,
+          Fin.sum_univ_eq_sum_range (fun i => a (n' i)) J]
+      exact (Finset.sum_range_add_sum_Ico _ hKJ).symm
+    -- the positive subset S \ Pre injects into the picked indices Ico J K
+    have hImg_sub : (S \ Pre) ⊆ (Finset.Ico J K).image n' := by
+      intro x hx; rw [Finset.mem_sdiff] at hx
+      obtain ⟨i, hiK, hni⟩ := hcovered x hx.1
+      rw [Finset.mem_image]
+      refine ⟨i, ?_, hni⟩
+      rw [Finset.mem_Ico]; refine ⟨?_, hiK⟩
+      by_contra hlt; push_neg at hlt
+      exact hx.2 (by rw [hPre, Finset.mem_image]; exact ⟨i, Finset.mem_range.mpr hlt, hni⟩)
+    -- bound the Ico sum below by the sum over S \ Pre (terms are nonneg, superset ≥ subset)
+    have hIco_ge : ∑ x ∈ (S \ Pre), a x ≤ ∑ i ∈ Finset.Ico J K, a (n' i) := by
+      have himg : ∑ i ∈ Finset.Ico J K, a (n' i) = ∑ x ∈ (Finset.Ico J K).image n', a x := by
+        rw [Finset.sum_image]; intro i _ j _ h; exact hn'_inj h
+      rw [himg]
+      apply Finset.sum_le_sum_of_subset_of_nonneg hImg_sub
+      intro i hi _
+      rw [Finset.mem_image] at hi; obtain ⟨k, hk, rfl⟩ := hi
+      rw [Finset.mem_Ico] at hk
+      exact hsign_pos k (hJ k hk.1)
+    -- value bound: ∑_S a - ∑_Pre |a| ≤ ∑_{S\Pre} a
+    have hsplit : (∑ x ∈ S, a x) - ∑ n ∈ Pre, |a n| ≤ ∑ x ∈ (S \ Pre), a x := by
+      have h1 : ∑ x ∈ S, a x = ∑ x ∈ (S \ Pre), a x + ∑ x ∈ (S ∩ Pre), a x := by
+        rw [← Finset.sum_union (Finset.disjoint_sdiff_inter S Pre)]
+        congr 1; rw [Finset.sdiff_union_inter]
+      have h2 : ∑ x ∈ (S ∩ Pre), a x ≤ ∑ n ∈ Pre, |a n| := by
+        calc ∑ x ∈ (S ∩ Pre), a x ≤ ∑ x ∈ (S ∩ Pre), |a x| := by
+                apply Finset.sum_le_sum; intro x _; exact le_abs_self _
+          _ ≤ ∑ n ∈ Pre, |a n| := by
+                apply Finset.sum_le_sum_of_subset_of_nonneg (Finset.inter_subset_right)
+                intro i _ _; exact abs_nonneg _
+      linarith
+    -- value of ∑_S a from the abs-sum (a ≥ 0 on A_plus)
+    have hSval : ∑ x ∈ S, a x = ∑ n ∈ S, |a n| := by
+      apply Finset.sum_congr rfl
+      intro x hx; have : 0 ≤ a x := hSsub hx; rw [abs_of_nonneg this]
+    -- combine: S' K ≥ L, contradicting S' K < L
+    have hbad : ¬ (∑ i:Fin K, a (n' i) < L) := by
+      rw [not_lt, hSK_eq]
+      have hchain : ∑ x ∈ S, a x - ∑ n ∈ Pre, |a n| ≤ ∑ i ∈ Finset.Ico J K, a (n' i) :=
+        le_trans hsplit hIco_ge
+      rw [hSval] at hchain
+      have hbig : ∑ n ∈ S, |a n| > (L - (∑ i:Fin J, a (n' i))) + ∑ n ∈ Pre, |a n| := hSbig
+      linarith
+    exact hbad (hJ K hKJ)
   -- Greedy exhaustion for A_plus: any x ∈ A_plus is eventually picked.
   have hexh_plus : ∀ x ∈ A_plus, ∃ j, n' j = x := by
     intro x hx
@@ -1023,8 +1257,123 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
       exact this) with hx | hx
     · exact hexh_plus x hx
     · exact hexh_minus x hx
-  have hconv : atTop.Tendsto (a ∘ n') (nhds 0) := by sorry
-  have hsum : (a ∘ n':Series).convergesTo L := by sorry
+  -- terms of a tend to 0 (zero test), then so do the rearranged terms (n' injective)
+  have ha0 : atTop.Tendsto a (nhds 0) := by
+    have hd := Series.decay_of_converges ha
+    have hcast : Tendsto (fun n:ℕ => (a:Series).seq (n:ℤ)) atTop (nhds 0) :=
+      hd.comp (tendsto_natCast_atTop_atTop)
+    apply hcast.congr; intro n; simp
+  have hconv : atTop.Tendsto (a ∘ n') (nhds 0) := by
+    rw [← Nat.cofinite_eq_atTop, tendsto_iff_forall_eventually_mem] at ha0 ⊢
+    intro s hs
+    have hfin := ha0 s hs
+    rw [eventually_cofinite] at hfin ⊢
+    apply Set.Finite.subset (hfin.preimage (Set.injOn_of_injective hn'_inj))
+    intro x hx; exact hx
+  -- partial sums S j = ∑_{i<j} a(n' i) tend to L.
+  have hStendsto : atTop.Tendsto (fun j:ℕ => ∑ i:Fin j, a (n' i)) (nhds L) := by
+    rw [Metric.tendsto_atTop]
+    intro ε0 hε0
+    obtain ⟨ε, hε, hεlt⟩ : ∃ ε, 0 < ε ∧ ε < ε0 := ⟨ε0/2, by positivity, by linarith⟩
+    -- amplitude bound: |a (n' j)| < ε for j ≥ N₁
+    have hamp : ∃ N₁, ∀ j ≥ N₁, |a (n' j)| < ε := by
+      rw [Metric.tendsto_atTop] at hconv
+      obtain ⟨N₁, hN₁⟩ := hconv ε hε
+      exact ⟨N₁, fun j hj => by have := hN₁ j hj; simpa [Real.dist_eq] using this⟩
+    obtain ⟨N₁, hN₁⟩ := hamp
+    -- band invariance: if j ≥ N₁ and |S j - L| ≤ ε then |S (j+1) - L| ≤ ε
+    have hinv : ∀ j ≥ N₁, |(∑ i:Fin j, a (n' i)) - L| ≤ ε →
+        |(∑ i:Fin (j+1), a (n' i)) - L| ≤ ε := by
+      intro j hj hband
+      have hstep : (∑ i:Fin (j+1), a (n' i)) = (∑ i:Fin j, a (n' i)) + a (n' j) := by
+        rw [Fin.sum_univ_castSucc]; simp [Function.comp]
+      have haj := hN₁ j hj
+      rw [abs_lt] at haj
+      rw [_root_.abs_le] at hband ⊢
+      rw [hstep]
+      by_cases hc : ∑ i:Fin j, a (n' i) < L
+      · have hsgn := hsign_pos j hc
+        constructor <;> nlinarith [hband.1, hband.2, haj.1, haj.2, hsgn]
+      · have hsgn := hsign_neg j hc
+        push_neg at hc
+        constructor <;> nlinarith [hband.1, hband.2, haj.1, haj.2, hsgn]
+    -- existence of an entry index j₀ ≥ N₁ with |S j₀ - L| ≤ ε
+    have hentry : ∃ j₀ ≥ N₁, |(∑ i:Fin j₀, a (n' i)) - L| ≤ ε := by
+      -- a positive-branch index a₁ ≥ N₁
+      have hI : ({j | ∑ i:Fin j, a (n' i) < L}).Infinite := Set.infinite_coe_iff.mp h_case_I
+      obtain ⟨a₁, ha₁mem, ha₁ge⟩ := hI.exists_gt N₁  -- a₁ > N₁ with S a₁ < L
+      -- a later index b > a₁ with S b ≥ L
+      have hII : ({j | ∑ i:Fin j, a (n' i) ≥ L}).Infinite := Set.infinite_coe_iff.mp h_case_II
+      obtain ⟨b, hbmem, hbgt⟩ := hII.exists_gt a₁
+      simp only [Set.mem_setOf_eq] at ha₁mem hbmem
+      -- find the last index in [a₁, b) with S < L; its successor enters the band
+      -- use well-ordering: the set of k in [a₁,b] with S k ≥ L is nonempty (b), take its min ≥ a₁+1
+      classical
+      let P : ℕ → Prop := fun k => a₁ < k ∧ k ≤ b ∧ L ≤ ∑ i:Fin k, a (n' i)
+      have hPb : P b := ⟨hbgt, le_refl b, hbmem⟩
+      let j1 := Nat.find ⟨b, hPb⟩
+      have hj1P : P j1 := Nat.find_spec ⟨b, hPb⟩
+      have hj1min : ∀ k < j1, ¬ P k := fun k hk => Nat.find_min ⟨b, hPb⟩ hk
+      -- j1 - 1 ≥ a₁ has S < L
+      obtain ⟨hj1gt, hj1le, hj1ge⟩ := hj1P
+      have hj1pos : 1 ≤ j1 := by omega
+      have hprev : ∑ i:Fin (j1 - 1), a (n' i) < L := by
+        by_contra hcon; push_neg at hcon
+        rcases Nat.lt_or_ge a₁ (j1 - 1) with hlt | hge
+        · exact hj1min (j1 - 1) (by omega) ⟨hlt, by omega, hcon⟩
+        · -- j1 - 1 ≤ a₁, but S a₁ < L; if j1-1 = a₁ then contradiction with hcon
+          have : j1 - 1 = a₁ := by omega
+          rw [this] at hcon; exact absurd ha₁mem (not_lt.mpr hcon)
+      -- entry at j1: |S j1 - L| ≤ ε
+      refine ⟨j1, by omega, ?_⟩
+      obtain ⟨p, hp⟩ : ∃ p, j1 = p + 1 := ⟨j1 - 1, by omega⟩
+      have hprev' : ∑ i:Fin p, a (n' i) < L := by rwa [show p = j1 - 1 by omega]
+      have hstep : (∑ i:Fin j1, a (n' i)) = (∑ i:Fin p, a (n' i)) + a (n' p) := by
+        rw [hp, Fin.sum_univ_castSucc]; simp [Function.comp]
+      have hampj : |a (n' p)| < ε := hN₁ p (by omega)
+      rw [abs_lt] at hampj
+      rw [_root_.abs_le]
+      rw [hstep]
+      have hsgn := hsign_pos p hprev'
+      have hj1ge' : L ≤ (∑ i:Fin p, a (n' i)) + a (n' p) := by rw [← hstep]; exact hj1ge
+      constructor
+      · nlinarith [hampj.1, hsgn, hprev']
+      · nlinarith [hampj.2, hprev', hj1ge']
+    -- from entry + invariance, S stays in band forever after
+    obtain ⟨j₀, hj₀ge, hj₀band⟩ := hentry
+    refine ⟨j₀, fun j hj => ?_⟩
+    -- prove |S j - L| ≤ ε for all j ≥ j₀ by induction
+    have hall : ∀ k, |(∑ i:Fin (j₀ + k), a (n' i)) - L| ≤ ε := by
+      intro k; induction k with
+      | zero => simpa using hj₀band
+      | succ m ih =>
+        have := hinv (j₀ + m) (by omega) ih
+        simpa [show j₀ + (m + 1) = (j₀ + m) + 1 by ring] using this
+    have : |(∑ i:Fin j, a (n' i)) - L| ≤ ε := by
+      have := hall (j - j₀); rwa [show j₀ + (j - j₀) = j by omega] at this
+    rw [Real.dist_eq]; linarith [this]
+  -- transfer to the series partial sums
+  have hsum : (a ∘ n':Series).convergesTo L := by
+    rw [Series.convergesTo]
+    have hpb : ∀ j:ℕ, ((a ∘ n':Series).partial ((j:ℤ) - 1)) = ∑ i:Fin j, a (n' i) := hbridge
+    -- partial N for N ≥ 0 equals S (N+1)
+    have hkey : atTop.Tendsto (fun N:ℤ => (a ∘ n':Series).partial N) (nhds L) := by
+      rw [Metric.tendsto_atTop]
+      rw [Metric.tendsto_atTop] at hStendsto
+      intro ε hε
+      obtain ⟨M, hM⟩ := hStendsto ε hε
+      refine ⟨(M:ℤ), fun N hN => ?_⟩
+      have hN0 : (0:ℤ) ≤ N := le_trans (by positivity) hN
+      lift N to ℕ using hN0 with n hn
+      have hbr : (a ∘ n':Series).partial ((n:ℤ)) = ∑ i:Fin (n+1), a (n' i) := by
+        have := hpb (n + 1)
+        rwa [show ((n+1:ℕ):ℤ) - 1 = (n:ℤ) by push_cast; ring] at this
+      rw [hbr]
+      apply hM (n + 1)
+      have : (M:ℤ) ≤ (n:ℤ) := hN
+      have : M ≤ n := by exact_mod_cast this
+      omega
+    exact hkey
   use n'
   refine ⟨ ⟨ hn'_inj, hn'_surj ⟩, ?_ ⟩; convert hsum
 
