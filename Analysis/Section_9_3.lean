@@ -42,12 +42,14 @@ namespace Chapter9
 /-- Example 9.3.2
 Slight change from the book to accomodate the change to {lean}`Real.CloseFn`
 -/
-example : (5.1:ℝ).CloseFn (.Icc 1 3) (fun x ↦ x^2) 4 := by sorry
+example : (5.1:ℝ).CloseFn (.Icc 1 3) (fun x ↦ x^2) 4 := by
+  intro x hx; simp only [Set.mem_Icc] at hx; rw [abs_lt]; constructor <;> nlinarith [hx.1, hx.2]
 
 /-- Example 9.3.2
 Slight change from the book to accomodate the change to {lean}`Real.CloseFn`
 -/
-example : (0.42:ℝ).CloseFn (.Icc 1.9 2.1) (fun x ↦ x^2) 4 := by sorry
+example : (0.42:ℝ).CloseFn (.Icc 1.9 2.1) (fun x ↦ x^2) 4 := by
+  intro x hx; simp only [Set.mem_Icc] at hx; rw [abs_lt]; constructor <;> nlinarith [hx.1, hx.2]
 
 /-- Example 9.3.4 -/
 example: ¬(0.1:ℝ).CloseFn (.Icc 1 3) (fun x ↦ x^2) 4 := by
