@@ -607,12 +607,153 @@ theorem Sum'.of_comp {X Y:Type} {f:X → ℝ} (hf: AbsConvergent' f) {φ: Y → 
   rw [Sum'.eq_tsum _ hcomp, Sum'.eq_tsum _ (by rw [AbsConvergent'.iff_Summable]; exact hf)]
   exact ((Equiv.ofBijective φ hφ).tsum_eq f).symm
 
+set_option maxHeartbeats 1000000 in
+theorem bddabove_of_absconv {X:Type} {f : X → ℝ} (hf : AbsConvergent f) :
+    BddAbove ( (fun A ↦ ∑ x ∈ A, |f x|) '' Set.univ ) := by
+  obtain ⟨g, hg, hconv⟩ := hf
+  set s : Series := ((f ∘ g : ℕ → ℝ) : Series)
+  have hnon : s.abs.nonneg := by intro n; simp [Series.abs, s]; positivity
+  have habsconv : s.abs.converges := hconv
+  set S := s.abs.sum
+  rw [bddAbove_def]; use S
+  rintro y ⟨A, -, rfl⟩
+  choose g_inv hleft hright using bijective_iff_has_inverse.mp hg
+  classical
+  set B : Finset ℕ := A.image g_inv
+  obtain ⟨N, hN⟩ : ∃ N:ℕ, ∀ b ∈ B, b ≤ N := ⟨B.sup id, fun b hb => Finset.le_sup (f := id) hb⟩
+  have hsum_eq : ∑ x ∈ A, |f x| = ∑ n ∈ B, |(f ∘ g) n| := by
+    rw [Finset.sum_image]
+    · apply Finset.sum_congr rfl; intro x hx; simp [hright x]
+    · intro a _ b _ h; rw [← hright a, ← hright b, h]
+  simp only []
+  rw [hsum_eq]
+  have hBsub : B ⊆ Finset.Icc 0 N := by intro b hb; simp [hN b hb]
+  have h1 : ∑ n ∈ B, |(f ∘ g) n| ≤ ∑ n ∈ Finset.Icc (0:ℕ) N, |(f ∘ g) n| := by
+    apply Finset.sum_le_sum_of_subset_of_nonneg hBsub; intros; positivity
+  have h2 : ∑ n ∈ Finset.Icc (0:ℕ) N, |(f ∘ g) n| = s.abs.partial (N:ℤ) := by
+    simp [Series.partial, s, Finset.Icc_eq_cast]
+  rw [h2] at h1
+  exact h1.trans (Series.partial_le_sum_of_nonneg hnon habsconv N)
+
+set_option maxHeartbeats 1000000 in
 /-- Lemma 8.2.7 / Exercise 8.2.4 -/
 theorem divergent_parts_of_divergent {a: ℕ → ℝ} (ha: (a:Series).converges)
   (ha': ¬ (a:Series).absConverges) :
   ¬ AbsConvergent (fun n : {n | a n ≥ 0} ↦ a n) ∧ ¬ AbsConvergent (fun n : {n | a n < 0} ↦ a n)
   := by
-  sorry
+  classical
+  have absbridge : ∀ N:ℕ, (a:Series).abs.partial ((N:ℤ)-1) = ∑ n ∈ Finset.range N, |a n| := by
+    intro N; cases N with
+    | zero => simp [Series.partial, Series.partial_of_lt]
+    | succ M =>
+      rw [show ((M+1:ℕ):ℤ)-1 = (M:ℤ) by push_cast; ring]
+      simp only [Series.partial, Series.abs, Series.mk']
+      rw [Finset.Icc_eq_cast, Finset.sum_map, Nat.range_succ_eq_Icc_zero M]
+      apply Finset.sum_congr rfl; intro n hn; simp [Nat.castEmbedding, Series.eval_coe]
+  have parbridge : ∀ N:ℕ, (a:Series).partial ((N:ℤ)-1) = ∑ n ∈ Finset.range N, a n := by
+    intro N; cases N with
+    | zero => simp [Series.partial, Series.partial_of_lt]
+    | succ M =>
+      rw [show ((M+1:ℕ):ℤ)-1 = (M:ℤ) by push_cast; ring]
+      simp only [Series.partial]
+      rw [Finset.Icc_eq_cast, Finset.sum_map, Nat.range_succ_eq_Icc_zero M]
+      apply Finset.sum_congr rfl; intro n hn; simp [Nat.castEmbedding, Series.eval_coe]
+  have habnn : (a:Series).abs.nonneg := by
+    intro n; simp only [Series.abs, Series.mk']; split_ifs
+    · exact abs_nonneg _
+    · exact le_refl 0
+  obtain ⟨La, hLa⟩ := ha
+  obtain ⟨C, hC⟩ : ∃ C, ∀ N:ℕ, |(a:Series).partial ((N:ℤ)-1)| ≤ C := by
+    set g : ℕ → ℝ := fun N => (a:Series).partial ((N:ℤ)-1) with hg
+    have htend : Tendsto g atTop (nhds La) := by
+      apply hLa.comp; apply Filter.tendsto_atTop_atTop.mpr
+      intro b; exact ⟨(b+1).toNat, fun n hn => by omega⟩
+    have hb := htend.cauchySeq.isBounded_range
+    rw [Metric.isBounded_iff_subset_closedBall 0] at hb
+    obtain ⟨C, hC⟩ := hb
+    exact ⟨C, fun N => by simpa [Metric.mem_closedBall, Real.dist_eq, hg] using hC (Set.mem_range_self N)⟩
+  -- key: contradiction from bound on the "selected" part sums.
+  -- abs.partial(N-1) = ∑range N |a| = 2*Pr N - ∑range N a (positive selected)
+  --                                 = 2*Mr N + ∑range N a (negative selected)
+  -- where Pr N = ∑ max(a,0), Mr N = ∑ max(-a,0).
+  have decompabs : ∀ N:ℕ, ∑ n ∈ Finset.range N, |a n|
+      = (∑ n ∈ Finset.range N, max (a n) 0) + (∑ n ∈ Finset.range N, max (-(a n)) 0) := by
+    intro N; rw [← Finset.sum_add_distrib]; apply Finset.sum_congr rfl
+    intro n _; rcases le_total 0 (a n) with h | h
+    · rw [abs_of_nonneg h, max_eq_left h, max_eq_right (by linarith)]; ring
+    · rw [abs_of_nonpos h, max_eq_right h, max_eq_left (by linarith)]; ring
+  have decompsum : ∀ N:ℕ, ∑ n ∈ Finset.range N, a n
+      = (∑ n ∈ Finset.range N, max (a n) 0) - (∑ n ∈ Finset.range N, max (-(a n)) 0) := by
+    intro N; rw [← Finset.sum_sub_distrib]; apply Finset.sum_congr rfl
+    intro n _; rcases le_total 0 (a n) with h | h
+    · rw [max_eq_left h, max_eq_right (by linarith)]; ring
+    · rw [max_eq_right h, max_eq_left (by linarith)]; ring
+  -- final contradiction lemma
+  have makeconv : ∀ B:ℝ, (∀ N:ℕ, ∑ n ∈ Finset.range N, |a n| ≤ B) → (a:Series).absConverges := by
+    intro B hB
+    rw [Series.absConverges, Series.converges_of_nonneg_iff habnn]
+    refine ⟨max B 0, fun K => ?_⟩
+    rcases lt_or_ge K 0 with hK | hK
+    · rw [Series.partial_of_lt (by simpa using hK)]; exact le_max_right _ _
+    · have : K = ((K.toNat + 1 : ℕ):ℤ) - 1 := by omega
+      rw [this, absbridge]; exact le_trans (hB _) (le_max_left _ _)
+  refine ⟨?_, ?_⟩
+  · intro hpos
+    apply ha'
+    obtain ⟨B, hB⟩ := bddAbove_def.mp (bddabove_of_absconv hpos)
+    -- Pr N ≤ B
+    have hPr : ∀ N:ℕ, ∑ n ∈ Finset.range N, max (a n) 0 ≤ B := by
+      intro N
+      have keyeq : (∑ x ∈ ((Finset.range N).subtype (fun n => a n ≥ 0)),
+          |(fun n : {n | a n ≥ 0} ↦ a n) x|) = ∑ n ∈ Finset.range N, max (a n) 0 := by
+        rw [show (∑ x ∈ ((Finset.range N).subtype (fun n => a n ≥ 0)), |(fun n : {n | a n ≥ 0} ↦ a n) x|)
+              = ∑ x ∈ ((Finset.range N).subtype (fun n => a n ≥ 0)), |a ↑x| from rfl]
+        rw [Finset.sum_subtype_eq_sum_filter (fun n => |a n|)]
+        rw [← Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun n => a n ≥ 0) (fun n => max (a n) 0)]
+        have h2 : ∑ n ∈ (Finset.range N).filter (fun n => ¬ a n ≥ 0), max (a n) 0 = 0 := by
+          apply Finset.sum_eq_zero; intro n hn; simp only [Finset.mem_filter, not_le] at hn
+          rw [max_eq_right]; linarith [hn.2]
+        rw [h2, add_zero]
+        apply Finset.sum_congr rfl; intro n hn; simp only [Finset.mem_filter] at hn
+        rw [abs_of_nonneg hn.2, max_eq_left hn.2]
+      rw [← keyeq]; exact hB _ ⟨_, Set.mem_univ _, rfl⟩
+    -- ∑|a| = 2 Pr - ∑a ≤ 2B + C
+    apply makeconv (2*B + C); intro N
+    rw [decompabs N]
+    have e1 : ∑ n ∈ Finset.range N, max (-(a n)) 0
+        = (∑ n ∈ Finset.range N, max (a n) 0) - ∑ n ∈ Finset.range N, a n := by
+      rw [decompsum N]; ring
+    rw [e1]
+    have hca : ∑ n ∈ Finset.range N, a n ≥ -C := by
+      rw [← parbridge N]; have := hC N; rw [_root_.abs_le] at this; linarith [this.1]
+    have := hPr N; linarith
+  · intro hneg
+    apply ha'
+    obtain ⟨B, hB⟩ := bddAbove_def.mp (bddabove_of_absconv hneg)
+    have hMr : ∀ N:ℕ, ∑ n ∈ Finset.range N, max (-(a n)) 0 ≤ B := by
+      intro N
+      have keyeq : (∑ x ∈ ((Finset.range N).subtype (fun n => a n < 0)),
+          |(fun n : {n | a n < 0} ↦ a n) x|) = ∑ n ∈ Finset.range N, max (-(a n)) 0 := by
+        rw [show (∑ x ∈ ((Finset.range N).subtype (fun n => a n < 0)), |(fun n : {n | a n < 0} ↦ a n) x|)
+              = ∑ x ∈ ((Finset.range N).subtype (fun n => a n < 0)), |a ↑x| from rfl]
+        rw [Finset.sum_subtype_eq_sum_filter (fun n => |a n|)]
+        rw [← Finset.sum_filter_add_sum_filter_not (Finset.range N) (fun n => a n < 0) (fun n => max (-(a n)) 0)]
+        have h2 : ∑ n ∈ (Finset.range N).filter (fun n => ¬ a n < 0), max (-(a n)) 0 = 0 := by
+          apply Finset.sum_eq_zero; intro n hn; simp only [Finset.mem_filter, not_lt] at hn
+          rw [max_eq_right]; linarith [hn.2]
+        rw [h2, add_zero]
+        apply Finset.sum_congr rfl; intro n hn; simp only [Finset.mem_filter] at hn
+        rw [abs_of_neg hn.2, max_eq_left (by linarith [hn.2])]
+      rw [← keyeq]; exact hB _ ⟨_, Set.mem_univ _, rfl⟩
+    apply makeconv (2*B + C); intro N
+    rw [decompabs N]
+    have e1 : ∑ n ∈ Finset.range N, max (a n) 0
+        = (∑ n ∈ Finset.range N, max (-(a n)) 0) + ∑ n ∈ Finset.range N, a n := by
+      rw [decompsum N]; ring
+    rw [e1]
+    have hca : ∑ n ∈ Finset.range N, a n ≤ C := by
+      rw [← parbridge N]; have := hC N; rw [_root_.abs_le] at this; linarith [this.2]
+    have := hMr N; linarith
 
 /-- Theorem 8.2.8 (Riemann rearrangement theorem) / Exercise 8.2.5 -/
 theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).converges)
