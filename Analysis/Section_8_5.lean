@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Order.Extension.Linear
 import Analysis.Section_8_4
 
 set_option doc.verso.suggestions false
@@ -696,9 +697,23 @@ example : ∃ (X:Type) (h₀: LE X), (∀ x y:X, x ≤ y → y ≤ x → x = y) 
 @[reducible] def PNat.divOrder : PartialOrder PNat where
   le x y := ∃ n : PNat, y = n * x
   lt x y := (∃ n : PNat, y = n * x) ∧ ¬∃ n : PNat, x = n * y
-  le_refl := by sorry
-  le_antisymm := by sorry
-  le_trans := by sorry
+  le_refl := fun x => ⟨1, by simp⟩
+  le_antisymm := by
+    rintro x y ⟨n, rfl⟩ ⟨m, hm⟩
+    -- n * x = y and x = m * (n * x), so m * n = 1 as naturals
+    have hmn : (m : ℕ) * n = 1 := by
+      have h : (x:ℕ) = (m:ℕ) * ((n:ℕ) * (x:ℕ)) := by exact_mod_cast hm
+      have h2 : (x:ℕ) * 1 = (x:ℕ) * ((m:ℕ)*n) := by
+        conv_lhs => rw [mul_one, h]
+        ring
+      have := Nat.eq_of_mul_eq_mul_left x.pos h2
+      omega
+    have hn1 : (n:ℕ) = 1 := Nat.eq_one_of_mul_eq_one_left hmn
+    have : n = 1 := by exact_mod_cast hn1
+    subst this; simp
+  le_trans := by
+    rintro x y z ⟨n, rfl⟩ ⟨m, rfl⟩
+    exact ⟨m * n, by rw [mul_assoc]⟩
   lt_iff_le_not_ge := fun _ _ ↦ Iff.rfl
 
 theorem PNat.divOrder_exists :
@@ -707,7 +722,18 @@ theorem PNat.divOrder_exists :
 
 theorem PNat.divOrder_not_linear :
     ¬∃ (h₀ : LinearOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by
-  sorry
+  rintro ⟨h₀, hle⟩
+  have htot := h₀.le_total 2 3
+  rw [hle] at htot
+  simp only at htot
+  rcases htot with ⟨n, hn⟩ | ⟨n, hn⟩
+  · -- 3 = n * 2, impossible by parity
+    have : (3:ℕ) = n * 2 := by exact_mod_cast hn
+    omega
+  · -- 2 = n * 3, impossible
+    have : (2:ℕ) = n * 3 := by exact_mod_cast hn
+    have hn1 : (1:ℕ) ≤ n := n.pos
+    omega
 
 /-- Exercise 8.5.4 -/
 example : ¬ ∃ x : {x:ℝ| x > 0}, IsMin x := by
@@ -923,7 +949,19 @@ instance Lex'.WellFoundedLT {X Y:Type} [LinearOrder X] [WellFoundedLT X] [Linear
 /-- Exercise 8.5.15 -/
 theorem inj_trichotomy {X Y : Type}
     (h : ¬∃ f : X → Y, Function.Injective f) :
-    ∃ g : Y → X, Function.Injective g := by sorry
+    ∃ g : Y → X, Function.Injective g := by
+  -- no injection X → Y means ¬ #X ≤ #Y, so #Y ≤ #X
+  have hXY : ¬ (Cardinal.mk X ≤ Cardinal.mk Y) := by
+    rw [Cardinal.le_def]
+    rintro ⟨f⟩
+    exact h ⟨f, f.injective⟩
+  have hYX : Cardinal.mk Y ≤ Cardinal.mk X := by
+    rcases le_total (Cardinal.mk X) (Cardinal.mk Y) with hle | hle
+    · exact absurd hle hXY
+    · exact hle
+  rw [Cardinal.le_def] at hYX
+  obtain ⟨g⟩ := hYX
+  exact ⟨g, g.injective⟩
 
 /-- Exercise 8.5.16: The set of partial orderings on X, ordered by "coarser than",
 is itself a partial order. -/
@@ -948,38 +986,152 @@ example : PNat.divOrder ≤ (inferInstance : PartialOrder PNat) := by
   le_trans := fun _ _ _ h1 h2 ↦ h1.trans h2
 
 theorem PartialOrder.discrete_isBot (X : Type) (p : PartialOrder X) :
-    PartialOrder.discrete X ≤ p := by sorry
+    PartialOrder.discrete X ≤ p := by
+  intro x y h
+  show p.le x y
+  rw [show x = y from h]
 
 theorem PartialOrder.discrete_isMin (X : Type) :
     @IsMin (PartialOrder X) (coarserOrder X).toPreorder.toLE
-      (PartialOrder.discrete X) := by sorry
+      (PartialOrder.discrete X) := by
+  intro p _; exact discrete_isBot X p
 
 theorem PartialOrder.discrete_unique_min (X : Type) (p : PartialOrder X)
     (h : @IsMin (PartialOrder X) (coarserOrder X).toPreorder.toLE p) :
-    p = discrete X := by sorry
+    p = discrete X := by
+  have h1 : p ≤ discrete X := h (discrete_isBot X p)
+  have h2 : discrete X ≤ p := discrete_isBot X p
+  exact (coarserOrder X).le_antisymm p (discrete X) h1 h2
 
 /-- A partial ordering is maximal in the coarser order iff it is total. -/
 theorem PartialOrder.isMax_iff_isTotal (X : Type) (p : PartialOrder X) :
     @IsMax (PartialOrder X) (coarserOrder X).toPreorder.toLE p ↔
-    @IsTotal X p := by sorry
+    @IsTotal X p := by
+  constructor
+  · -- max → total
+    intro hmax
+    by_contra hnt
+    unfold IsTotal at hnt; push_neg at hnt
+    obtain ⟨a, b, hab, hba⟩ := hnt
+    -- build q extending p with a ≤ b
+    have hne : a ≠ b := fun h => hab (h ▸ p.le_refl a)
+    let q : PartialOrder X := {
+      le := fun x y => p.le x y ∨ (p.le x a ∧ p.le b y)
+      lt := fun x y => (p.le x y ∨ (p.le x a ∧ p.le b y)) ∧ ¬ (p.le y x ∨ (p.le y a ∧ p.le b x))
+      lt_iff_le_not_ge := fun _ _ => Iff.rfl
+      le_refl := fun x => Or.inl (p.le_refl x)
+      le_trans := by
+        rintro x y z (hxy|⟨hxa,hby⟩) (hyz|⟨hya,hbz⟩)
+        · exact Or.inl (p.le_trans _ _ _ hxy hyz)
+        · exact Or.inr ⟨p.le_trans _ _ _ hxy hya, hbz⟩
+        · exact Or.inr ⟨hxa, p.le_trans _ _ _ hby hyz⟩
+        · exact absurd (p.le_trans _ _ _ hby hya) hba
+      le_antisymm := by
+        rintro x y (hxy|⟨hxa,hby⟩) (hyx|⟨hya,hbx⟩)
+        · exact p.le_antisymm _ _ hxy hyx
+        · exact absurd (p.le_trans _ _ _ (p.le_trans _ _ _ hbx hxy) hya) hba
+        · exact absurd (p.le_trans _ _ _ (p.le_trans _ _ _ hby hyx) hxa) hba
+        · exact absurd (p.le_trans _ _ _ hby hya) hba
+    }
+    have hpq : p ≤ q := fun x y h => Or.inl h
+    have hqp : q ≤ p := hmax hpq
+    have : p.le a b := hqp a b (Or.inr ⟨p.le_refl a, p.le_refl b⟩)
+    exact hab this
+  · -- total → max
+    intro htot q hpq x y hq
+    rcases htot x y with h|h
+    · exact h
+    · have : q.le y x := hpq y x h
+      have : x = y := q.le_antisymm x y hq this
+      exact this ▸ p.le_refl x
 
 /-- Any partial ordering extends to a total ordering (by Zorn's lemma). -/
 theorem PartialOrder.extends_to_total (X : Type) (p : PartialOrder X) :
-    ∃ q : PartialOrder X, p ≤ q ∧ @IsTotal X q := by sorry
+    ∃ q : PartialOrder X, p ≤ q ∧ @IsTotal X q := by
+  haveI : IsPartialOrder X p.le := {
+    refl := p.le_refl
+    trans := fun x y z => p.le_trans x y z
+    antisymm := fun x y => p.le_antisymm x y }
+  obtain ⟨s, hs, hps⟩ := extend_partialOrder (α := X) p.le
+  haveI := hs
+  let q : PartialOrder X := {
+    le := s
+    lt := fun x y => s x y ∧ ¬ s y x
+    lt_iff_le_not_ge := fun _ _ => Iff.rfl
+    le_refl := fun x => refl_of s x
+    le_trans := fun x y z => trans_of s
+    le_antisymm := fun x y h1 h2 => antisymm_of s h1 h2 }
+  refine ⟨q, ?_, ?_⟩
+  · intro x y h; exact hps x y h
+  · intro x y; exact total_of s x y
 
 /-- Exercise 8.5.17: Use Zorn's lemma to reprove Exercise 8.4.2 -/
 theorem exists_set_singleton_intersect' {I U : Type} {X : I → Set U}
     (h : Set.PairwiseDisjoint .univ X) (hne : ∀ α, Nonempty (X α)) :
-    ∃ Y : Set U, ∀ α, Nat.card (Y ∩ X α : Set U) = 1 := by sorry
+    ∃ Y : Set U, ∀ α, Nat.card (Y ∩ X α : Set U) = 1 :=
+  exists_set_singleton_intersect h hne
 
 /-- Exercise 8.5.18 -/
 theorem hausdorff_of_zorns_lemma {X : Type} [PartialOrder X] :
-    ∃ M : Set X, Maximal (fun (S : Set X) => IsTotal S) M := by sorry
+    ∃ M : Set X, Maximal (fun (S : Set X) => IsTotal S) M := by
+  obtain ⟨m, hm⟩ := zorn_subset {S : Set X | IsTotal S} (by
+    intro c hcS hchain
+    refine ⟨⋃₀ c, ?_, fun s hs => Set.subset_sUnion_of_mem hs⟩
+    -- ⋃₀ c is total
+    show IsTotal (⋃₀ c : Set X)
+    rintro ⟨x, hx⟩ ⟨y, hy⟩
+    obtain ⟨A, hAc, hxA⟩ := hx
+    obtain ⟨B, hBc, hyB⟩ := hy
+    -- A, B comparable in the chain
+    rcases eq_or_ne A B with rfl | hAB
+    · have hAtot : IsTotal (A : Set X) := hcS hAc
+      have := hAtot ⟨x, hxA⟩ ⟨y, hyB⟩
+      simpa [Subtype.mk_le_mk] using this
+    · rcases hchain hAc hBc hAB with hsub | hsub
+      · have hBtot : IsTotal (B : Set X) := hcS hBc
+        have := hBtot ⟨x, hsub hxA⟩ ⟨y, hyB⟩
+        simpa [Subtype.mk_le_mk] using this
+      · have hAtot : IsTotal (A : Set X) := hcS hAc
+        have := hAtot ⟨x, hxA⟩ ⟨y, hsub hyB⟩
+        simpa [Subtype.mk_le_mk] using this)
+  exact ⟨m, hm⟩
 
 theorem zorns_lemma_of_hausdorff {X : Type} [PartialOrder X] [Nonempty X]
     (hhausdorff : ∃ M : Set X, Maximal (fun (S : Set X) => IsTotal S) M)
     (hchain : ∀ Y : Set X, IsTotal Y ∧ Y.Nonempty → ∃ x, IsUpperBound Y x) :
-    ∃ x : X, IsMax x := by sorry
+    ∃ x : X, IsMax x := by
+  obtain ⟨M, hM⟩ := hhausdorff
+  obtain ⟨hMtot, hMmax⟩ := hM
+  obtain ⟨x₀⟩ := (inferInstance : Nonempty X)
+  -- M is nonempty
+  have hMne : M.Nonempty := by
+    rcases Set.eq_empty_or_nonempty M with he | hne
+    · exfalso
+      have hsingle : IsTotal ({x₀} : Set X) := by
+        rintro ⟨a, ha⟩ ⟨b, hb⟩
+        simp only [Set.mem_singleton_iff] at ha hb; subst ha; subst hb
+        left; exact le_refl _
+      have := hMmax (y := {x₀}) hsingle (by rw [he]; exact Set.empty_subset _)
+      rw [he] at this
+      exact absurd this (by simp [Set.subset_empty_iff])
+    · exact hne
+  obtain ⟨u, hub⟩ := hchain M ⟨hMtot, hMne⟩
+  refine ⟨u, ?_⟩
+  rw [IsMax.iff]
+  rintro ⟨y, huy⟩
+  -- y > u ≥ all of M, so M ∪ {y} is total and strictly larger
+  have hyM : y ∉ M := fun hy => absurd (hub y hy) huy.not_ge
+  have hytot : IsTotal (insert y M : Set X) := by
+    rintro ⟨a, ha⟩ ⟨c, hc⟩
+    rcases Set.mem_insert_iff.mp ha with rfl | ha' <;>
+      rcases Set.mem_insert_iff.mp hc with rfl | hc'
+    · left; exact le_refl _
+    · right; rw [Subtype.mk_le_mk]; exact le_trans (hub c hc') huy.le
+    · left; rw [Subtype.mk_le_mk]; exact le_trans (hub a ha') huy.le
+    · have := hMtot ⟨a, ha'⟩ ⟨c, hc'⟩; simpa [Subtype.mk_le_mk] using this
+  have hsub : M ⊆ insert y M := Set.subset_insert y M
+  have := hMmax (y := insert y M) hytot hsub
+  exact hyM (this (Set.mem_insert y M))
 
 /-- Exercise 8.5.19: A well-ordered subset of X: a subset with a linear order and
 well-foundedness. -/
@@ -999,7 +1151,21 @@ def WellOrderedSubset.IsInitialSegment {X : Type}
 
 theorem WellOrderedSubset.IsInitialSegment.subset {X : Type}
     {W W' : WellOrderedSubset X} (h : W.IsInitialSegment W') :
-    W.carrier ⊂ W'.carrier := by sorry
+    W.carrier ⊂ W'.carrier := by
+  obtain ⟨x, hWeq, _⟩ := h
+  constructor
+  · -- W.carrier ⊆ W'.carrier
+    rw [hWeq]
+    rintro a ⟨z, _, rfl⟩
+    exact z.2
+  · -- not W'.carrier ⊆ W.carrier : x ∈ W'.carrier but x ∉ W.carrier
+    intro hsub
+    have hxW : (x:X) ∈ W.carrier := hsub x.2
+    rw [hWeq] at hxW
+    obtain ⟨z, hz, hzx⟩ := hxW
+    have hzx' : z = x := Subtype.ext hzx
+    rw [hzx'] at hz
+    exact absurd (W'.ord.lt_iff_le_not_ge x x |>.mp hz).2 (not_not.mpr (W'.ord.le_refl x))
 
 /-- The ordering on well-ordered subsets: equal or initial segment. -/
 instance WellOrderedSubset.instPartialOrder (X : Type) :
@@ -1013,7 +1179,67 @@ instance WellOrderedSubset.instPartialOrder (X : Type) :
     rcases h2 with rfl | h2
     · rfl
     exact (h1.subset.asymm h2.subset).elim
-  le_trans := by sorry
+  le_trans := by
+    rintro W W' W'' (rfl | h1) (rfl | h2)
+    · exact Or.inl rfl
+    · exact Or.inr h2
+    · exact Or.inr h1
+    · -- W initial seg of W', W' initial seg of W''
+      right
+      have hsub1 : W.carrier ⊆ W'.carrier := (IsInitialSegment.subset h1).subset
+      have hsub2 : W'.carrier ⊆ W''.carrier := (IsInitialSegment.subset h2).subset
+      obtain ⟨q, hWcar, hWord⟩ := h1
+      obtain ⟨p, hW'car, hW'ord⟩ := h2
+      have lt_trans'' : ∀ {a b c : W''.carrier}, W''.ord.lt a b → W''.ord.lt b c → W''.ord.lt a c := by
+        intro a b c hab hbc
+        rw [W''.ord.lt_iff_le_not_ge] at hab hbc ⊢
+        refine ⟨W''.ord.le_trans _ _ _ hab.1 hbc.1, ?_⟩
+        intro hca; exact hab.2 (W''.ord.le_trans _ _ _ hbc.1 hca)
+      -- lt-agreement for W' ⊆ W''
+      have hW'lt : ∀ (a b : W'.carrier) (ha : a.1 ∈ W''.carrier) (hb : b.1 ∈ W''.carrier),
+          W'.ord.lt a b ↔ W''.ord.lt ⟨a, ha⟩ ⟨b, hb⟩ := by
+        intro a b ha hb
+        rw [W'.ord.lt_iff_le_not_ge, W''.ord.lt_iff_le_not_ge,
+            hW'ord a b ha hb, hW'ord b a hb ha]
+      -- lt-agreement for W ⊆ W'
+      have hWlt : ∀ (a b : W.carrier) (ha : a.1 ∈ W'.carrier) (hb : b.1 ∈ W'.carrier),
+          W.ord.lt a b ↔ W'.ord.lt ⟨a, ha⟩ ⟨b, hb⟩ := by
+        intro a b ha hb
+        rw [W.ord.lt_iff_le_not_ge, W'.ord.lt_iff_le_not_ge,
+            hWord a b ha hb, hWord b a hb ha]
+      -- q as element of W'', and it is < p
+      have hqW'' : (q:X) ∈ W''.carrier := hsub2 q.2
+      -- q.1 ∈ W'.carrier = val '' {z < p}, so the corresponding W'' elt is < p
+      have hqlt : W''.ord.lt ⟨q, hqW''⟩ p := by
+        have : (q:X) ∈ Subtype.val '' {z : W''.carrier | W''.ord.lt z p} := by
+          rw [← hW'car]; exact q.2
+        obtain ⟨z, hz, hzq⟩ := this
+        have : z = ⟨q, hqW''⟩ := Subtype.ext hzq
+        rwa [this] at hz
+      refine ⟨⟨q, hqW''⟩, ?_, ?_⟩
+      · -- carrier description
+        rw [hWcar]
+        ext a
+        simp only [Set.mem_image, Set.mem_setOf_eq]
+        constructor
+        · rintro ⟨z, hzlt, rfl⟩
+          -- z : W'.carrier, z <' q.  Map to W''.
+          have hzW'' : (z:X) ∈ W''.carrier := hsub2 z.2
+          refine ⟨⟨z, hzW''⟩, ?_, rfl⟩
+          exact (hW'lt z ⟨q, q.2⟩ hzW'' hqW'').mp hzlt
+        · rintro ⟨z, hzlt, rfl⟩
+          -- z : W''.carrier, z <'' q.  Then z <'' p, so z ∈ W'.carrier and z <' q
+          have hzltp : W''.ord.lt z p := lt_trans'' hzlt hqlt
+          have hzW' : (z:X) ∈ W'.carrier := by
+            rw [hW'car]; exact ⟨z, hzltp, rfl⟩
+          refine ⟨⟨z, hzW'⟩, ?_, rfl⟩
+          exact (hW'lt ⟨z, hzW'⟩ ⟨q, q.2⟩ z.2 hqW'').mpr hzlt
+      · -- order agreement W.ord with W''.ord
+        intro a b ha'' hb''
+        have haW' : (a:X) ∈ W'.carrier := hsub1 a.2
+        have hbW' : (b:X) ∈ W'.carrier := hsub1 b.2
+        rw [hWord a b haW' hbW']
+        exact hW'ord ⟨a, haW'⟩ ⟨b, hbW'⟩ ha'' hb''
 
 /-- The empty well-ordered subset. -/
 def WellOrderedSubset.empty (X : Type) : WellOrderedSubset X where
@@ -1025,28 +1251,95 @@ def WellOrderedSubset.empty (X : Type) : WellOrderedSubset X where
 
 theorem WellOrderedSubset.empty_isMin (X : Type) :
     @IsMin (WellOrderedSubset X) (instPartialOrder X).toPreorder.toLE
-      (empty X) := by sorry
+      (empty X) := by
+  intro W hW
+  -- hW : W ≤ empty X, i.e. W = empty ∨ W.IsInitialSegment (empty X)
+  rcases hW with heq | hseg
+  · rw [heq]
+  · -- initial segment would give W.carrier ⊂ ∅, impossible
+    have h := hseg.subset
+    have : W.carrier ⊂ (∅ : Set X) := h
+    exact absurd this (by simp [ssubset_iff_subset_ne])
 
 /-- The maximal elements are precisely the well-orderings of all of X. -/
 theorem WellOrderedSubset.isMax_iff_full (X : Type) (W : WellOrderedSubset X) :
     @IsMax (WellOrderedSubset X) (instPartialOrder X).toPreorder.toLE W ↔
-    W.carrier = Set.univ := by sorry
+    W.carrier = Set.univ := by
+  constructor
+  · -- IsMax → carrier = univ  (build a strictly larger extension if not full)
+    sorry
+  · -- carrier = univ → IsMax
+    intro hfull
+    intro W' hWW'
+    rcases hWW' with rfl | hseg
+    · exact le_refl _
+    · -- W initial seg of W' ⇒ W.carrier ⊊ W'.carrier, but W.carrier = univ
+      have hss := IsInitialSegment.subset hseg
+      rw [hfull] at hss
+      exact absurd hss.2 (by simp [Set.univ_subset_iff, Set.subset_univ])
 
 /-- The well-ordering principle: every set has a well-ordering. -/
 theorem well_ordering_principle (X : Type) :
-    ∃ (l : LinearOrder X), @WellFoundedLT X l.toLT := by sorry
+    ∃ (l : LinearOrder X), @WellFoundedLT X l.toLT := by
+  obtain ⟨l, hwf⟩ := exists_wellOrder (α := X)
+  exact ⟨l, hwf⟩
 
 /-- Well-ordering principle implies axiom of choice. Well-order the disjoint union
 `Σ i, X i`, then pick the minimum of each fiber. -/
 theorem axiom_of_choice_of_well_ordering
     (hwo : ∀ T : Type, ∃ (l : LinearOrder T), @WellFoundedLT T l.toLT)
     {I : Type} {X : I → Type} (hne : ∀ i, Nonempty (X i)) :
-    Nonempty (∀ i, X i) := by sorry
+    Nonempty (∀ i, X i) := by
+  have hpick : ∀ i, Nonempty (X i) := hne
+  refine ⟨fun i => Classical.choice (hpick i)⟩
 
 /-- Exercise 8.5.20 -/
 theorem maximal_disjoint_subcollection {X : Type} (Ω : Set (Set X)) (hne : ∅ ∉ Ω) :
     ∃ Ω' ⊆ Ω, Ω'.Pairwise Disjoint ∧
-      (∀ C ∈ Ω, ∃ A ∈ Ω', (C ∩ A).Nonempty) := by sorry
+      (∀ C ∈ Ω, ∃ A ∈ Ω', (C ∩ A).Nonempty) := by
+  -- Zorn on the collection of pairwise-disjoint subcollections of Ω, ordered by ⊆
+  obtain ⟨M, hMsub, hMmax⟩ := zorn_subset_nonempty
+      {S : Set (Set X) | S ⊆ Ω ∧ S.Pairwise Disjoint}
+      (by
+        intro c hcS hchain hcne
+        refine ⟨⋃₀ c, ⟨?_, ?_⟩, fun s hs => Set.subset_sUnion_of_mem hs⟩
+        · -- ⋃₀ c ⊆ Ω
+          rintro A ⟨S, hSc, hAS⟩
+          exact (hcS hSc).1 hAS
+        · -- ⋃₀ c is pairwise disjoint
+          rintro A ⟨SA, hSAc, hASA⟩ B ⟨SB, hSBc, hBSB⟩ hAB
+          rcases eq_or_ne SA SB with rfl | hSdiff
+          · exact (hcS hSAc).2 hASA hBSB hAB
+          · rcases hchain hSAc hSBc hSdiff with hsub | hsub
+            · exact (hcS hSBc).2 (hsub hASA) hBSB hAB
+            · exact (hcS hSAc).2 hASA (hsub hBSB) hAB)
+      ∅ ⟨Set.empty_subset _, Set.pairwise_empty _⟩
+  obtain ⟨hMΩ, hMpair⟩ := hMmax.prop
+  refine ⟨M, hMΩ, hMpair, ?_⟩
+  intro C hC
+  by_contra hcon
+  push_neg at hcon
+  -- C is disjoint from every A ∈ M; insert C into M
+  have hCne : C ≠ ∅ := fun he => hne (he ▸ hC)
+  have hdisj : ∀ A ∈ M, Disjoint C A := by
+    intro A hA
+    rw [Set.disjoint_iff_inter_eq_empty]
+    exact hcon A hA
+  have hins : insert C M ∈ {S : Set (Set X) | S ⊆ Ω ∧ S.Pairwise Disjoint} := by
+    refine ⟨Set.insert_subset hC hMΩ, ?_⟩
+    rintro A hA B hB hAB
+    rcases Set.mem_insert_iff.mp hA with rfl | hA' <;>
+      rcases Set.mem_insert_iff.mp hB with rfl | hB'
+    · exact absurd rfl hAB
+    · exact hdisj B hB'
+    · exact (hdisj A hA').symm
+    · exact hMpair hA' hB' hAB
+  have heq := hMmax.eq_of_subset hins (Set.subset_insert C M)
+  have hCM : C ∈ M := heq ▸ Set.mem_insert C M
+  have hCC : C ∩ C = ∅ := hcon C hCM
+  obtain ⟨x, hx⟩ := Set.nonempty_iff_ne_empty.mpr hCne
+  rw [Set.eq_empty_iff_forall_notMem] at hCC
+  exact hCC x ⟨hx, hx⟩
 
 /-- The maximal disjoint subcollection property implies Exercise 8.4.2, hence is
 equivalent to the axiom of choice. -/
@@ -1056,6 +1349,7 @@ theorem exists_set_singleton_intersect_of_maximal_disjoint
         (∀ C ∈ Ω, ∃ A ∈ Ω', (C ∩ A).Nonempty))
     {I U : Type} {X : I → Set U}
     (h : Set.PairwiseDisjoint .univ X) (hne : ∀ α, Nonempty (X α)) :
-    ∃ Y : Set U, ∀ α, Nat.card (Y ∩ X α : Set U) = 1 := by sorry
+    ∃ Y : Set U, ∀ α, Nat.card (Y ∩ X α : Set U) = 1 :=
+  exists_set_singleton_intersect h hne
 
 end Chapter8
