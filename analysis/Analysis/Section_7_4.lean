@@ -291,7 +291,18 @@ theorem Series.ex_7_4_4_sum : (a_7_4_4 : Series).sum > 0 := by sorry
 
 abbrev Series.f_7_4_4 : ℕ → ℕ := fun n ↦ if n % 3 = 0 then 2 * (n/3) else 4 * (n/3) + 2 * (n % 3) - 1
 
-theorem Series.f_7_4_4_bij : Function.Bijective f_7_4_4 := by sorry
+theorem Series.f_7_4_4_bij : Function.Bijective f_7_4_4 := by
+  constructor
+  · intro a b hab
+    simp only [f_7_4_4] at hab
+    by_cases ha : a % 3 = 0 <;> by_cases hb : b % 3 = 0 <;>
+      simp only [ha, hb, if_false, if_pos] at hab <;> omega
+  · intro m
+    rcases Nat.even_or_odd m with ⟨k, hk⟩ | ⟨k, hk⟩
+    · refine ⟨3*k, ?_⟩; simp only [f_7_4_4]; rw [if_pos (by omega)]; omega
+    · rcases Nat.even_or_odd k with ⟨j, hj⟩ | ⟨j, hj⟩
+      · refine ⟨3*j+1, ?_⟩; simp only [f_7_4_4]; rw [if_neg (by omega)]; omega
+      · refine ⟨3*j+2, ?_⟩; simp only [f_7_4_4]; rw [if_neg (by omega)]; omega
 
 theorem Series.ex_7_4_4'_conv : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).converges := by sorry
 
