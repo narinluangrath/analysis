@@ -21,11 +21,16 @@ open Chapter6 Filter
 
 namespace Chapter9
 
-example : ContinuousOn (fun x:ℝ ↦ 1/x) (.Ioo 0 2) := by
-  sorry
+example : ContinuousOn (fun x:ℝ ↦ 1/x) (.Ioo 0 2) :=
+  ContinuousOn.div continuousOn_const continuousOn_id (fun x hx => ne_of_gt hx.1)
 
 example : ¬ BddOn (fun x:ℝ ↦ 1/x) (.Ioo 0 2) := by
-  sorry
+  rintro ⟨M, hM⟩
+  have hx : 1/(|M|+1) ∈ Set.Ioo (0:ℝ) 2 :=
+    ⟨by positivity, by rw [div_lt_iff₀ (by positivity)]; nlinarith [abs_nonneg M]⟩
+  have h2 := hM _ hx
+  simp only [one_div_one_div, abs_of_nonneg (by positivity : (0:ℝ) ≤ |M|+1)] at h2
+  linarith [le_abs_self M]
 
 /-- Example 9.9.1 -/
 example (x : ℝ) :
@@ -92,7 +97,21 @@ theorem ContinuousOn.ofUniformContinuousOn {X:Set ℝ} (f: ℝ → ℝ) (hf: Uni
   hf.continuousOn
 
 example : ¬ UniformContinuousOn (fun x:ℝ ↦ 1/x) (Set.Ioo 0 2) := by
-  sorry
+  rw [UniformContinuousOn.iff]
+  push_neg
+  refine ⟨1, one_pos, fun δ hδ ↦ ?_⟩
+  set t : ℝ := min δ 1 / 4 with ht
+  have htpos : 0 < t := by rw [ht]; positivity
+  have htle : t ≤ 1 := by rw [ht]; have : min δ 1 ≤ 1 := min_le_right _ _; linarith
+  have ht2 : 2*t ≤ 1/2 := by rw [ht]; have : min δ 1 ≤ 1 := min_le_right _ _; linarith
+  have htδ : t ≤ δ := by rw [ht]; have : min δ 1 ≤ δ := min_le_left _ _; linarith
+  refine ⟨t, ⟨htpos, by linarith⟩, 2*t, ⟨by positivity, by linarith⟩, ?_, ?_⟩
+  · show dist (2*t) t ≤ δ
+    rw [Real.dist_eq, show 2*t - t = t by ring, abs_of_pos htpos]; linarith
+  · simp only [Real.Close, Real.dist_eq]
+    have h1 : (1:ℝ)/(2*t) - 1/t = -(1/(2*t)) := by field_simp; ring
+    rw [h1, abs_neg, abs_of_pos (by positivity)]
+    rw [lt_div_iff₀ (by positivity)]; nlinarith [ht2, htpos]
 
 end Chapter9
 

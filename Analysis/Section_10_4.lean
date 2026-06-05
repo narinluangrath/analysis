@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Analysis.SpecialFunctions.Pow.Deriv
 import Analysis.Section_9_3
 import Analysis.Section_9_4
 import Analysis.Section_10_1
@@ -73,7 +74,9 @@ theorem inverse_function_theorem {X Y: Set ℝ} {f: ℝ → ℝ} {g:ℝ → ℝ}
     convert (hf _ hx _).inv₀ _ using 2 with n <;> grind
 
 /-- Exercise 10.4.1(a) -/
-example {n:ℕ} : ContinuousOn (fun x:ℝ ↦ x^(1/n:ℝ)) (.Ioi 0) := by sorry
+example {n:ℕ} : ContinuousOn (fun x:ℝ ↦ x^(1/n:ℝ)) (.Ioi 0) := by
+  intro x _
+  exact (Real.continuousAt_rpow_const x (1/n) (Or.inr (by positivity))).continuousWithinAt
 
 /-- Exercise 10.4.1(b) -/
 example {n:ℕ} {x:ℝ} (hx: x ∈ Set.Ioi 0) : HasDerivWithinAt (fun x:ℝ ↦ x^(1/n:ℝ))
@@ -86,11 +89,25 @@ example (q:ℚ) {x:ℝ} (hx: x ∈ Set.Ioi 0) :
 
 /-- Exercise 10.4.2(b) -/
 example (q:ℚ) : (nhdsWithin 1 (.Ioi 0 \ {1})).Tendsto (fun x:ℝ ↦ (x^(q:ℝ)-1)/(x-1)) (nhds q) := by
-  sorry
+  have hd : HasDerivAt (fun x:ℝ ↦ x^(q:ℝ)) (q:ℝ) 1 := by
+    have := Real.hasDerivAt_rpow_const (x := (1:ℝ)) (p := (q:ℝ)) (Or.inl one_ne_zero)
+    rwa [Real.one_rpow, mul_one] at this
+  rw [hasDerivAt_iff_tendsto_slope] at hd
+  have heq : (fun x:ℝ ↦ (x^(q:ℝ) - 1)/(x-1)) = slope (fun x:ℝ ↦ x^(q:ℝ)) 1 := by
+    funext x; rw [slope_def_field, Real.one_rpow]
+  rw [heq]
+  exact hd.mono_left (nhdsWithin_mono 1 (fun x hx => hx.2))
 
 /-- Exercise 10.4.3(a) -/
 example (α:ℝ) : (nhdsWithin 1 (.Ioi 0 \ {1})).Tendsto (fun x:ℝ ↦ (x^α-1^α)/(x-1)) (nhds α) := by
-  sorry
+  have hd : HasDerivAt (fun x:ℝ ↦ x^α) α 1 := by
+    have := Real.hasDerivAt_rpow_const (x := (1:ℝ)) (p := α) (Or.inl one_ne_zero)
+    rwa [Real.one_rpow, mul_one] at this
+  rw [hasDerivAt_iff_tendsto_slope] at hd
+  have heq : (fun x:ℝ ↦ (x^α - 1^α)/(x-1)) = slope (fun x:ℝ ↦ x^α) 1 := by
+    funext x; rw [slope_def_field]
+  rw [heq]
+  exact hd.mono_left (nhdsWithin_mono 1 (fun x hx => hx.2))
 
 /-- Exercise 10.4.3(b) -/
 example (α:ℝ) {x:ℝ} (hx: x ∈ Set.Ioi 0) : HasDerivWithinAt (fun x:ℝ ↦ x^α) (α * x^(α-1)) (.Ioi 0) x := by
