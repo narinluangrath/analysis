@@ -630,7 +630,93 @@ example {Y:Type} [PartialOrder Y] {x y:Y} (hx: IsMax x) (hy: IsMax y) : x = y :=
  sorry
 
 /-- Exercise 8.5.9 -/
-example {X:Type} [LinearOrder X] (hmin: ∀ Y: Set X, Y.Nonempty → ∃ x:Y, IsMin x) (hmax: ∀ Y: Set X, Y.Nonempty → ∃ x:Y, IsMax x) : Finite X := by sorry
+example {X:Type} [LinearOrder X] (hmin: ∀ Y: Set X, Y.Nonempty → ∃ x:Y, IsMin x) (hmax: ∀ Y: Set X, Y.Nonempty → ∃ x:Y, IsMax x) : Finite X := by
+  classical
+  have minof : ∀ (Y : Set X), Y.Nonempty → ∃ m, m ∈ Y ∧ ∀ z ∈ Y, m ≤ z := by
+    intro Y hY
+    obtain ⟨⟨m, hmY⟩, hm⟩ := hmin Y hY
+    refine ⟨m, hmY, ?_⟩
+    intro z hz
+    rcases le_total m z with h|h
+    · exact h
+    · exact hm (b := ⟨z, hz⟩) h
+  by_contra hinf
+  rw [not_finite_iff_infinite] at hinf
+  set U : X → Set X := fun x => {y | x < y} with hU
+  set a0 := (minof Set.univ (Set.univ_nonempty)).choose with ha0
+  set a : ℕ → X := fun n => Nat.rec a0 (fun _ prev =>
+      if h : (U prev).Nonempty then (minof (U prev) h).choose else prev) n with ha
+  have ha_zero : a 0 = a0 := rfl
+  have ha_succ : ∀ n, a (n+1) = if h : (U (a n)).Nonempty then (minof (U (a n)) h).choose else a n := by
+    intro n; rfl
+  have key : ∀ n, {x | x ≤ a n}.Finite := by
+    intro n
+    induction n with
+    | zero =>
+      have : {x | x ≤ a 0} = {a 0} := by
+        ext y; simp only [Set.mem_setOf_eq, Set.mem_singleton_iff]
+        constructor
+        · intro hy
+          have hmin0 := (minof Set.univ Set.univ_nonempty).choose_spec
+          rw [← ha0] at hmin0
+          have := hmin0.2 y (Set.mem_univ y)
+          rw [ha_zero] at *
+          exact le_antisymm hy this
+        · rintro rfl; exact le_refl _
+      rw [this]; exact Set.finite_singleton _
+    | succ n ih =>
+      have hUne : (U (a n)).Nonempty := by
+        by_contra he
+        rw [Set.not_nonempty_iff_eq_empty] at he
+        have : (Set.univ : Set X) = {x | x ≤ a n} := by
+          ext y; simp only [Set.mem_univ, Set.mem_setOf_eq, true_iff]
+          by_contra hy
+          rw [not_le] at hy
+          exact (Set.eq_empty_iff_forall_notMem.mp he y) hy
+        have : (Set.univ : Set X).Finite := this ▸ ih
+        exact hinf.not_finite (Set.finite_univ_iff.mp this)
+      have hspec := (minof (U (a n)) hUne).choose_spec
+      have han1 : a (n+1) = (minof (U (a n)) hUne).choose := by
+        rw [ha_succ]; rw [dif_pos hUne]
+      have hbetween : {x | x ≤ a (n+1)} = {x | x ≤ a n} ∪ {a (n+1)} := by
+        ext y; simp only [Set.mem_setOf_eq, Set.mem_union, Set.mem_singleton_iff]
+        constructor
+        · intro hy
+          rcases le_or_gt y (a n) with h|h
+          · exact Or.inl h
+          · have hyU : y ∈ U (a n) := h
+            have := hspec.2 y hyU
+            rw [← han1] at this
+            exact Or.inr (le_antisymm hy this)
+        · rintro (h|rfl)
+          · have : a n < a (n+1) := by rw [han1]; exact hspec.1
+            exact le_trans h this.le
+          · exact le_refl _
+      rw [hbetween]
+      exact Set.Finite.union ih (Set.finite_singleton _)
+  have hincr : ∀ n, a n < a (n+1) := by
+    intro n
+    have hUne : (U (a n)).Nonempty := by
+      by_contra he
+      rw [Set.not_nonempty_iff_eq_empty] at he
+      have heq : (Set.univ : Set X) = {x | x ≤ a n} := by
+        ext y; simp only [Set.mem_univ, Set.mem_setOf_eq, true_iff]
+        by_contra hy
+        rw [not_le] at hy
+        exact (Set.eq_empty_iff_forall_notMem.mp he y) hy
+      have : (Set.univ : Set X).Finite := heq ▸ key n
+      exact hinf.not_finite (Set.finite_univ_iff.mp this)
+    have hspec := (minof (U (a n)) hUne).choose_spec
+    have han1 : a (n+1) = (minof (U (a n)) hUne).choose := by
+      rw [ha_succ]; rw [dif_pos hUne]
+    rw [han1]; exact hspec.1
+  have hmono : StrictMono a := strictMono_nat_of_lt_succ hincr
+  obtain ⟨⟨M, hMrange⟩, hMmax⟩ := hmax (Set.range a) ⟨a 0, Set.mem_range_self 0⟩
+  obtain ⟨k, hk⟩ := hMrange
+  have hMlt : M < a (k+1) := by rw [← hk]; exact hincr k
+  have hle := hMmax (b := ⟨a (k+1), Set.mem_range_self (k+1)⟩) (by rw [Subtype.mk_le_mk]; exact hMlt.le)
+  rw [Subtype.mk_le_mk] at hle
+  exact absurd hMlt (not_lt.mpr hle)
 
 
 /-- Exercise 8.5.12.  Here we make a copy of Mathlib's `Lex` wrapper for lexicographical orderings.  This wrapper is needed
