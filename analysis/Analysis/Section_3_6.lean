@@ -211,7 +211,68 @@ theorem SetTheory.Set.card_erase {n:ℕ} (h: n ≥ 1) {X:Set} (hX: X.has_card n)
     else Fin_mk _ (f (ι x') - 1) (by omega)
   have hg_def (x':X') : if (f (ι x'):ℕ) < m₀ then (g x':ℕ) = f (ι x') else (g x':ℕ) = f (ι x') - 1 := by
     split_ifs with h' <;> simp [g,h']
-  have hg : Function.Bijective g := by sorry
+  have hm₀nat : (f x:ℕ) = m₀ := by
+    have h1 : ((f x:ℕ):Object) = (m₀:Object) := by rw [Fin.coe_toNat, hm₀f]
+    exact (SetTheory.Object.natCast_inj _ _).mp h1
+  have hm₀lt : m₀ < n := by
+    have := Fin.toNat_lt (f x); omega
+  have hne : ∀ x':X', (f (ι x'):ℕ) ≠ m₀ := by
+    intro x'
+    by_contra h'
+    have : f (ι x') = f x := by
+      apply Fin.coe_inj.mpr; omega
+    have heq : ι x' = x := hf.1 this
+    have hp := x'.property
+    have hval : (x'.val:Object) = x.val := by
+      have := congrArg Subtype.val heq; rw [hι x'] at this; exact this
+    simp only [X', mem_sdiff, mem_singleton] at hp
+    exact hp.2 hval
+  have hιinj : Function.Injective ι := by
+    intro a b hab
+    apply Subtype.ext
+    have hh : (ι a : Object) = (ι b : Object) := by rw [hab]
+    rw [hι, hι] at hh; exact hh
+  have hfx_m0 : (f x : ℕ) = m₀ := by
+    have hh := Fin.coe_toNat (f x)
+    rw [hm₀f] at hh
+    rw [SetTheory.Object.natCast_inj] at hh; exact hh
+  have hg : Function.Bijective g := by
+    constructor
+    · intro a b hab
+      have ha := hg_def a
+      have hb := hg_def b
+      have hna := hne a
+      have hnb := hne b
+      have hla := Fin.toNat_lt (f (ι a))
+      have hlb := Fin.toNat_lt (f (ι b))
+      rw [Fin.coe_inj] at hab
+      have hval : (f (ι a):ℕ) = (f (ι b):ℕ) := by
+        split_ifs at ha hb with h1 h2 h2 <;> omega
+      exact hιinj (hf.1 (Fin.coe_inj.mpr hval))
+    · intro j
+      have hjlt := Fin.toNat_lt j
+      classical
+      set v : ℕ := if (j:ℕ) < m₀ then (j:ℕ) else (j:ℕ)+1 with hv
+      have hvlt : v < n := by rw [hv]; split_ifs with hc <;> omega
+      have hvne : v ≠ m₀ := by rw [hv]; split_ifs with hc <;> omega
+      obtain ⟨w, hw⟩ := hf.surjective (Fin_mk n v hvlt)
+      have hfw : (f w : ℕ) = v := by rw [hw, Fin.toNat_mk]
+      have hwne : (w:Object) ≠ (x:Object) := by
+        intro he
+        have hwx : w = x := Subtype.ext he
+        rw [hwx] at hfw
+        rw [hfx_m0] at hfw
+        exact hvne hfw.symm
+      have hwmem : w.val ∈ X' := by
+        simp only [X', mem_sdiff, mem_singleton]
+        exact ⟨w.property, hwne⟩
+      refine ⟨⟨w.val, hwmem⟩, ?_⟩
+      have hιw : ι ⟨w.val, hwmem⟩ = w := by apply Subtype.ext; exact hι ⟨w.val, hwmem⟩
+      have hgd := hg_def ⟨w.val, hwmem⟩
+      rw [hιw, hfw] at hgd
+      rw [Fin.coe_inj]
+      have hvc : v = if (j:ℕ) < m₀ then (j:ℕ) else (j:ℕ)+1 := hv
+      split_ifs at hgd hvc with hc <;> omega
   use g
 
 /-- Proposition 3.6.8 (Uniqueness of cardinality) -/
