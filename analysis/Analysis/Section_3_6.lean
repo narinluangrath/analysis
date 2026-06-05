@@ -876,18 +876,76 @@ noncomputable def SetTheory.Set.Permutations_toFun {n: ℕ} (p: Permutations n) 
   simp only [Permutations, specification_axiom'', powerset_axiom] at this
   exact this.choose.choose
 
+theorem SetTheory.Set.Permutations_toFun_coe {n: ℕ} (p: Permutations n) :
+    ((Permutations_toFun p : (SetTheory.Set.Fin n) → (SetTheory.Set.Fin n)) : Object) = ↑p := by
+  rw [Permutations_toFun]
+  exact @Exists.choose_spec _ (fun f => (coe_of_fun f : Object) = ↑p) _
+
 theorem SetTheory.Set.Permutations_bijective {n: ℕ} (p: Permutations n) :
-    Function.Bijective (Permutations_toFun p) := by sorry
+    Function.Bijective (Permutations_toFun p) := by
+  have hbij := p.property
+  simp only [Permutations, specification_axiom'', powerset_axiom] at hbij
+  obtain ⟨hex, hb⟩ := hbij
+  have hp2 : (↑p : Object) ∈ ((SetTheory.Set.Fin n) ^ (SetTheory.Set.Fin n)) := by
+    rw [powerset_axiom]; exact hex
+  have hkey : Permutations_toFun p = pow_fun_equiv ⟨↑p, hp2⟩ := by
+    have hsub : (⟨↑p, hp2⟩ : ↑((SetTheory.Set.Fin n) ^ (SetTheory.Set.Fin n)))
+        = pow_fun_equiv.invFun (Permutations_toFun p) := by
+      apply Subtype.ext
+      change (↑p : Object) = ((Permutations_toFun p : (SetTheory.Set.Fin n) → (SetTheory.Set.Fin n)) : Object)
+      exact (Permutations_toFun_coe p).symm
+    rw [hsub]
+    exact (pow_fun_equiv.right_inv (Permutations_toFun p)).symm
+  rw [hkey]; convert hb using 2
 
 theorem SetTheory.Set.Permutations_inj {n: ℕ} (p1 p2: Permutations n) :
-    Permutations_toFun p1 = Permutations_toFun p2 ↔ p1 = p2 := by sorry
+    Permutations_toFun p1 = Permutations_toFun p2 ↔ p1 = p2 := by
+  constructor
+  · intro h
+    apply Subtype.ext
+    have h1 := Permutations_toFun_coe p1
+    have h2 := Permutations_toFun_coe p2
+    rw [h] at h1
+    rw [← h1, h2]
+  · intro h; rw [h]
 
 /-- This connects our concept of a permutation with Mathlib's `Equiv` between `Fin n` and `Fin n`. -/
 noncomputable def SetTheory.Set.perm_equiv_equiv {n : ℕ} : Permutations n ≃ (Fin n ≃ Fin n) := {
   toFun := fun p => Equiv.ofBijective (Permutations_toFun p) (Permutations_bijective p)
-  invFun := sorry
-  left_inv := sorry
-  right_inv := sorry
+  invFun := fun e => ⟨(pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n) : ↑((SetTheory.Set.Fin n)^(SetTheory.Set.Fin n))).val, by
+    rw [Permutations, specification_axiom'']
+    refine ⟨(pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n)).property, ?_⟩
+    have : (⟨_, (pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n)).property⟩ : ↑((SetTheory.Set.Fin n)^(SetTheory.Set.Fin n))) = pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n) := rfl
+    rw [this, Equiv.apply_symm_apply]; exact e.bijective⟩
+  left_inv := by
+    intro p
+    apply Subtype.ext
+    show (pow_fun_equiv.symm (Permutations_toFun p) : ↑((SetTheory.Set.Fin n)^(SetTheory.Set.Fin n))).val = ↑p
+    have hv : ((pow_fun_equiv.symm (Permutations_toFun p) : ↑((SetTheory.Set.Fin n)^(SetTheory.Set.Fin n))) : Object) = (Permutations_toFun p : Object) := rfl
+    rw [hv]; exact Permutations_toFun_coe p
+  right_inv := by
+    intro e
+    apply Equiv.ext
+    intro x
+    show Permutations_toFun _ x = e x
+    set p : Permutations n := ⟨(pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n) : ↑((SetTheory.Set.Fin n)^(SetTheory.Set.Fin n))).val, by
+      rw [Permutations, specification_axiom'']
+      refine ⟨(pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n)).property, ?_⟩
+      have : (⟨_, (pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n)).property⟩ : ↑((SetTheory.Set.Fin n)^(SetTheory.Set.Fin n))) = pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n) := rfl
+      rw [this, Equiv.apply_symm_apply]; exact e.bijective⟩ with hp
+    have hp2 : (↑p : Object) ∈ ((SetTheory.Set.Fin n) ^ (SetTheory.Set.Fin n)) :=
+      (pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n)).property
+    have hkey : Permutations_toFun p = pow_fun_equiv ⟨↑p, hp2⟩ := by
+      have hsub : (⟨↑p, hp2⟩ : ↑((SetTheory.Set.Fin n) ^ (SetTheory.Set.Fin n)))
+          = pow_fun_equiv.invFun (Permutations_toFun p) := by
+        apply Subtype.ext
+        change (↑p : Object) = ((Permutations_toFun p : (SetTheory.Set.Fin n) → (SetTheory.Set.Fin n)) : Object)
+        exact (Permutations_toFun_coe p).symm
+      rw [hsub]
+      exact (pow_fun_equiv.right_inv (Permutations_toFun p)).symm
+    have hpe : (⟨↑p, hp2⟩ : ↑((SetTheory.Set.Fin n) ^ (SetTheory.Set.Fin n)))
+        = pow_fun_equiv.symm (e : SetTheory.Set.Fin n → SetTheory.Set.Fin n) := rfl
+    rw [hkey, hpe, Equiv.apply_symm_apply]
 }
 
 /- Exercise 3.6.12 involves a lot of moving between `Fin n` and `Fin (n + 1)` so let's add some conveniences. -/
