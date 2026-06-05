@@ -324,7 +324,126 @@ theorem Series.ex_7_4_4_conv : (a_7_4_4 : Series).converges := by
   rw [heq]
   exact (converges_of_alternating ha ha').mpr hadecay
 
-theorem Series.ex_7_4_4_sum : (a_7_4_4 : Series).sum > 0 := by sorry
+/-- Partial-sum bracketing for an alternating series `mk' (fun n => (-1)^n * a n)`
+with `m = 0`: for every `n ≥ 0`, `a 0 - a 1 ≤ partial n ≤ a 0`. -/
+private theorem Series.alternating_bracket {a: { k:ℤ // k ≥ (0:ℤ)} → ℝ} (ha: ∀ n, a n ≥ 0)
+    (ha': Antitone a) {n:ℤ} (hn: n ≥ 0) :
+    a ⟨0, le_refl 0⟩ - a ⟨1, by norm_num⟩ ≤ (mk' (fun k ↦ (-1)^(k:ℤ) * a k)).partial n
+      ∧ (mk' (fun k ↦ (-1)^(k:ℤ) * a k)).partial n ≤ a ⟨0, le_refl 0⟩ := by
+  set b := mk' (m := (0:ℤ)) fun k ↦ (-1) ^ (k:ℤ) * a k with hb
+  set S := b.partial with hS
+  have hbm : b.m = 0 := rfl
+  have claim0 {N:ℤ} (hN: N ≥ 0) : S (N+1) = S N + (-1)^(N+1) * a ⟨ N+1, by grind ⟩ := by
+    convert b.partial_succ ?_; · simp [b, hb, show N+1 ≥ (0:ℤ) by grind]
+    rw [hbm]; linarith
+  have claim1 {N:ℤ} (hN: N ≥ 0) : S (N+2) = S N + (-1)^(N+1) * (a ⟨ N+1, by grind ⟩ - a ⟨ N+2, by grind ⟩) := calc
+      S (N+2) = S N + (-1)^(N+1) * a ⟨ N+1, by grind ⟩ + (-1)^(N+2) * a ⟨ N+2, by grind ⟩ := by
+        simp_rw [←claim0 hN, show N+2=N+1+1 by abel]; apply claim0; linarith
+      _ = S N + (-1)^(N+1) * a ⟨ N+1, by grind ⟩ + (-1) * (-1)^(N+1) * a ⟨ N+2, by grind ⟩ := by
+        congr; rw [←zpow_one_add₀] <;> grind
+      _ = _ := by ring
+  have claim2 {N:ℤ} (hN: N ≥ 0) (h': Odd N) : S (N+2) ≥ S N := by
+    simp [claim1 hN, h'.add_one.neg_one_zpow]; apply ha'; simp
+  have claim3 {N:ℤ} (hN: N ≥ 0) (h': Even N) : S (N+2) ≤ S N := by
+    simp [claim1 hN, h'.add_one.neg_one_zpow]; apply ha'; simp
+  have why1 {N:ℤ} (hN: N ≥ 0) (h': Even N) (k:ℕ) : S (N+2*k) ≤ S N := by
+    induction k with
+    | zero => simp
+    | succ k ih =>
+      have heven : Even (N + 2*(k:ℤ)) := h'.add (even_two_mul _)
+      calc S (N+2*(↑(k+1):ℤ)) = S ((N+2*(k:ℤ))+2) := by congr 1; push_cast; ring
+        _ ≤ S (N+2*(k:ℤ)) := claim3 (by omega) heven
+        _ ≤ S N := ih
+  have why3 {N:ℤ} (hN: N ≥ 0) (h': Even N) (k:ℕ) : S (N+2*k+1) ≤ S (N+2*k) := by
+    have heven : Even (N + 2*(k:ℤ)) := h'.add (even_two_mul _)
+    have hodd : Odd (N + 2*(k:ℤ) + 1) := heven.add_one
+    have hc0 := claim0 (N := N + 2*(k:ℤ)) (by omega)
+    rw [show N+2*(k:ℤ)+1 = (N+2*(k:ℤ))+1 by ring, hc0, hodd.neg_one_zpow]
+    have hpos := ha ⟨ N + 2*(k:ℤ) + 1, by grind ⟩
+    nlinarith [hpos]
+  have why2 {N:ℤ} (hN: N ≥ 0) (h': Even N) (k:ℕ) : S (N+2*k+1) ≥ S N - a ⟨ N+1, by grind ⟩ := by
+    induction k with
+    | zero =>
+      simp only [Nat.cast_zero, mul_zero, add_zero]
+      have hodd : Odd (N+1) := h'.add_one
+      rw [claim0 hN, hodd.neg_one_zpow]; linarith
+    | succ k ih =>
+      have hodd : Odd (N + 2*(k:ℤ) + 1) := (h'.add (even_two_mul _)).add_one
+      calc S (N+2*(↑(k+1):ℤ)+1) = S ((N+2*(k:ℤ)+1)+2) := by congr 1; push_cast; ring
+        _ ≥ S (N+2*(k:ℤ)+1) := claim2 (by omega) hodd
+        _ ≥ S N - a ⟨ N+1, by grind ⟩ := ih
+  have why4 {N j:ℤ} (hN: N ≥ 0) (h': Even N) (hj: j ≥ N) : S N - a ⟨ N+1, by grind ⟩ ≤ S j ∧ S j ≤ S N := by
+    obtain ⟨i, hi⟩ : ∃ i:ℕ, j = N + i := ⟨(j-N).toNat, by omega⟩
+    rcases Nat.even_or_odd i with ⟨k, hk⟩ | ⟨k, hk⟩
+    · have hn2 : j = N + 2*(k:ℤ) := by rw [hi, hk]; push_cast; ring
+      rw [hn2]
+      exact ⟨le_trans (ge_iff_le.mp (why2 hN h' k)) (why3 hN h' k), why1 hN h' k⟩
+    · have hn2 : j = N + 2*(k:ℤ) + 1 := by rw [hi, hk]; push_cast; ring
+      rw [hn2]
+      exact ⟨ge_iff_le.mp (why2 hN h' k), le_trans (why3 hN h' k) (why1 hN h' k)⟩
+  have key := why4 (N := 0) (by norm_num) ⟨0, by ring⟩ hn
+  simp only [zero_add] at key
+  have hS0 : S 0 = a ⟨0, le_refl 0⟩ := by
+    show b.partial 0 = _
+    show ∑ i ∈ Finset.Icc b.m 0, b.seq i = _
+    rw [hbm, Finset.Icc_self, Finset.sum_singleton]
+    rw [show b.seq 0 = (-1:ℝ)^(0:ℤ) * a ⟨0, le_refl 0⟩ from Series.eval_mk' _ (le_refl 0)]
+    simp
+  rw [hS0] at key
+  exact key
+
+theorem Series.ex_7_4_4_sum : (a_7_4_4 : Series).sum > 0 := by
+  set a : {k:ℤ // k ≥ 0} → ℝ := fun n => 1/(((n:ℤ):ℝ) + 2) with ha_def
+  have ha : ∀ n, a n ≥ 0 := by
+    intro n; simp only [ha_def]
+    have h0 : (0:ℝ) ≤ ((n:ℤ):ℝ) := by exact_mod_cast n.2
+    apply div_nonneg one_pos.le; linarith
+  have ha' : Antitone a := by
+    intro x y hxy
+    have hxy0 : (x:ℤ) ≤ (y:ℤ) := hxy
+    have hx0 : (0:ℝ) ≤ ((x:ℤ):ℝ) := by exact_mod_cast x.2
+    have hxy' : ((x:ℤ):ℝ) ≤ ((y:ℤ):ℝ) := by exact_mod_cast hxy0
+    simp only [ha_def]; apply one_div_le_one_div_of_le (by linarith) (by linarith)
+  have hadecay : Filter.Tendsto a Filter.atTop (nhds 0) := by
+    have hval : Filter.Tendsto (fun n:{k:ℤ//k≥0} => (n:ℤ)) Filter.atTop Filter.atTop :=
+      (Filter.tendsto_comp_val_Ici_atTop (a:=(0:ℤ)) (f := id)).mpr Filter.tendsto_id
+    have h2z : Filter.Tendsto (fun z:ℤ => (1:ℝ)/((z:ℝ)+2)) Filter.atTop (nhds 0) := by
+      have : Filter.Tendsto (fun z:ℤ => ((z:ℝ)+2)) Filter.atTop Filter.atTop :=
+        Filter.tendsto_atTop_add_const_right _ 2 tendsto_intCast_atTop_atTop
+      simpa using this.inv_tendsto_atTop
+    exact h2z.comp hval
+  have heq : (Series.a_7_4_4 : Series) = mk' (m := 0) (fun n => (-1:ℝ)^(n:ℤ) * a n) := by
+    apply Series.ext
+    · rfl
+    funext n
+    by_cases hn : n ≥ (0:ℤ)
+    · rw [Series.eval_mk' _ hn]
+      simp only [Series.eval_coe, ha_def] at *
+      show (Series.a_7_4_4 : Series).seq n = _
+      rw [show (Series.a_7_4_4 : Series).seq n = if n ≥ 0 then Series.a_7_4_4 n.toNat else 0 from rfl, if_pos hn]
+      simp only [Series.a_7_4_4]
+      rw [div_eq_mul_one_div]
+      congr 1
+      · rw [show ((-1:ℝ)^(n.toNat)) = (-1:ℝ)^(n:ℤ) from by rw [← zpow_natCast]; congr 1; omega]
+      · have : (n.toNat:ℝ) = (n:ℝ) := by exact_mod_cast Int.toNat_of_nonneg hn
+        rw [this]
+    · rw [(mk' (m := 0) (fun n => (-1:ℝ)^(n:ℤ) * a n)).vanish n (by simp; omega)]
+      rw [(Series.a_7_4_4 : Series).vanish n (by simp; omega)]
+  have hconv : (a_7_4_4 : Series).converges := ex_7_4_4_conv
+  have htend := convergesTo_sum hconv
+  -- lower bound the limit by a 0 - a 1 = 1/6 > 0
+  have hev : ∀ᶠ n in Filter.atTop, (a ⟨0, le_refl 0⟩ - a ⟨1, by norm_num⟩)
+      ≤ (a_7_4_4 : Series).partial n := by
+    rw [Filter.eventually_atTop]
+    refine ⟨0, fun n hn => ?_⟩
+    rw [heq]
+    exact (alternating_bracket ha ha' hn).1
+  have hlow : (a ⟨0, le_refl 0⟩ - a ⟨1, by norm_num⟩) ≤ (a_7_4_4 : Series).sum :=
+    ge_of_tendsto htend hev
+  have hval : a ⟨0, le_refl 0⟩ - a ⟨1, by norm_num⟩ = 1/6 := by
+    simp only [ha_def]; norm_num
+  rw [hval] at hlow
+  linarith
 
 abbrev Series.f_7_4_4 : ℕ → ℕ := fun n ↦ if n % 3 = 0 then 2 * (n/3) else 4 * (n/3) + 2 * (n % 3) - 1
 
