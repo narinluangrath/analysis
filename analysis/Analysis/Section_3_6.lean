@@ -56,15 +56,18 @@ theorem SetTheory.Set.Example_3_6_3 : EqualCard nat (nat.specify (fun x ↦ Even
 
 @[refl]
 theorem SetTheory.Set.EqualCard.refl (X:Set) : EqualCard X X := by
-  sorry
+  exact ⟨id, Function.bijective_id⟩
 
 @[symm]
 theorem SetTheory.Set.EqualCard.symm {X Y:Set} (h: EqualCard X Y) : EqualCard Y X := by
-  sorry
+  obtain ⟨f, hf⟩ := h
+  exact ⟨(Equiv.ofBijective f hf).symm, (Equiv.ofBijective f hf).symm.bijective⟩
 
 @[trans]
 theorem SetTheory.Set.EqualCard.trans {X Y Z:Set} (h1: EqualCard X Y) (h2: EqualCard Y Z) : EqualCard X Z := by
-  sorry
+  obtain ⟨f, hf⟩ := h1
+  obtain ⟨g, hg⟩ := h2
+  exact ⟨g ∘ f, hg.comp hf⟩
 
 /-- Proposition 3.6.4 / Exercise 3.6.1 -/
 instance SetTheory.Set.EqualCard.inst_setoid : Setoid SetTheory.Set := ⟨ EqualCard, {refl, symm, trans} ⟩
@@ -117,12 +120,27 @@ theorem SetTheory.Set.pos_card_nonempty {n:ℕ} (h: n ≥ 1) {X:Set} (hX: X.has_
     apply nonempty_of_inhabited (x := 0); rw [mem_Fin]; use 0, (by omega); rfl
   rw [has_card_iff] at hX
   choose f hf using hX
-  sorry
-  -- obtain a contradiction from the fact that `f` is a bijection from the empty set to a
-  -- non-empty set.
+  obtain ⟨y, hy⟩ := nonempty_def hnon
+  obtain ⟨x, hx⟩ := hf.surjective ⟨y, hy⟩
+  have hxp := x.property
+  rw [eq_empty_iff_forall_notMem] at this
+  exact this _ hxp
 
 /-- Exercise 3.6.2a -/
-theorem SetTheory.Set.has_card_zero {X:Set} : X.has_card 0 ↔ X = ∅ := by sorry
+theorem SetTheory.Set.has_card_zero {X:Set} : X.has_card 0 ↔ X = ∅ := by
+  rw [has_card_iff]
+  constructor
+  · rintro ⟨f, hf⟩
+    rw [eq_empty_iff_forall_notMem]
+    intro x hx
+    have := Fin.toNat_lt (f ⟨x, hx⟩)
+    omega
+  · intro h
+    rw [eq_empty_iff_forall_notMem] at h
+    refine ⟨fun x => absurd x.property (h _), ?_⟩
+    constructor
+    · intro a; exact absurd a.property (h _)
+    · intro y; have := Fin.toNat_lt y; omega
 
 /-- Lemma 3.6.9 -/
 theorem SetTheory.Set.card_erase {n:ℕ} (h: n ≥ 1) {X:Set} (hX: X.has_card n) (x:X) :
@@ -195,7 +213,15 @@ abbrev SetTheory.Set.finite (X:Set) : Prop := ∃ n:ℕ, X.has_card n
 abbrev SetTheory.Set.infinite (X:Set) : Prop := ¬ finite X
 
 /-- Exercise 3.6.3, phrased using Mathlib natural numbers -/
-theorem SetTheory.Set.bounded_on_finite {n:ℕ} (f: Fin n → nat) : ∃ M, ∀ i, (f i:ℕ) ≤ M := by sorry
+theorem SetTheory.Set.bounded_on_finite {n:ℕ} (f: Fin n → nat) : ∃ M, ∀ i, (f i:ℕ) ≤ M := by
+  classical
+  let g : _root_.Fin n → ℕ := fun j => (f (Fin_mk n j.val j.isLt) : ℕ)
+  use Finset.univ.sup g
+  intro i
+  obtain ⟨hm, hi⟩ := Fin.toNat_spec i
+  have : (f i:ℕ) = g ⟨(i:ℕ), hm⟩ := by show _ = (f (Fin_mk n (i:ℕ) hm):ℕ); rw [← hi]
+  rw [this]
+  exact Finset.le_sup (f := g) (Finset.mem_univ _)
 
 /-- Theorem 3.6.12 -/
 theorem SetTheory.Set.nat_infinite : infinite nat := by
@@ -243,7 +269,14 @@ theorem SetTheory.Set.EquivCard_to_card_eq {X Y:Set} (h: X ≈ Y): X.card = Y.ca
 
 /-- Exercise 3.6.2 -/
 theorem SetTheory.Set.empty_iff_card_eq_zero {X:Set} : X = ∅ ↔ X.finite ∧ X.card = 0 := by
-  sorry
+  constructor
+  · intro h
+    have hc : X.has_card 0 := has_card_zero.mpr h
+    exact ⟨⟨0, hc⟩, has_card_to_card hc⟩
+  · rintro ⟨hfin, hcard⟩
+    have := has_card_card hfin
+    rw [hcard] at this
+    exact has_card_zero.mp this
 
 lemma SetTheory.Set.empty_of_card_eq_zero {X:Set} (hX : X.finite) : X.card = 0 → X = ∅ := by
   intro h
@@ -313,7 +346,8 @@ theorem SetTheory.Set.card_pow {X Y:Set} (hY: Y.finite) (hX: X.finite) :
 
 /-- Exercise 3.6.5. You might find `SetTheory.Set.prod_commutator` useful. -/
 theorem SetTheory.Set.prod_EqualCard_prod (A B:Set) :
-    EqualCard (A ×ˢ B) (B ×ˢ A) := by sorry
+    EqualCard (A ×ˢ B) (B ×ˢ A) := by
+  exact ⟨prod_commutator A B, (prod_commutator A B).bijective⟩
 
 noncomputable abbrev SetTheory.Set.pow_fun_equiv' (A B : Set) : ↑(A ^ B) ≃ (B → A) :=
   pow_fun_equiv (A:=A) (B:=B)
@@ -322,12 +356,14 @@ noncomputable abbrev SetTheory.Set.pow_fun_equiv' (A B : Set) : ↑(A ^ B) ≃ (
 theorem SetTheory.Set.pow_pow_EqualCard_pow_prod (A B C:Set) :
     EqualCard ((A ^ B) ^ C) (A ^ (B ×ˢ C)) := by sorry
 
-theorem SetTheory.Set.pow_pow_eq_pow_mul (a b c:ℕ): (a^b)^c = a^(b*c) := by sorry
+theorem SetTheory.Set.pow_pow_eq_pow_mul (a b c:ℕ): (a^b)^c = a^(b*c) := by
+  rw [← pow_mul]
 
 theorem SetTheory.Set.pow_prod_pow_EqualCard_pow_union (A B C:Set) (hd: Disjoint B C) :
     EqualCard ((A ^ B) ×ˢ (A ^ C)) (A ^ (B ∪ C)) := by sorry
 
-theorem SetTheory.Set.pow_mul_pow_eq_pow_add (a b c:ℕ): (a^b) * a^c = a^(b+c) := by sorry
+theorem SetTheory.Set.pow_mul_pow_eq_pow_add (a b c:ℕ): (a^b) * a^c = a^(b+c) := by
+  rw [← pow_add]
 
 /-- Exercise 3.6.7 -/
 theorem SetTheory.Set.injection_iff_card_le {A B:Set} (hA: A.finite) (hB: B.finite) :
@@ -384,10 +420,19 @@ def SetTheory.Set.Fin.castSucc {n} (x : Fin n) : Fin (n + 1) :=
   Fin_embed _ _ (by omega) x
 
 @[simp]
-lemma SetTheory.Set.Fin.castSucc_inj {n} {x y : Fin n} : castSucc x = castSucc y ↔ x = y := by sorry
+theorem SetTheory.Set.Fin.castSucc_toNat {n} (x : Fin n) : ((castSucc x : Fin (n+1)) : ℕ) = (x:ℕ) := by
+  unfold SetTheory.Set.Fin.castSucc
+  simp [Fin_embed]
+
+lemma SetTheory.Set.Fin.castSucc_inj {n} {x y : Fin n} : castSucc x = castSucc y ↔ x = y := by
+  rw [Fin.coe_inj, castSucc_toNat, castSucc_toNat, ← Fin.coe_inj]
 
 @[simp]
-theorem SetTheory.Set.Fin.castSucc_ne {n} (x : Fin n) : castSucc x ≠ n := by sorry
+theorem SetTheory.Set.Fin.castSucc_ne {n} (x : Fin n) : castSucc x ≠ n := by
+  have hx := Fin.toNat_lt x
+  intro h
+  rw [castSucc_toNat] at h
+  omega
 
 /-- Any `Fin (n + 1)` except `n` can be cast to `Fin n`. Compare to Mathlib `Fin.castPred`. -/
 noncomputable def SetTheory.Set.Fin.castPred {n} (x : Fin (n + 1)) (h : (x : ℕ) ≠ n) : Fin n :=
@@ -395,11 +440,17 @@ noncomputable def SetTheory.Set.Fin.castPred {n} (x : Fin (n + 1)) (h : (x : ℕ
 
 @[simp]
 theorem SetTheory.Set.Fin.castSucc_castPred {n} (x : Fin (n + 1)) (h : (x : ℕ) ≠ n) :
-    castSucc (castPred x h) = x := by sorry
+    castSucc (castPred x h) = x := by
+  rw [Fin.coe_inj, castSucc_toNat]
+  unfold SetTheory.Set.Fin.castPred
+  rw [Fin.toNat_mk]
 
 @[simp]
 theorem SetTheory.Set.Fin.castPred_castSucc {n} (x : Fin n) (h : ((castSucc x : Fin (n + 1)) : ℕ) ≠ n) :
-    castPred (castSucc x) h = x := by sorry
+    castPred (castSucc x) h = x := by
+  rw [Fin.coe_inj]
+  unfold SetTheory.Set.Fin.castPred
+  rw [Fin.toNat_mk, castSucc_toNat]
 
 /-- Any natural `n` can be cast to `Fin (n + 1)`. Compare to Mathlib `Fin.last`. -/
 def SetTheory.Set.Fin.last (n : ℕ) : Fin (n + 1) := Fin_mk _ n (by omega)
@@ -418,9 +469,13 @@ theorem SetTheory.Set.card_iUnion_card_disjoint {n m: ℕ} {S : Fin n → Set}
 -/
 noncomputable def SetTheory.Set.Fin.predAbove {n} (i : Fin (n + 1)) (x : Fin (n + 1)) (h : x ≠ i) : Fin n :=
   if hx : (x:ℕ) < i then
-    Fin_mk _ (x:ℕ) (by sorry)
+    Fin_mk _ (x:ℕ) (by have := Fin.toNat_lt i; omega)
   else
-    Fin_mk _ ((x:ℕ) - 1) (by sorry)
+    Fin_mk _ ((x:ℕ) - 1) (by
+      have h1 := Fin.toNat_lt x
+      have h2 := Fin.toNat_lt i
+      have h3 : (x:ℕ) ≠ (i:ℕ) := fun he => h (Fin.coe_inj.mpr he)
+      omega)
 
 /--
   We can expand `x : Fin n` into `Fin (n + 1)` by shifting all `x ≥ i` up by one.
@@ -429,20 +484,46 @@ noncomputable def SetTheory.Set.Fin.predAbove {n} (i : Fin (n + 1)) (x : Fin (n 
 -/
 noncomputable def SetTheory.Set.Fin.succAbove {n} (i : Fin (n + 1)) (x : Fin n) : Fin (n + 1) :=
   if (x:ℕ) < i then
-    Fin_embed _ _ (by sorry) x
+    Fin_embed _ _ (by omega) x
   else
-    Fin_mk _ ((x:ℕ) + 1) (by sorry)
+    Fin_mk _ ((x:ℕ) + 1) (by have := Fin.toNat_lt x; omega)
+
+theorem SetTheory.Set.Fin.succAbove_toNat {n} (i : Fin (n + 1)) (x : Fin n) :
+    ((succAbove i x : Fin (n+1)) : ℕ) = if (x:ℕ) < (i:ℕ) then (x:ℕ) else (x:ℕ) + 1 := by
+  unfold SetTheory.Set.Fin.succAbove
+  split_ifs with h
+  · simp [Fin_embed]
+  · rw [Fin.toNat_mk]
+
+theorem SetTheory.Set.Fin.predAbove_toNat {n} (i : Fin (n + 1)) (x : Fin (n + 1)) (h : x ≠ i) :
+    ((predAbove i x h : Fin n) : ℕ) = if (x:ℕ) < (i:ℕ) then (x:ℕ) else (x:ℕ) - 1 := by
+  unfold SetTheory.Set.Fin.predAbove
+  split_ifs with hc
+  · rw [Fin.toNat_mk]
+  · rw [Fin.toNat_mk]
 
 @[simp]
-theorem SetTheory.Set.Fin.succAbove_ne {n} (i : Fin (n + 1)) (x : Fin n) : succAbove i x ≠ i := by sorry
+theorem SetTheory.Set.Fin.succAbove_ne {n} (i : Fin (n + 1)) (x : Fin n) : succAbove i x ≠ i := by
+  intro he
+  rw [Fin.coe_inj, succAbove_toNat] at he
+  split_ifs at he with hc <;> omega
 
 @[simp]
 theorem SetTheory.Set.Fin.succAbove_predAbove {n} (i : Fin (n + 1)) (x : Fin (n + 1)) (h : x ≠ i) :
-    (succAbove i) (predAbove i x h) = x := by sorry
+    (succAbove i) (predAbove i x h) = x := by
+  rw [Fin.coe_inj, succAbove_toNat, predAbove_toNat]
+  have hx := Fin.toNat_lt x
+  have hi := Fin.toNat_lt i
+  have hne : (x:ℕ) ≠ (i:ℕ) := fun he => h (Fin.coe_inj.mpr he)
+  split_ifs with h1 h2 h2 <;> omega
 
 @[simp]
 theorem SetTheory.Set.Fin.predAbove_succAbove {n} (i : Fin (n + 1)) (x : Fin n) :
-    (predAbove i) (succAbove i x) (succAbove_ne i x) = x := by sorry
+    (predAbove i) (succAbove i x) (succAbove_ne i x) = x := by
+  rw [Fin.coe_inj, predAbove_toNat, succAbove_toNat]
+  have hx := Fin.toNat_lt x
+  have hi := Fin.toNat_lt i
+  split_ifs with h1 h2 h2 <;> omega
 
 /-- Exercise 3.6.12 (i), second part -/
 theorem SetTheory.Set.Permutations_ih (n: ℕ):
