@@ -27,7 +27,41 @@ theorem _root_.Filter.Tendsto.of_div {X: Set ℝ} {f g: ℝ → ℝ} {x₀ f'x�
   (∃ δ > 0, ∀ x ∈ X \ {x₀} ∩ .Ioo (x₀ - δ) (x₀ + δ), g x ≠ 0) ∧
   (nhdsWithin x₀ (X \ {x₀})).Tendsto (fun x ↦ f x / g x) (nhds (f'x₀ / g'x₀))
   := by
-  sorry
+  rw [_root_.HasDerivWithinAt.iff] at hf'x₀ hg'x₀
+  rw [hfx₀] at hf'x₀
+  rw [hgx₀] at hg'x₀
+  simp only [sub_zero] at hf'x₀ hg'x₀
+  have hev : ∀ᶠ x in nhdsWithin x₀ (X \ {x₀}), g x / (x - x₀) ≠ 0 := hg'x₀.eventually_ne hg_non
+  have hxne : ∀ᶠ x in nhdsWithin x₀ (X \ {x₀}), x ≠ x₀ := by
+    have : ∀ᶠ x in nhdsWithin x₀ (X \ {x₀}), x ∈ X \ {x₀} := self_mem_nhdsWithin
+    filter_upwards [this] with x hx
+    simp at hx; exact hx.2
+  have hgev : ∀ᶠ x in nhdsWithin x₀ (X \ {x₀}), g x ≠ 0 := by
+    filter_upwards [hev, hxne] with x hx hxn
+    intro hg0
+    apply hx
+    rw [hg0, zero_div]
+  constructor
+  · rw [Filter.eventually_iff, mem_nhdsWithin] at hgev
+    obtain ⟨U, hU, hx0U, hUg⟩ := hgev
+    rw [Metric.isOpen_iff] at hU
+    obtain ⟨δ, hδpos, hball⟩ := hU x₀ hx0U
+    refine ⟨δ, hδpos, ?_⟩
+    intro x hx
+    apply hUg
+    simp only [Set.mem_inter_iff, Set.mem_Ioo] at hx ⊢
+    refine ⟨?_, hx.1⟩
+    apply hball
+    simp only [Metric.mem_ball, Real.dist_eq]
+    obtain ⟨hxlo, hxhi⟩ := hx.2
+    rw [abs_lt]; constructor <;> linarith
+  · have htend : (nhdsWithin x₀ (X \ {x₀})).Tendsto
+        (fun x ↦ (f x / (x - x₀)) / (g x / (x - x₀))) (nhds (f'x₀ / g'x₀)) :=
+      hf'x₀.div hg'x₀ hg_non
+    apply htend.congr'
+    filter_upwards [hxne] with x hxn
+    have hd : x - x₀ ≠ 0 := sub_ne_zero.mpr hxn
+    field_simp
 
 /-- Proposition 10.5.2 (L'Hôpital's rule, II) -/
 theorem _root_.Filter.Tendsto.of_div' {a b L:ℝ} (hab: a < b) {f g f' g': ℝ → ℝ}
