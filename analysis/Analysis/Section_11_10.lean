@@ -75,6 +75,20 @@ theorem PiecewiseConstantOn.RS_integ_eq_integ_of_mul_deriv
             intros; solve_by_elim [DifferentiableWithinAt.hasDerivWithinAt]
       all_goals linarith
 
+private lemma lower_integral_mono {p q:ℝ → ℝ} {I:BoundedInterval} (hp: BddOn p I) (hq: BddOn q I)
+    (h: MinorizesOn p q I) :
+    lower_integral p I ≤ lower_integral q I := by
+  apply csSup_le_csSup (integral_bound_above hq) (integral_bound_lower_nonempty hp)
+  rintro v ⟨g, ⟨hg1, hg2⟩, rfl⟩
+  exact ⟨g, ⟨fun x hx => le_trans (hg1 x hx) (h x hx), hg2⟩, rfl⟩
+
+private lemma upper_integral_mono {p q:ℝ → ℝ} {I:BoundedInterval} (hp: BddOn p I) (hq: BddOn q I)
+    (h: MajorizesOn p q I) :
+    upper_integral q I ≤ upper_integral p I := by
+  apply csInf_le_csInf (integral_bound_below hq) (integral_bound_upper_nonempty hp)
+  rintro v ⟨g, ⟨hg1, hg2⟩, rfl⟩
+  exact ⟨g, ⟨fun x hx => le_trans (h x hx) (hg1 x hx), hg2⟩, rfl⟩
+
 /-- Corollary 11.10.3 -/
 theorem RS_integ_eq_integ_of_mul_deriv
   {a b:ℝ} (hab: a < b) {α f:ℝ → ℝ} (hα: Monotone α)
@@ -107,10 +121,14 @@ theorem RS_integ_eq_integ_of_mul_deriv
     have ⟨ h, hhminor, hhconst, hh ⟩ :=
       gt_of_lt_lower_RS_integral hf.1 hα (show RS_integ f (Icc a b) α - ε < lower_RS_integral f (Icc a b) α by linarith)
     have := hhconst.RS_integ_eq_integ_of_mul_deriv hα_diff hαcont hα'
+    have hbdd_hα' : BddOn (h * α') (Icc a b) := this.1.1
     rw [←this.2] at hh
     replace : lower_integral (h * α') (Icc a b) = integ (h * α') (Icc a b) := this.1.2
     have why : lower_integral (h * α') (Icc a b) ≤ lower_integral (f * α') (Icc a b) := by
-      sorry
+      apply lower_integral_mono hbdd_hα' hfα'_bound
+      intro x hx
+      simp only [Pi.mul_apply]
+      exact mul_le_mul_of_nonneg_right (hhminor x hx) (hα'_nonneg x hx)
     linarith
   have h2 : upper_integral (f * α') (Icc a b) ≤ RS_integ f (Icc a b) α := by
     apply le_of_forall_pos_le_add; intro ε hε
@@ -119,7 +137,10 @@ theorem RS_integ_eq_integ_of_mul_deriv
     have := hhconst.RS_integ_eq_integ_of_mul_deriv hα_diff hαcont hα'
     rw [←this.2] at hh
     have why : upper_integral (f * α') (Icc a b) ≤ upper_integral (h * α') (Icc a b) := by
-      sorry
+      apply upper_integral_mono this.1.1 hfα'_bound
+      intro x hx
+      simp only [Pi.mul_apply]
+      exact mul_le_mul_of_nonneg_right (hhmajor x hx) (hα'_nonneg x hx)
     linarith
   have h3 : lower_integral (f * α') (Icc a b) ≤
     upper_integral (f * α') (Icc a b) := lower_integral_le_upper hfα'_bound
@@ -140,11 +161,27 @@ theorem PiecewiseConstantOn.RS_integ_of_comp {a b:ℝ} (hab: a < b) {φ f:ℝ �
   set φ_inv : P.intervals → Set ℝ := fun J ↦ { x:ℝ | x ∈ Set.Icc a b ∧ φ x ∈ (J:Set ℝ) }
   have hφ_inv_bounded (J: P.intervals) : Bornology.IsBounded (φ_inv J) := by
     apply Bornology.IsBounded.subset (Icc_bounded a b); intro _; aesop
-  have hφ_inv_connected (J: P.intervals) : (φ_inv J).OrdConnected := by sorry
+  have hφ_inv_connected (J: P.intervals) : (φ_inv J).OrdConnected := by
+    have hJoc : (J:Set ℝ).OrdConnected :=
+      ((BoundedInterval.ordConnected_iff _).mpr ⟨(J:BoundedInterval), rfl⟩).2
+    rw [Set.ordConnected_def]
+    rintro x ⟨hx1, hx2⟩ y ⟨hy1, hy2⟩ z hz
+    refine ⟨⟨hx1.1.trans hz.1, hz.2.trans hy1.2⟩, ?_⟩
+    exact hJoc.out hx2 hy2 ⟨hφ_mono hz.1, hφ_mono hz.2⟩
   set φ_inv' : P.intervals → BoundedInterval := fun J ↦ ((BoundedInterval.ordConnected_iff _).mp ⟨ hφ_inv_bounded J, hφ_inv_connected J ⟩).choose
   have hφ_inv' (J:P.intervals) : φ_inv J = φ_inv' J :=
     ((BoundedInterval.ordConnected_iff _).mp ⟨ hφ_inv_bounded J, hφ_inv_connected J ⟩).choose_spec
-  have hφ_inv_nonempty (J:P.intervals) : (φ_inv J).Nonempty := by sorry
+  have hφ_inv_nonempty (J:P.intervals) : (φ_inv J).Nonempty := by
+    have hJne : (J:Set ℝ).Nonempty := by
+      have := J.property; simp [P, (· ∈ ·)] at this; exact this.2
+    obtain ⟨p, hp⟩ := hJne
+    have hpsub : p ∈ Set.Icc (φ a) (φ b) := by
+      have hc := P.contains _ J.property
+      rw [BoundedInterval.subset_iff] at hc
+      have hmem := hc hp
+      rwa [BoundedInterval.set_Icc] at hmem
+    obtain ⟨x, hx, hxp⟩ := intermediate_value_Icc hab.le hφ_cont.continuousOn hpsub
+    exact ⟨x, hx, by rw [hxp]; exact hp⟩
   have hφ_inv_const {J:P.intervals} : ConstantOn (f ∘ φ) (φ_inv' J) ∧ constant_value_on (f ∘ φ) (φ_inv' J) = constant_value_on f J := by
     sorry
   set Q : Partition (Icc a b) := {
@@ -183,7 +220,13 @@ theorem RS_integ_of_comp {a b:ℝ} (hab: a < b) {φ f: ℝ → ℝ}
   -- This proof is adapted from the structure of the original text.
   have hf_bdd := hf.1
   have hfφ_bdd : BddOn (f ∘ φ) (Icc a b) := by
-    sorry
+    obtain ⟨M, hM⟩ := hf_bdd
+    refine ⟨M, ?_⟩
+    intro x hx
+    rw [BoundedInterval.set_Icc, Set.mem_Icc] at hx
+    apply hM
+    rw [BoundedInterval.set_Icc, Set.mem_Icc]
+    exact ⟨hφ_mono hx.1, hφ_mono hx.2⟩
   have heq : lower_integral f (Icc (φ a) (φ b)) = upper_integral f (Icc (φ a) (φ b)) := hf.2
   have hupper : upper_RS_integral (f ∘ φ) (Icc a b) φ ≤ upper_integral f (Icc (φ a) (φ b)) := by
     apply le_of_forall_pos_le_add
