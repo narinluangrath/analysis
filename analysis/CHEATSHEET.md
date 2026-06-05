@@ -263,7 +263,8 @@ New bugs confirmed by subagents (research-grade wave):
 - **11_9:453** Ex 11.9.3 iff: FALSE at boundary x₀=a,b (one-sided derivative exists ⇒ the differentiability-iff-continuity equivalence breaks at endpoints). True on the open interval.
 
 Hard-but-true sub-sorry map (for dedicated multi-session attack):
-- **8_2** greedy-selection core: hn'_inj, hn'_surj, h_case_I, h_case_II, hconv, hsum + permute_diverges_of_divergent/'. (A₊/A₋-infinite + diff-infinite parts now DONE via `divergent_parts_infinite`.)
-- **8_5:356** `ex_8_5_13` nesting lemma: good sets nested as initial segments; needs symmetric/joint induction over a common well-order of Y∪Y' (cross-membership step `w∈Y, w<p ⟹ w∈Y'`). Unblocks line ~388 (already done).
-- **11_6:220** Prop 11.6.4 integral test: step-function sandwich f(n+1) ≤ ∫ₙ^{n+1} f ≤ f(n) + integ additivity over unit subintervals + bounded-monotone series. Several hundred lines.
-- **7_4** ex_7_4_4_sum/'_conv/'_sum: alternating-series value-sign estimates under conditional rearrangement.
+- **8_2** greedy-selection core: hn'_surj, h_case_I, h_case_II, hconv, hsum + permute_diverges_of_divergent/'. (A₊/A₋-infinite + diff-infinite via `divergent_parts_infinite`, and hn'_inj via `hn'_ne` + Nat.min_spec, now DONE.) Remaining needs the oscillation invariant: partials cross L with amplitude bounded by |a∘n'|→0.
+- **8_5:356** `ex_8_5_13` nesting lemma: DONE. Solved via strong induction on Q p := (p∈Y ∧ segments agree) ∨ IsStrictUpperBound Y p — cross-membership resolved using per-element segment-agreement from the IH (NOT a joint well-order). Needed `set_option maxHeartbeats 1000000 in` on partialOrder.
+- **7_4** ex_7_4_4'_conv/'_sum: the 1-positive-then-2-negative rearrangement (per block j: +1/(2j+2) −1/(4j+3) −1/(4j+5)); not abs-convergent and not simple alternating mk' form — needs from-scratch block/triple partial-sum Cauchy analysis. (ex_7_4_4_sum DONE via `alternating_bracket` helper: a0−a1 ≤ partial n ≤ a0.)
+
+REVISED BUG: **11_6:220** Prop 11.6.4 `summable_iff_integ_of_antitone` is BUGGED, not hard-but-true. It uses Mathlib `Summable f` for `f:ℝ→ℝ` = summability over the UNCOUNTABLE index ℝ, not the textbook ∑_{n∈ℕ}f(n). Counterexample = indicator of Icc 0 1 (the exact witness already proven at 11_6:229): nonneg antitone, integ ≤ 1 on every [0,N], yet not Summable-over-ℝ. So the ← direction is false. Same defect as 11_6:227.
