@@ -901,7 +901,31 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
     rw [hsub]
     apply Set.Infinite.to_subtype
     apply Set.Infinite.diff hAm_inf (Set.finite_range _)
-  have hn'_inj : Injective n' := by sorry
+  -- Membership: n' j lies in the appropriate selection set, hence differs from all earlier n' i.
+  have hn'_ne : ∀ (j:ℕ) (i:ℕ), i < j → n' j ≠ n' i := by
+    intro j i hij
+    have hnep : { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i }.Nonempty := by
+      have := hn'_plus_inf j; exact Set.nonempty_coe_sort.mp inferInstance
+    have hnem : { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i }.Nonempty := by
+      have := hn'_minus_inf j; exact Set.nonempty_coe_sort.mp inferInstance
+    have key := hn' j
+    by_cases hc : ∑ i:Fin j, a (n' i) < L
+    · rw [if_pos hc] at key
+      rw [key]
+      have hne := (Nat.min_spec hnep).1
+      simp only [Set.mem_setOf_eq] at hne
+      exact hne.2 ⟨i, hij⟩
+    · rw [if_neg hc] at key
+      rw [key]
+      have hne := (Nat.min_spec hnem).1
+      simp only [Set.mem_setOf_eq] at hne
+      exact hne.2 ⟨i, hij⟩
+  have hn'_inj : Injective n' := by
+    intro x y hxy
+    rcases lt_trichotomy x y with h | h | h
+    · exact absurd hxy.symm (hn'_ne y x h)
+    · exact h
+    · exact absurd hxy (hn'_ne x y h)
   have h_case_I : Infinite { j | ∑ i:Fin j, a (n' i) < L } := by sorry
   have h_case_II : Infinite { j | ∑ i:Fin j, a (n' i) ≥ L } := by sorry
   have hn'_surj : Surjective n' := by sorry
