@@ -324,12 +324,182 @@ theorem StrictMonoOn.of_f_9_8_5 : StrictMonoOn f_9_8_5 .univ := by
     rw [Set.indicator_of_notMem hn, Set.indicator_of_mem hy]
     exact g_pos_9_8_5 r0
 
+/-- The jump lemma: if `r < x` then `f x ≥ f r + g r`. -/
+theorem f_jump_9_8_5 (r:ℚ) {x:ℝ} (hrx : (r:ℝ) < x) :
+    f_9_8_5 r + g_9_8_5 r ≤ f_9_8_5 x := by
+  rw [f_eq_9_8_5, f_eq_9_8_5]
+  set Sr := {s:ℚ | (s:ℝ) < (r:ℝ)}
+  set Sx := {s:ℚ | (s:ℝ) < x}
+  have hsumr : Summable (Sr.indicator g_9_8_5) := g_summable_9_8_5.indicator _
+  have hsumx : Summable (Sx.indicator g_9_8_5) := g_summable_9_8_5.indicator _
+  -- the comparison function h q = indicator_Sr q + (if q = r then g r else 0)
+  set h : ℚ → ℝ := fun q => Sr.indicator g_9_8_5 q + (if q = r then g_9_8_5 r else 0) with hh
+  have hsumsingle : Summable (fun q:ℚ => if q = r then g_9_8_5 r else 0) := by
+    apply summable_of_finite_support
+    apply Set.Finite.subset (Set.finite_singleton r)
+    intro q hq
+    simp only [Function.mem_support, ne_eq, ite_eq_right_iff, not_forall] at hq
+    simp only [Set.mem_singleton_iff]; exact hq.1
+  have hsumh : Summable h := hsumr.add hsumsingle
+  have htsumsingle : ∑' q:ℚ, (if q = r then g_9_8_5 r else 0) = g_9_8_5 r := by
+    rw [tsum_eq_single r]; · simp
+    · intro b hb; simp [hb]
+  have htsumh : ∑' q, h q = (∑' q, Sr.indicator g_9_8_5 q) + g_9_8_5 r := by
+    rw [hh, Summable.tsum_add hsumr hsumsingle, htsumsingle]
+  rw [← htsumh]
+  apply Summable.tsum_le_tsum _ hsumh hsumx
+  intro q
+  show Sr.indicator g_9_8_5 q + (if q = r then g_9_8_5 r else 0) ≤ Sx.indicator g_9_8_5 q
+  by_cases hqr : q = r
+  · subst hqr
+    have hmem : q ∈ Sx := show (q:ℝ) < x from hrx
+    have hnmem : q ∉ Sr := by show ¬ (q:ℝ) < (q:ℝ); exact lt_irrefl _
+    rw [Set.indicator_of_notMem hnmem, Set.indicator_of_mem hmem, if_pos rfl]
+    simp
+  · simp only [hqr, if_false, add_zero]
+    by_cases hqSr : q ∈ Sr
+    · have hqSx : q ∈ Sx := lt_trans hqSr hrx
+      rw [Set.indicator_of_mem hqSr, Set.indicator_of_mem hqSx]
+    · rw [Set.indicator_of_notMem hqSr]
+      by_cases hqSx : q ∈ Sx
+      · rw [Set.indicator_of_mem hqSx]; exact (g_pos_9_8_5 q).le
+      · rw [Set.indicator_of_notMem hqSx]
+
 /-- Exercise 9.8.5(b) -/
 theorem ContinuousAt.of_f_9_8_5' (r:ℚ) : ¬ ContinuousAt f_9_8_5 r := by
-  sorry
+  intro hcont
+  -- sequence x n = r + 1/(n+1) tends to r from above
+  set x : ℕ → ℝ := fun n => (r:ℝ) + 1/(n+1) with hx
+  have hxr : Filter.Tendsto x Filter.atTop (nhds (r:ℝ)) := by
+    have : Filter.Tendsto (fun n:ℕ => (1:ℝ)/(n+1)) Filter.atTop (nhds 0) :=
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    have := this.const_add (r:ℝ)
+    simpa [hx] using this
+  have htend : Filter.Tendsto (fun n => f_9_8_5 (x n)) Filter.atTop (nhds (f_9_8_5 r)) :=
+    (hcont.tendsto).comp hxr
+  have hge : ∀ n, f_9_8_5 r + g_9_8_5 r ≤ f_9_8_5 (x n) := by
+    intro n
+    apply f_jump_9_8_5
+    rw [hx]; simp only; have : (0:ℝ) < 1/(n+1) := by positivity
+    linarith
+  have hlim : f_9_8_5 r + g_9_8_5 r ≤ f_9_8_5 r :=
+    le_of_tendsto_of_tendsto' tendsto_const_nhds htend hge
+  have := g_pos_9_8_5 r
+  linarith
+
+/-- Tail bound: for `ε > 0` there is a finite set `F` whose complement has small `g`-mass. -/
+theorem g_tail_9_8_5 {ε : ℝ} (hε : 0 < ε) :
+    ∃ F : Finset ℚ, (∑' q : (↥(↑F : Set ℚ)ᶜ), g_9_8_5 q) < ε := by
+  have hg := g_summable_9_8_5
+  have hs : HasSum g_9_8_5 (∑' q, g_9_8_5 q) := hg.hasSum
+  obtain ⟨F, hF⟩ := Metric.tendsto_atTop.mp hs ε hε
+  refine ⟨F, ?_⟩
+  have hsplit := hg.tsum_subtype_add_tsum_subtype_compl (↑F : Set ℚ)
+  have hFsum : (∑' q : (↑F : Set ℚ), g_9_8_5 q) = ∑ q ∈ F, g_9_8_5 q := by
+    rw [tsum_subtype]; rw [tsum_eq_sum (s := F)]
+    · apply Finset.sum_congr rfl; intro q hq; rw [Set.indicator_of_mem]; exact hq
+    · intro q hq; rw [Set.indicator_of_notMem]; exact hq
+  rw [hFsum] at hsplit
+  have hdist := hF F le_rfl
+  rw [Real.dist_eq, abs_lt] at hdist
+  have : (∑' q : (↥(↑F : Set ℚ)ᶜ), g_9_8_5 q) = (∑' q, g_9_8_5 q) - ∑ q ∈ F, g_9_8_5 q := by
+    linarith [hsplit]
+  rw [this]; linarith [hdist.1]
 
 /-- Exercise 9.8.5(c) -/
 theorem ContinuousAt.of_f_9_8_5 {x:ℝ} (hx: ¬ ∃ r:ℚ, x = r) : ContinuousAt f_9_8_5 x := by
-  sorry
+  have hxirr : ∀ q : ℚ, (q:ℝ) ≠ x := by
+    intro q hq; exact hx ⟨q, hq.symm⟩
+  rw [Metric.continuousAt_iff]
+  intro ε hε
+  obtain ⟨F, hFtail⟩ := g_tail_9_8_5 (half_pos hε)
+  -- choose δ ≤ all distances from x to rationals in F, and δ > 0
+  obtain ⟨δ, hδpos, hδle⟩ :
+      ∃ δ : ℝ, 0 < δ ∧ ∀ q ∈ F, δ ≤ |(q:ℝ) - x| := by
+    by_cases hFne : F.Nonempty
+    · refine ⟨F.inf' hFne (fun q => |(q:ℝ) - x|), ?_, ?_⟩
+      · rw [Finset.lt_inf'_iff]
+        intro q _; rw [abs_pos, sub_ne_zero]; exact hxirr q
+      · intro q hq; exact Finset.inf'_le _ hq
+    · refine ⟨1, by norm_num, ?_⟩
+      intro q hq; exact absurd ⟨q, hq⟩ hFne
+  refine ⟨δ, hδpos, ?_⟩
+  intro y hyx
+  rw [Real.dist_eq] at hyx ⊢
+  -- bound |f y - f x| by the tail
+  rw [f_eq_9_8_5, f_eq_9_8_5]
+  set Sx := {r:ℚ | (r:ℝ) < x}
+  set Sy := {r:ℚ | (r:ℝ) < y}
+  have hsumx : Summable (Sx.indicator g_9_8_5) := g_summable_9_8_5.indicator _
+  have hsumy : Summable (Sy.indicator g_9_8_5) := g_summable_9_8_5.indicator _
+  set d : ℚ → ℝ := fun q => Sy.indicator g_9_8_5 q - Sx.indicator g_9_8_5 q with hd
+  have hsumd : Summable d := hsumy.sub hsumx
+  -- pointwise: |d q| ≤ (Fᶜ).indicator g q
+  have hdbound : ∀ q : ℚ, |d q| ≤ ((↑F:Set ℚ)ᶜ).indicator g_9_8_5 q := by
+    intro q
+    show |Sy.indicator g_9_8_5 q - Sx.indicator g_9_8_5 q| ≤ ((↑F:Set ℚ)ᶜ).indicator g_9_8_5 q
+    by_cases hsame : (Sy.indicator g_9_8_5 q) = (Sx.indicator g_9_8_5 q)
+    · rw [hsame, sub_self, abs_zero]
+      apply Set.indicator_nonneg; intro a _; exact (g_pos_9_8_5 a).le
+    · -- q is strictly between x and y, so |q - x| < δ, so q ∉ F
+      have hqFc : q ∈ ((↑F:Set ℚ)ᶜ) := by
+        rw [Set.mem_compl_iff, Finset.mem_coe]
+        intro hqF
+        -- derive |q - x| < δ
+        have hbetween : |(q:ℝ) - x| < δ := by
+          by_cases hqx : (q:ℝ) < x
+          · -- then q ∈ Sx; for indicators to differ, q ∉ Sy, i.e. q ≥ y, so y ≤ q < x
+            have hmemx : q ∈ Sx := hqx
+            have hnmemy : q ∉ Sy := by
+              intro hmy
+              apply hsame
+              rw [Set.indicator_of_mem hmy, Set.indicator_of_mem hmemx]
+            have hyq : ¬ ((q:ℝ) < y) := hnmemy
+            push_neg at hyq
+            -- y ≤ q < x, and |y - x| < δ
+            rw [abs_lt]; constructor
+            · -- q - x ≥ y - x > -δ
+              have : y - x > -δ := by rw [abs_lt] at hyx; linarith [hyx.1]
+              linarith
+            · linarith
+          · push_neg at hqx
+            -- q ≥ x; for differ need q ∈ Sy, i.e. q < y, so x ≤ q < y
+            have hnmemx : q ∉ Sx := by simp only [Sx, Set.mem_setOf_eq]; linarith
+            have hmemy : q ∈ Sy := by
+              by_contra hmy
+              apply hsame
+              rw [Set.indicator_of_notMem hmy, Set.indicator_of_notMem hnmemx]
+            have hqy : (q:ℝ) < y := hmemy
+            rw [abs_lt]; constructor
+            · linarith
+            · have : y - x < δ := by rw [abs_lt] at hyx; linarith [hyx.2]
+              linarith
+        exact absurd (hδle q hqF) (not_le.mpr hbetween)
+      rw [Set.indicator_of_mem hqFc]
+      -- |d q| ≤ g q since each indicator is in [0, g q]
+      have hineq : |Sy.indicator g_9_8_5 q - Sx.indicator g_9_8_5 q| ≤ g_9_8_5 q := by
+        have hyb : Sy.indicator g_9_8_5 q ≤ g_9_8_5 q :=
+          Set.indicator_apply_le' (fun _ => le_refl _) (fun _ => (g_pos_9_8_5 q).le)
+        have hxb : Sx.indicator g_9_8_5 q ≤ g_9_8_5 q :=
+          Set.indicator_apply_le' (fun _ => le_refl _) (fun _ => (g_pos_9_8_5 q).le)
+        have hyn : 0 ≤ Sy.indicator g_9_8_5 q :=
+          Set.indicator_nonneg (fun _ _ => (g_pos_9_8_5 q).le) q
+        have hxn : 0 ≤ Sx.indicator g_9_8_5 q :=
+          Set.indicator_nonneg (fun _ _ => (g_pos_9_8_5 q).le) q
+        rw [abs_le]; constructor <;> linarith
+      exact hineq
+  -- now sum up
+  have hstep1 : |(∑' q, Sy.indicator g_9_8_5 q) - (∑' q, Sx.indicator g_9_8_5 q)|
+      ≤ ∑' q, ((↑F:Set ℚ)ᶜ).indicator g_9_8_5 q := by
+    rw [← Summable.tsum_sub hsumy hsumx]
+    calc |∑' q, d q| ≤ ∑' q, |d q| := by
+              have := norm_tsum_le_tsum_norm (f := d) hsumd.norm
+              simpa [Real.norm_eq_abs] using this
+          _ ≤ ∑' q, ((↑F:Set ℚ)ᶜ).indicator g_9_8_5 q := by
+              apply Summable.tsum_le_tsum hdbound (hsumd.abs)
+              exact g_summable_9_8_5.indicator _
+  have hstep2 : (∑' q, ((↑F:Set ℚ)ᶜ).indicator g_9_8_5 q) < ε/2 := by
+    rw [← tsum_subtype]; exact hFtail
+  linarith
 
 end Chapter9
