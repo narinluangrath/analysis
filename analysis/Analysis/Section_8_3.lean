@@ -169,7 +169,149 @@ theorem Schroder_Bernstein_lemma {X: Type} {A B C: Set X} (hAB: A ⊆ B) (hBC: B
   let g : A → B := fun x ↦ if h: x ∈ ⋃ n, D n ∧ ∃ y:B, f ⟨↑y, hBC y.property⟩ = x then h.2.choose else ⟨ ↑x, hAB x.property ⟩
   Function.Bijective g
   := by
-  sorry
+  intro D
+  set iAB := A.embeddingOfSubset B hAB with hiAB
+  set iBC := B.embeddingOfSubset C hBC with hiBC
+  set E : Set B := {x:B | ↑x ∉ A} with hE
+  set φ : A → A := fun a => f (iBC (iAB a)) with hφ
+  set U : Set A := ⋃ n, D n with hU
+  have hiABval : ∀ a:A, ((iAB a):X) = (a:X) := fun a => rfl
+  have hD0 : D 0 = f '' (iBC '' E) := rfl
+  have hDS : ∀ n, D (n+1) = φ '' (D n) := by
+    intro n; show f '' (iBC '' (iAB '' D n)) = φ '' D n
+    simp only [hφ, Set.image_image]
+  have hφinj : Function.Injective φ := fun a b h => iAB.injective (iBC.injective (f.injective h))
+  have hsub : ∀ n, D n ⊆ U := fun n => by rw [hU]; exact Set.subset_iUnion D n
+  have hiABmem : ∀ (S:Set A) (x:B), x ∈ iAB '' S → (x:X) ∈ A := by
+    intro S x ⟨a, _, ha⟩
+    rw [← ha]; show (iAB a : X) ∈ A
+    rw [hiABval]; exact a.property
+  have hDrange : ∀ n, ∀ x ∈ D n, ∃ y:B, f (iBC y) = x := by
+    intro n
+    cases n with
+    | zero => rw [hD0]; rintro x ⟨c, ⟨b, _, hbc⟩, hcx⟩; exact ⟨b, by rw [hbc, hcx]⟩
+    | succ m => rw [hDS]; rintro x ⟨a, _, hax⟩; exact ⟨iAB a, by simpa [hφ] using hax⟩
+  have hUrange : ∀ x ∈ U, ∃ y:B, f (iBC y) = x := by
+    rw [hU]; intro x hx; rw [Set.mem_iUnion] at hx; obtain ⟨n, hn⟩ := hx; exact hDrange n x hn
+  have hD0E : ∀ y:B, f (iBC y) ∈ D 0 → y ∈ E := by
+    intro y hy; rw [hD0] at hy
+    obtain ⟨c, ⟨b, hbE, hbc⟩, hcx⟩ := hy
+    have : iBC b = iBC y := by rw [hbc]; exact f.injective hcx
+    rw [iBC.injective this] at hbE; exact hbE
+  have hDSiff : ∀ m, ∀ y:B, f (iBC y) ∈ D (m+1) → ∃ a ∈ D m, y = iAB a := by
+    intro m y hy; rw [hDS] at hy
+    obtain ⟨a, haDm, hax⟩ := hy
+    refine ⟨a, haDm, ?_⟩
+    have : iBC y = iBC (iAB a) := f.injective (by simpa [hφ] using hax.symm)
+    exact iBC.injective this
+  refine ⟨?_, ?_⟩
+  · -- PairwiseDisjoint
+    have hD0disj : ∀ S:Set A, Disjoint (D 0) (φ '' S) := by
+      intro S
+      rw [hD0, Set.disjoint_left]
+      rintro y ⟨c, ⟨b, hbE, hbc⟩, hcy⟩ ⟨a, haS, hay⟩
+      simp only [hφ] at hay
+      rw [← hcy] at hay
+      have hc : c = iBC (iAB a) := f.injective hay.symm
+      rw [← hbc] at hc
+      have hb : b = iAB a := iBC.injective hc
+      have : (b:X) ∈ A := by rw [hb]; exact hiABmem Set.univ (iAB a) ⟨a, trivial, rfl⟩
+      exact hbE this
+    have hmain : ∀ m k, Disjoint (D m) (D (m+1+k)) := by
+      intro m
+      induction m with
+      | zero =>
+        intro k
+        rw [show 0+1+k = k+1 by ring, hDS]
+        exact hD0disj _
+      | succ n ih =>
+        intro k
+        rw [show (n+1)+1+k = (n+1+k)+1 by ring, hDS n, hDS (n+1+k)]
+        exact (Set.disjoint_image_iff hφinj).2 (ih k)
+    intro m _ n _ hmn
+    rcases lt_or_gt_of_ne hmn with h | h
+    · obtain ⟨k, hk⟩ : ∃ k, n = m+1+k := ⟨n-m-1, by omega⟩
+      rw [hk]; exact hmain m k
+    · obtain ⟨k, hk⟩ : ∃ k, m = n+1+k := ⟨m-n-1, by omega⟩
+      rw [hk]; exact (hmain n k).symm
+  · -- Bijective g
+    intro g
+    have hgpos : ∀ x:A, (hx : x ∈ U ∧ ∃ y:B, f (iBC y) = x) → f (iBC (g x)) = x := by
+      intro x hx
+      have hc : x ∈ ⋃ n, D n ∧ ∃ y:B, f ⟨↑y, hBC y.property⟩ = x := hx
+      show f (iBC (dite _ _ _)) = x
+      rw [dif_pos hc]
+      exact hc.2.choose_spec
+    have hgneg : ∀ x:A, ¬(x ∈ U ∧ ∃ y:B, f (iBC y) = x) → (g x : X) = (x:X) := by
+      intro x hx
+      have hc : ¬(x ∈ ⋃ n, D n ∧ ∃ y:B, f ⟨↑y, hBC y.property⟩ = x) := hx
+      show ((dite _ _ _ : B) : X) = x
+      rw [dif_neg hc]
+    constructor
+    · intro x1 x2 hgx
+      by_cases h1 : x1 ∈ U ∧ ∃ y:B, f (iBC y) = x1 <;> by_cases h2 : x2 ∈ U ∧ ∃ y:B, f (iBC y) = x2
+      · have e1 := hgpos x1 h1
+        have e2 := hgpos x2 h2
+        rw [hgx] at e1; rw [e1] at e2; exact e2
+      · exfalso
+        have e1 := hgpos x1 h1
+        have e2 := hgneg x2 h2
+        rw [hgx] at e1
+        set y := g x2 with hy
+        obtain ⟨x1U, _⟩ := h1
+        rw [hU, Set.mem_iUnion] at x1U; obtain ⟨n, hn⟩ := x1U
+        cases n with
+        | zero =>
+          have := hD0E y (by rw [e1]; exact hn)
+          exact this (by rw [e2]; exact x2.property)
+        | succ m =>
+          obtain ⟨a, haDm, hya⟩ := hDSiff m y (by rw [e1]; exact hn)
+          have hax2 : a = x2 := by apply Subtype.ext; rw [← e2, hya, hiABval]
+          apply h2
+          exact ⟨hsub m (hax2 ▸ haDm), hDrange m x2 (hax2 ▸ haDm)⟩
+      · exfalso
+        have e2 := hgpos x2 h2
+        have e1 := hgneg x1 h1
+        rw [← hgx] at e2
+        set y := g x1 with hy
+        obtain ⟨x2U, _⟩ := h2
+        rw [hU, Set.mem_iUnion] at x2U; obtain ⟨n, hn⟩ := x2U
+        cases n with
+        | zero =>
+          have := hD0E y (by rw [e2]; exact hn)
+          exact this (by rw [e1]; exact x1.property)
+        | succ m =>
+          obtain ⟨a, haDm, hya⟩ := hDSiff m y (by rw [e2]; exact hn)
+          have hax1 : a = x1 := by apply Subtype.ext; rw [← e1, hya, hiABval]
+          apply h1
+          exact ⟨hsub m (hax1 ▸ haDm), hDrange m x1 (hax1 ▸ haDm)⟩
+      · have e1 := hgneg x1 h1
+        have e2 := hgneg x2 h2
+        apply Subtype.ext
+        rw [← e1, ← e2, hgx]
+    · intro b
+      by_cases hx0 : f (iBC b) ∈ U
+      · refine ⟨f (iBC b), ?_⟩
+        have hP : f (iBC b) ∈ U ∧ ∃ y:B, f (iBC y) = f (iBC b) := ⟨hx0, b, rfl⟩
+        have := hgpos (f (iBC b)) hP
+        exact iBC.injective (f.injective this)
+      · by_cases hbA : (b:X) ∈ A
+        · set a : A := ⟨(b:X), hbA⟩ with ha
+          refine ⟨a, ?_⟩
+          have hnP : ¬(a ∈ U ∧ ∃ y:B, f (iBC y) = a) := by
+            rintro ⟨haU, _⟩
+            rw [hU, Set.mem_iUnion] at haU; obtain ⟨n, hn⟩ := haU
+            apply hx0
+            have hiABab : iAB a = b := by apply Subtype.ext; rw [hiABval]
+            have hmem : f (iBC (iAB a)) ∈ D (n+1) := by rw [hDS]; exact ⟨a, hn, rfl⟩
+            rw [hiABab] at hmem
+            exact hsub (n+1) hmem
+          have := hgneg a hnP
+          apply Subtype.ext
+          rw [this]
+        · exfalso; apply hx0
+          have : f (iBC b) ∈ D 0 := by rw [hD0]; exact ⟨iBC b, ⟨b, hbA, rfl⟩, rfl⟩
+          exact hsub 0 this
 
 abbrev LeCard (X Y: Type) : Prop := ∃ f: X → Y, Function.Injective f
 
