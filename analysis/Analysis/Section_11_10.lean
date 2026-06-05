@@ -176,6 +176,162 @@ theorem RS_integ_eq_integ_of_mul_deriv
     upper_integral (f * α') (Icc a b) := lower_integral_le_upper hfα'_bound
   refine ⟨ ⟨ hfα'_bound, ?_ ⟩, ?_ ⟩ <;> linarith
 
+private theorem cv_csInf_eq_a {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) : sInf (I:Set ℝ) = I.a := by
+  cases I with
+  | Icc a b => simp only [BoundedInterval.set_Icc] at h ⊢; exact csInf_Icc (Set.nonempty_Icc.mp h)
+  | Ico a b => simp only [BoundedInterval.set_Ico] at h ⊢; exact csInf_Ico (Set.nonempty_Ico.mp h)
+  | Ioc a b => simp only [BoundedInterval.set_Ioc] at h ⊢; exact csInf_Ioc (Set.nonempty_Ioc.mp h)
+  | Ioo a b => simp only [BoundedInterval.set_Ioo] at h ⊢; exact csInf_Ioo (Set.nonempty_Ioo.mp h)
+
+private theorem cv_csSup_eq_b {I:BoundedInterval} (h: (I:Set ℝ).Nonempty) : sSup (I:Set ℝ) = I.b := by
+  cases I with
+  | Icc a b => simp only [BoundedInterval.set_Icc] at h ⊢; exact csSup_Icc (Set.nonempty_Icc.mp h)
+  | Ico a b => simp only [BoundedInterval.set_Ico] at h ⊢; exact csSup_Ico (Set.nonempty_Ico.mp h)
+  | Ioc a b => simp only [BoundedInterval.set_Ioc] at h ⊢; exact csSup_Ioc (Set.nonempty_Ioc.mp h)
+  | Ioo a b => simp only [BoundedInterval.set_Ioo] at h ⊢; exact csSup_Ioo (Set.nonempty_Ioo.mp h)
+
+/-- φ maps the inf of the preimage of `J` to the left endpoint of `J`. -/
+private theorem cv_phi_inf {a b:ℝ} (hab: a < b) {φ:ℝ → ℝ}
+    (hφ_cont: Continuous φ) (hφ_mono: Monotone φ) {J : BoundedInterval}
+    (hJne : (J:Set ℝ).Nonempty)
+    (hJsub : (J:Set ℝ) ⊆ Set.Icc (φ a) (φ b)) :
+    let S := {x : ℝ | x ∈ Set.Icc a b ∧ φ x ∈ (J:Set ℝ)}
+    φ (sInf S) = J.a ∧ φ (sSup S) = J.b ∧ sInf S ∈ Set.Icc a b ∧ sSup S ∈ Set.Icc a b
+    ∧ S.Nonempty := by
+  intro S
+  -- S is nonempty
+  have hSne : S.Nonempty := by
+    obtain ⟨p, hp⟩ := hJne
+    have hpsub : p ∈ Set.Icc (φ a) (φ b) := hJsub hp
+    obtain ⟨x, hx, hxp⟩ := intermediate_value_Icc hab.le hφ_cont.continuousOn hpsub
+    exact ⟨x, hx, by rw [hxp]; exact hp⟩
+  have hSsub : S ⊆ Set.Icc a b := fun x hx => hx.1
+  have hbddB : BddBelow S := ⟨a, fun x hx => hx.1.1⟩
+  have hbddA : BddAbove S := ⟨b, fun x hx => hx.1.2⟩
+  -- the closed interval Icc a b contains inf and sup of S
+  have hinfmem : sInf S ∈ Set.Icc a b := by
+    constructor
+    · exact le_csInf hSne (fun x hx => hx.1.1)
+    · obtain ⟨x, hx⟩ := hSne; exact le_trans (csInf_le hbddB hx) hx.1.2
+  have hsupmem : sSup S ∈ Set.Icc a b := by
+    constructor
+    · obtain ⟨x, hx⟩ := hSne; exact le_trans hx.1.1 (le_csSup hbddA hx)
+    · exact csSup_le hSne (fun x hx => hx.1.2)
+  -- J ⊆ Icc J.a J.b and Ioo J.a J.b ⊆ J
+  have hJab : (J:Set ℝ) ⊆ Set.Icc J.a J.b := by
+    have := J.subset_Icc; rwa [BoundedInterval.subset_iff, BoundedInterval.set_Icc] at this
+  have hJoo : Set.Ioo J.a J.b ⊆ (J:Set ℝ) := by
+    have := J.Ioo_subset; rwa [BoundedInterval.subset_iff, BoundedInterval.set_Ioo] at this
+  have hJle : J.a ≤ J.b := by
+    obtain ⟨p, hp⟩ := hJne; have := hJab hp; rw [Set.mem_Icc] at this; linarith [this.1, this.2]
+  refine ⟨?_, ?_, hinfmem, hsupmem, hSne⟩
+  · -- φ (sInf S) = J.a
+    apply le_antisymm
+    · -- φ(inf) ≤ J.a : suppose not, find a J-value below φ(inf), contradiction
+      by_contra hlt
+      push_neg at hlt  -- J.a < φ (sInf S)
+      -- pick y with J.a ≤ y < φ(sInf S) and y ∈ J
+      -- y := max J.a (φ(sInf S) - something); use midpoint between J.a and φ inf if J.a < that
+      set c := sInf S with hc
+      -- there is a point of S, hence φ inf ≤ J.b (φ value at that point ≥ ... ) Actually use a J value
+      -- Choose y := (J.a + min (φ c) J.b)/2? Simpler: y in [J.a, φc) ∩ J.
+      -- Since J.a < φ c and J.a ≤ J.b, and J contains points arbitrarily close to J.a from above (Ioo J.a J.b ⊆ J) when J.a<J.b.
+      rcases eq_or_lt_of_le hJle with hJeq | hJlt
+      · -- J.a = J.b : J singleton {J.a}; then every φ x = J.a for x∈S, so φ c = J.a (limit) contradiction with hlt
+        -- pick the witness point of S, its φ = J.a since J ⊆ {J.a}
+        obtain ⟨x, hx⟩ := hSne
+        have hxval : φ x = J.a := by
+          have := hJab hx.2; rw [Set.mem_Icc, ← hJeq] at this; linarith [this.1, this.2]
+        have hcx : c ≤ x := csInf_le hbddB hx
+        have := hφ_mono hcx
+        rw [hxval] at this; linarith
+      · -- J.a < J.b
+        set m := min (φ c) J.b with hm
+        have hmc : m ≤ φ c := min_le_left _ _
+        have hmb : m ≤ J.b := min_le_right _ _
+        have hma : J.a < m := lt_min hlt hJlt
+        set y := (J.a + m) / 2 with hy
+        have hymem : y ∈ (J:Set ℝ) := by
+          apply hJoo; rw [Set.mem_Ioo]; constructor <;> [skip; skip] <;> rw [hy] <;> linarith
+        have hyImem : y ∈ Set.Icc (φ a) (φ b) := hJsub hymem
+        obtain ⟨x, hx, hxy⟩ := intermediate_value_Icc hab.le hφ_cont.continuousOn hyImem
+        have hxS : x ∈ S := ⟨hx, by rw [hxy]; exact hymem⟩
+        have hcx : c ≤ x := csInf_le hbddB hxS
+        have hmono := hφ_mono hcx
+        rw [hxy] at hmono
+        have hylt : y < φ c := by rw [hy]; linarith
+        linarith
+    · -- J.a ≤ φ(inf): φ c is a limit of φ(x_n), x_n ∈ S → φ x_n ∈ J ⊆ ≥ J.a, and c = inf S
+      -- For any x ∈ S, φ x ≥ J.a. φ c = lim from points of S decreasing to c. Use: c is adherent.
+      -- Use sequential: there's x_n ∈ S with x_n → c. Then φ x_n → φ c, φ x_n ≥ J.a.
+      set c := sInf S with hc
+      have hcl : c ∈ closure S := by
+        rw [hc]; exact csInf_mem_closure hSne hbddB
+      have hmem : φ c ∈ closure (φ '' S) :=
+        map_mem_closure hφ_cont hcl (fun x hx => Set.mem_image_of_mem φ hx)
+      have hsub : φ '' S ⊆ Set.Ici J.a := by
+        rintro z ⟨x, hx, rfl⟩
+        have := hJab hx.2; rw [Set.mem_Icc] at this; exact this.1
+      have : φ c ∈ Set.Ici J.a :=
+        (closure_minimal hsub isClosed_Ici) hmem
+      exact this
+  · -- φ (sSup S) = J.b, symmetric
+    apply le_antisymm
+    · -- φ(sup) ≤ J.b
+      set d := sSup S with hd
+      have hcl : d ∈ closure S := by
+        rw [hd]; exact csSup_mem_closure hSne hbddA
+      have hmem : φ d ∈ closure (φ '' S) :=
+        map_mem_closure hφ_cont hcl (fun x hx => Set.mem_image_of_mem φ hx)
+      have hsub : φ '' S ⊆ Set.Iic J.b := by
+        rintro z ⟨x, hx, rfl⟩
+        have := hJab hx.2; rw [Set.mem_Icc] at this; exact this.2
+      exact (closure_minimal hsub isClosed_Iic) hmem
+    · -- J.b ≤ φ(sup)
+      by_contra hlt
+      push_neg at hlt  -- φ (sSup S) < J.b
+      set d := sSup S with hd
+      rcases eq_or_lt_of_le hJle with hJeq | hJlt
+      · obtain ⟨x, hx⟩ := hSne
+        have hxval : φ x = J.b := by
+          have := hJab hx.2; rw [Set.mem_Icc, hJeq] at this; linarith [this.1, this.2]
+        have hxd : x ≤ d := le_csSup hbddA hx
+        have := hφ_mono hxd
+        rw [hxval] at this; linarith
+      · set m := max (φ d) J.a with hm
+        have hmd : φ d ≤ m := le_max_left _ _
+        have hma : J.a ≤ m := le_max_right _ _
+        have hmb : m < J.b := max_lt hlt hJlt
+        set y := (m + J.b) / 2 with hy
+        have hymem : y ∈ (J:Set ℝ) := by
+          apply hJoo; rw [Set.mem_Ioo]; constructor <;> [skip; skip] <;> rw [hy] <;> linarith
+        have hyImem : y ∈ Set.Icc (φ a) (φ b) := hJsub hymem
+        obtain ⟨x, hx, hxy⟩ := intermediate_value_Icc hab.le hφ_cont.continuousOn hyImem
+        have hxS : x ∈ S := ⟨hx, by rw [hxy]; exact hymem⟩
+        have hxd : x ≤ d := le_csSup hbddA hxS
+        have hmono := hφ_mono hxd
+        rw [hxy] at hmono
+        have hygt : φ d < y := by rw [hy]; linarith
+        linarith
+
+/-- For a globally continuous `φ`, the `φ`-length of an interval `K` with `K.a ≤ K.b`
+    is `φ K.b - φ K.a`. -/
+private theorem cv_alpha_length {φ:ℝ → ℝ} (hφ_cont: Continuous φ) {K:BoundedInterval}
+    (hK: K.a ≤ K.b) : φ[K]ₗ = φ K.b - φ K.a := by
+  have hll : ∀ z:ℝ, left_lim φ z = φ z := fun z =>
+    left_lim_of_continuous ⟨1, one_pos, Set.subset_univ _⟩ hφ_cont.continuousWithinAt
+  have hrl : ∀ z:ℝ, right_lim φ z = φ z := fun z =>
+    right_lim_of_continuous ⟨1, one_pos, Set.subset_univ _⟩ hφ_cont.continuousWithinAt
+  cases K with
+  | Icc c d => simp only [α_length, BoundedInterval.a, BoundedInterval.b] at hK ⊢; rw [if_pos hK, hrl, hll]
+  | Ico c d => simp only [α_length, BoundedInterval.a, BoundedInterval.b] at hK ⊢; rw [if_pos hK, hll, hll]
+  | Ioc c d => simp only [α_length, BoundedInterval.a, BoundedInterval.b] at hK ⊢; rw [if_pos hK, hrl, hrl]
+  | Ioo c d =>
+    simp only [α_length, BoundedInterval.a, BoundedInterval.b] at hK ⊢
+    rcases eq_or_lt_of_le hK with h | h
+    · rw [if_neg (by linarith), h]; ring
+    · rw [if_pos h, hll, hrl]
+
 /-- Lemma 11.10.5 / Exercise 11.10.2-/
 theorem PiecewiseConstantOn.RS_integ_of_comp {a b:ℝ} (hab: a < b) {φ f:ℝ → ℝ}
   (hφ_cont: Continuous φ) (hφ_mono: Monotone φ) (hf: PiecewiseConstantOn f (Icc (φ a) (φ b))) :
@@ -267,7 +423,36 @@ theorem PiecewiseConstantOn.RS_integ_of_comp {a b:ℝ} (hab: a < b) {φ f:ℝ �
     intro J _
     congr 1
     . exact hφ_inv_const.2
-    sorry
+    -- goal: φ[φ_inv' J]ₗ = (↑J).length
+    have hJne : ((J:BoundedInterval):Set ℝ).Nonempty := by
+      have := J.property; simp [P, (· ∈ ·)] at this; exact this.2
+    have hJsub : ((J:BoundedInterval):Set ℝ) ⊆ Set.Icc (φ a) (φ b) := by
+      have hc := P.contains _ J.property
+      rw [BoundedInterval.subset_iff, BoundedInterval.set_Icc] at hc
+      exact hc
+    -- S = φ_inv J as a set
+    set S := {x : ℝ | x ∈ Set.Icc a b ∧ φ x ∈ ((J:BoundedInterval):Set ℝ)} with hSdef
+    have hKS : ((φ_inv' J : BoundedInterval):Set ℝ) = S := by
+      rw [← hφ_inv' J]
+    have hSne : S.Nonempty := by
+      have := cv_phi_inf hab hφ_cont hφ_mono hJne hJsub; exact this.2.2.2.2
+    have hKne : ((φ_inv' J : BoundedInterval):Set ℝ).Nonempty := by rw [hKS]; exact hSne
+    have hKa : (φ_inv' J : BoundedInterval).a = sInf S := by
+      rw [← cv_csInf_eq_a hKne, hKS]
+    have hKb : (φ_inv' J : BoundedInterval).b = sSup S := by
+      rw [← cv_csSup_eq_b hKne, hKS]
+    obtain ⟨hφinf, hφsup, _, _, _⟩ := cv_phi_inf hab hφ_cont hφ_mono hJne hJsub
+    have hab' : (φ_inv' J : BoundedInterval).a ≤ (φ_inv' J : BoundedInterval).b := by
+      rw [hKa, hKb]
+      obtain ⟨x, hx⟩ := hSne
+      exact le_trans (csInf_le ⟨a, fun y hy => hy.1.1⟩ hx) (le_csSup ⟨b, fun y hy => hy.1.2⟩ hx)
+    have hJab : (J:BoundedInterval).a ≤ (J:BoundedInterval).b := by
+      obtain ⟨p, hp⟩ := hJne
+      have := (J:BoundedInterval).subset_Icc
+      rw [BoundedInterval.subset_iff, BoundedInterval.set_Icc] at this
+      have := this hp; rw [Set.mem_Icc] at this; linarith [this.1, this.2]
+    rw [cv_alpha_length hφ_cont hab', hKa, hKb, hφinf, hφsup,
+      BoundedInterval.length, max_eq_left (by linarith)]
   intro J _ K _ hJK
   set x := (hφ_inv_nonempty J).some
   have h1 : x ∈ φ_inv J := (hφ_inv_nonempty J).some_mem
