@@ -1,4 +1,5 @@
 import Mathlib.Tactic
+import Mathlib.Data.Rat.Denumerable
 
 /-!
 # Analysis I, Section 8.1: Countability
@@ -437,8 +438,9 @@ example {I X:Type} (hI: AtMostCountable I) (A: I → Set X) (hA: ∀ i, AtMostCo
   exact (AtMostCountable.iff (A i)).mp (hA i)
 
 /-- Exercise 8.1.10.  Note the lack of the `noncomputable` keyword in the `abbrev`. -/
-abbrev explicit_bijection : ℕ → ℚ := sorry
+abbrev explicit_bijection : ℕ → ℚ := (Denumerable.eqv ℚ).symm
 
-theorem explicit_bijection_spec : Function.Bijective explicit_bijection := by sorry
+theorem explicit_bijection_spec : Function.Bijective explicit_bijection :=
+  (Denumerable.eqv ℚ).symm.bijective
 
 end Chapter8
