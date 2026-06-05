@@ -216,13 +216,60 @@ example : ∃ f: ℝ → ℝ, ContinuousOn f (.Ioo 1 2) ∧ BddOn f (.Ioo 1 2) �
 example : ∃ f: ℝ → ℝ, ContinuousOn f (.Ici 0) ∧ BddOn f (.Ici 0) ∧
   ∃ x₀ ∈ Set.Ici 0, IsMaxOn f (.Ici 0) x₀ ∧
   ¬ ∃ x₀ ∈ Set.Ici 0, IsMinOn f (.Ici 0) x₀
-  := by sorry
+  := by
+  refine ⟨fun x => 1/(x+1), ?_, ?_, 0, Set.left_mem_Ici, ?_, ?_⟩
+  · exact ContinuousOn.div continuousOn_const (by fun_prop)
+      (fun x hx => by rw [Set.mem_Ici] at hx; intro h; linarith)
+  · refine ⟨1, fun x hx => ?_⟩
+    rw [Set.mem_Ici] at hx
+    rw [abs_of_nonneg (by positivity), div_le_one (by linarith)]; linarith
+  · rw [isMaxOn_iff]; intro x hx
+    rw [Set.mem_Ici] at hx
+    exact one_div_le_one_div_of_le (by norm_num) (by linarith)
+  · rintro ⟨x₀, hx₀, hmin⟩
+    rw [Set.mem_Ici] at hx₀
+    have hlt : 1/((x₀+1)+1) < 1/(x₀+1) := one_div_lt_one_div_of_lt (by linarith) (by linarith)
+    have hge := isMinOn_iff.1 hmin (x₀+1) (by rw [Set.mem_Ici]; linarith)
+    simp only at hge
+    linarith
 
 /-- Exercise 9.6.1 c) -/
 example : ∃ f: ℝ → ℝ, BddOn f (.Icc (-1) 1) ∧
   (¬ ∃ x₀ ∈ Set.Icc (-1) 1, IsMinOn f (.Icc (-1) 1) x₀) ∧
   (¬ ∃ x₀ ∈ Set.Icc (-1) 1, IsMaxOn f (.Icc (-1) 1) x₀)
-  := by sorry
+  := by
+  refine ⟨fun x => if |x| < 1 then x else 0, ?_, ?_, ?_⟩
+  · refine ⟨1, fun x _ => ?_⟩
+    show |(if |x| < 1 then x else 0)| ≤ 1
+    split_ifs with h
+    · exact le_of_lt h
+    · simp
+  · rintro ⟨x₀, _, hmin⟩
+    rw [isMinOn_iff] at hmin
+    by_cases h : |x₀| < 1
+    · have h' := abs_lt.1 h
+      have hymem : ((x₀-1)/2) ∈ Set.Icc (-1:ℝ) 1 := by rw [Set.mem_Icc]; constructor <;> linarith [h'.1, h'.2]
+      have hyabs : |(x₀-1)/2| < 1 := by rw [abs_lt]; constructor <;> linarith [h'.1, h'.2]
+      have := hmin _ hymem
+      simp only [if_pos h, if_pos hyabs] at this
+      linarith [h'.1]
+    · have hymem : (-1/2:ℝ) ∈ Set.Icc (-1:ℝ) 1 := by norm_num
+      have := hmin _ hymem
+      simp only [if_neg h, show |(-1/2:ℝ)| < 1 by norm_num, if_true] at this
+      norm_num at this
+  · rintro ⟨x₀, _, hmax⟩
+    rw [isMaxOn_iff] at hmax
+    by_cases h : |x₀| < 1
+    · have h' := abs_lt.1 h
+      have hymem : ((x₀+1)/2) ∈ Set.Icc (-1:ℝ) 1 := by rw [Set.mem_Icc]; constructor <;> linarith [h'.1, h'.2]
+      have hyabs : |(x₀+1)/2| < 1 := by rw [abs_lt]; constructor <;> linarith [h'.1, h'.2]
+      have := hmax _ hymem
+      simp only [if_pos h, if_pos hyabs] at this
+      linarith [h'.2]
+    · have hymem : (1/2:ℝ) ∈ Set.Icc (-1:ℝ) 1 := by norm_num
+      have := hmax _ hymem
+      simp only [if_neg h, show |(1/2:ℝ)| < 1 by norm_num, if_true] at this
+      norm_num at this
 
 /-- Exercise 9.6.1 d) -/
 example : ∃ f: ℝ → ℝ, ¬ BddAboveOn f (.Icc (-1) 1) ∧ ¬ BddBelowOn f (.Icc (-1) 1) := by
