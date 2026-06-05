@@ -136,9 +136,223 @@ theorem RealDecimal.surj (x:ℝ) : ∃ d:RealDecimal, x = d := by
   . choose d hd using NNRealDecimal.surj (x.toNNReal); use pos d; simp [←hd, h]
   . choose d hd using NNRealDecimal.surj ((-x).toNNReal); use neg d; simp [←hd, show 0 ≤ -x by linarith]
 
+/-- The natural-number truncation of a decimal expansion to `n` fractional digits. -/
+noncomputable def NNRealDecimal.trunc (e:NNRealDecimal) (n:ℕ) : ℕ :=
+  e.intPart * 10^n + ∑ i ∈ Finset.range n, (e.fracPart i:ℕ) * 10^(n-1-i)
+
+theorem NNRealDecimal.trunc_zero (e:NNRealDecimal) : e.trunc 0 = e.intPart := by simp [trunc]
+
+theorem NNRealDecimal.trunc_succ (e:NNRealDecimal) (n:ℕ) :
+    e.trunc (n+1) = 10 * e.trunc n + (e.fracPart n:ℕ) := by
+  unfold trunc
+  rw [Finset.sum_range_succ]
+  have hsum : ∑ i ∈ Finset.range n, (e.fracPart i:ℕ)*10^(n+1-1-i)
+            = 10 * ∑ i ∈ Finset.range n, (e.fracPart i:ℕ)*10^(n-1-i) := by
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro i hi; simp only [Finset.mem_range] at hi
+    rw [show n+1-1-i = (n-1-i)+1 by omega, pow_succ]; ring
+  rw [hsum]
+  have : n+1-1-n = 0 := by omega
+  rw [this, pow_zero, mul_one]
+  ring
+
+private theorem NNRealDecimal.term_eq (e:NNRealDecimal) (n i:ℕ) (hi : i < n) :
+    ((e.fracPart i:ℕ):NNReal)*(10:NNReal)^(-(i:ℝ)-1)
+    = ((e.fracPart i:ℕ):NNReal) * (10:NNReal)^(n-1-i) * (10:NNReal)^(-(n:ℝ)) := by
+  rw [mul_assoc]
+  congr 1
+  rw [← rpow_natCast (10:NNReal) (n-1-i), ← rpow_add (by norm_num)]
+  rw [show ((n-1-i:ℕ):ℝ) + (-n) = -i-1 by
+    have h1 : (1:ℕ) ≤ n := by omega
+    push_cast [Nat.cast_sub (by omega : i ≤ n-1), Nat.cast_sub h1]
+    ring]
+
+theorem NNRealDecimal.partial_eq (e:NNRealDecimal) (n:ℕ) :
+    (e.intPart:NNReal) + ∑ i ∈ Finset.range n, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)
+    = (e.trunc n : NNReal) * (10:NNReal)^(-n:ℝ) := by
+  unfold trunc
+  push_cast
+  rw [add_mul, Finset.sum_congr rfl (fun i hi => term_eq e n i (Finset.mem_range.1 hi)),
+    ← Finset.sum_mul]
+  congr 1
+  rw [mul_assoc, ← rpow_natCast (10:NNReal) n, ← rpow_add (by norm_num)]
+  simp
+
+theorem NNRealDecimal.partial_le (e:NNRealDecimal) (n:ℕ) :
+    (e.intPart:NNReal) + ∑ i ∈ Finset.range n, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)
+    ≤ e.toNNReal := by
+  rw [toNNReal]
+  gcongr
+  exact e.toNNReal_conv.sum_le_tsum _ (fun i _ => zero_le _)
+
+theorem NNRealDecimal.tail_le_one (e:NNRealDecimal) :
+    (∑' i, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)) ≤ 1 := by
+  rw [← NNReal.coe_le_coe, NNReal.coe_tsum]
+  have hconv := e.toNNReal_conv
+  rw [← NNReal.summable_coe] at hconv
+  have hgeo : Summable (fun i:ℕ ↦ (9/10:ℝ) * (1/10)^i) :=
+    (summable_geometric_of_lt_one (by norm_num) (by norm_num)).mul_left _
+  have hle : ∀ i, ((((e.fracPart i:ℕ):NNReal):ℝ) * ((10:NNReal)^(-(i:ℝ)-1):NNReal)) ≤ (9/10:ℝ)*(1/10)^i := by
+    intro i
+    push_cast [NNReal.coe_rpow]
+    have h9 : ((e.fracPart i : ℕ):ℝ) ≤ 9 := by
+      have : (e.fracPart i : ℕ) ≤ 9 := by have := (e.fracPart i).lt; omega
+      exact_mod_cast this
+    have hrw : (10:ℝ)^(-(i:ℝ)-1) = (1/10)^(i+1) := by
+      rw [show -(i:ℝ)-1 = -((i+1:ℕ):ℝ) by push_cast; ring, Real.rpow_neg (by norm_num),
+        Real.rpow_natCast, ← inv_pow, one_div]
+    rw [hrw, pow_succ]
+    have hpos : (0:ℝ) ≤ (1/10)^i := by positivity
+    nlinarith [h9, hpos]
+  calc ∑' i, (((e.fracPart i:ℕ):NNReal):ℝ) * ((10:NNReal)^(-(i:ℝ)-1):NNReal)
+      ≤ ∑' i, (9/10:ℝ)*(1/10)^i := hconv.tsum_le_tsum hle hgeo
+    _ = 1 := by rw [_root_.tsum_mul_left, _root_.tsum_geometric_of_lt_one (by norm_num) (by norm_num)]; norm_num
+
+theorem NNRealDecimal.tail_from_le (e:NNRealDecimal) (n:ℕ) :
+    (∑' i, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ))
+    ≤ (∑ i ∈ Finset.range n, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)) + (10:NNReal)^(-n:ℝ) := by
+  have hconv : Summable (fun i => (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)) := e.toNNReal_conv
+  have hsplit := (sum_add_tsum_nat_add n hconv).symm
+  rw [← hsplit]
+  gcongr
+  set e' : NNRealDecimal := mk 0 (fun i => e.fracPart (i+n)) with he'
+  have hfp : ∀ i, e'.fracPart i = e.fracPart (i+n) := fun i => rfl
+  have h1 : (∑' i, (e.fracPart (i+n):NNReal)*(10:NNReal)^(-(↑(i+n):ℝ)-1))
+          = (∑' i, ((e'.fracPart i:NNReal)*(10:NNReal)^(-(i:ℝ)-1))) * (10:NNReal)^(-n:ℝ) := by
+    conv_rhs => rw [← NNReal.tsum_mul_right]
+    apply tsum_congr; intro i
+    rw [hfp, mul_assoc, ← rpow_add (by norm_num)]
+    congr 2
+    push_cast; ring
+  rw [h1]
+  calc (∑' i, ((e'.fracPart i:NNReal)*(10:NNReal)^(-(i:ℝ)-1))) * (10:NNReal)^(-n:ℝ)
+      ≤ 1 * (10:NNReal)^(-n:ℝ) := by gcongr; exact tail_le_one e'
+    _ = (10:NNReal)^(-n:ℝ) := one_mul _
+
+theorem NNRealDecimal.trunc_bounds (e:NNRealDecimal) (n:ℕ) :
+    (e.trunc n : NNReal) * (10:NNReal)^(-n:ℝ) ≤ e.toNNReal
+    ∧ e.toNNReal ≤ (e.trunc n : NNReal) * (10:NNReal)^(-n:ℝ) + (10:NNReal)^(-n:ℝ) := by
+  constructor
+  · rw [← partial_eq]; exact partial_le e n
+  · rw [toNNReal, ← partial_eq]
+    calc (e.intPart:NNReal) + ∑' i, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)
+        ≤ (e.intPart:NNReal) + ((∑ i ∈ Finset.range n, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)) + (10:NNReal)^(-n:ℝ)) := by gcongr; exact tail_from_le e n
+      _ = _ := by ring
+
+theorem NNRealDecimal.trunc_one (e:NNRealDecimal) (hx : e.toNNReal = 1) (n:ℕ) :
+    e.trunc n ≤ 10^n ∧ 10^n ≤ e.trunc n + 1 := by
+  obtain ⟨h1, h2⟩ := trunc_bounds e n
+  rw [hx] at h1 h2
+  have hpow : (10:NNReal)^(-n:ℝ) * (10:NNReal)^(n:ℝ) = 1 := by
+    rw [← rpow_add (by norm_num)]; simp
+  have hpn : (10:NNReal)^(n:ℝ) = (10^n : NNReal) := by rw [rpow_natCast]
+  constructor
+  · have hb : (e.trunc n : NNReal) ≤ 10^n := by
+      have h := mul_le_mul_right' h1 ((10:NNReal)^(n:ℝ))
+      rw [mul_assoc, hpow, mul_one, one_mul, hpn] at h
+      exact h
+    exact_mod_cast hb
+  · have hb : (10^n : NNReal) ≤ (e.trunc n : NNReal) + 1 := by
+      have h := mul_le_mul_right' h2 ((10:NNReal)^(n:ℝ))
+      rw [add_mul, mul_assoc, hpow, mul_one, one_mul, hpn] at h
+      exact h
+    exact_mod_cast hb
+
+theorem NNRealDecimal.toNNReal_eq_one_iff (e:NNRealDecimal) :
+    e.toNNReal = 1 ↔ e = mk 1 (fun _ ↦ 0) ∨ e = mk 0 (fun _ ↦ 9) := by
+  constructor
+  · intro hx
+    have hb := trunc_one e hx
+    have h0 := hb 0
+    rw [trunc_zero] at h0
+    simp only [pow_zero] at h0
+    have hub : e.intPart ≤ 1 := h0.1
+    interval_cases hip : e.intPart
+    · right
+      have hall : ∀ n, e.trunc n = 10^n - 1 ∧ (e.fracPart n:ℕ) = 9 := by
+        intro n
+        induction n with
+        | zero =>
+          refine ⟨by rw [trunc_zero, hip]; simp, ?_⟩
+          have h1 := hb 1
+          rw [trunc_succ, trunc_zero, hip] at h1
+          have hd : (e.fracPart 0:ℕ) < 10 := (e.fracPart 0).lt
+          simp only [pow_one, mul_one, mul_zero, zero_add] at h1
+          omega
+        | succ k ih =>
+          obtain ⟨iht, _⟩ := ih
+          have hk2 := hb (k+2)
+          have hp : (1:ℕ) ≤ 10^k := Nat.one_le_pow _ _ (by norm_num)
+          have hpk1 : 10^(k+1) = 10*10^k := by rw [pow_succ]; ring
+          have hp2 : 10^(k+2) = 10*10^(k+1) := by rw [pow_succ]; ring
+          have hp1 : (1:ℕ) ≤ 10^(k+1) := Nat.one_le_pow _ _ (by norm_num)
+          have hd : (e.fracPart k:ℕ) < 10 := (e.fracPart k).lt
+          have hcur : e.trunc (k+1) = 10^(k+1)-1 := by
+            have hk1 := hb (k+1); rw [trunc_succ, iht] at hk1; rw [trunc_succ, iht]; omega
+          refine ⟨hcur, ?_⟩
+          rw [trunc_succ, hcur] at hk2
+          have hdk1 : (e.fracPart (k+1):ℕ) < 10 := (e.fracPart (k+1)).lt
+          omega
+      obtain ⟨ip, fp⟩ := e
+      simp only at hip hall
+      subst hip
+      congr 1
+      funext n; rw [Digit.inj, (hall n).2]; rfl
+    · left
+      have hall : ∀ n, e.trunc n = 10^n ∧ (e.fracPart n:ℕ) = 0 := by
+        intro n
+        induction n with
+        | zero =>
+          refine ⟨by rw [trunc_zero, hip]; simp, ?_⟩
+          have h1 := hb 1
+          rw [trunc_succ, trunc_zero, hip] at h1
+          simp only [pow_one, mul_one] at h1
+          have hd : (e.fracPart 0:ℕ) < 10 := (e.fracPart 0).lt
+          omega
+        | succ k ih =>
+          obtain ⟨iht, _⟩ := ih
+          have hk2 := hb (k+2)
+          have hpk1 : 10^(k+1) = 10*10^k := by rw [pow_succ]; ring
+          have hp2 : 10^(k+2) = 10*10^(k+1) := by rw [pow_succ]; ring
+          have hcur : e.trunc (k+1) = 10^(k+1) := by
+            have hk1 := hb (k+1); rw [trunc_succ, iht] at hk1; rw [trunc_succ, iht]
+            have hd : (e.fracPart k:ℕ) < 10 := (e.fracPart k).lt; omega
+          refine ⟨hcur, ?_⟩
+          rw [trunc_succ, hcur] at hk2
+          have hd : (e.fracPart (k+1):ℕ) < 10 := (e.fracPart (k+1)).lt
+          omega
+      obtain ⟨ip, fp⟩ := e
+      simp only at hip hall
+      subst hip
+      congr 1
+      funext n; rw [Digit.inj, (hall n).2]; rfl
+  · rintro (rfl | rfl)
+    · rw [← NNRealDecimal.not_inj.1]
+    · rw [← NNRealDecimal.not_inj.2]
+
 /-- Exercise B.2.2 -/
 theorem RealDecimal.not_inj_one (d: RealDecimal) : (d:ℝ) = 1 ↔ (d = pos (mk 1 fun _ ↦ 0) ∨ d = pos (mk 0 fun _ ↦ 9)) := by
-  sorry
+  constructor
+  · intro hd
+    cases d with
+    | pos e =>
+      have he : e.toNNReal = 1 := by
+        have : ((e.toNNReal:ℝ)) = 1 := hd
+        exact_mod_cast this
+      rcases (NNRealDecimal.toNNReal_eq_one_iff e).1 he with h | h
+      · left; rw [h]
+      · right; rw [h]
+    | neg e =>
+      exfalso
+      have : -(e.toNNReal:ℝ) = 1 := hd
+      have hpos : (0:ℝ) ≤ (e.toNNReal:ℝ) := (e.toNNReal).coe_nonneg
+      linarith
+  · rintro (rfl | rfl)
+    · show ((mk 1 (fun _ ↦ 0)).toNNReal:ℝ) = 1
+      rw [← NNRealDecimal.not_inj.1]; norm_num
+    · show ((mk 0 (fun _ ↦ 9)).toNNReal:ℝ) = 1
+      rw [← NNRealDecimal.not_inj.2]; norm_num
 
 /-- Exercise B.2.3 -/
 abbrev TerminatingDecimal (x:ℝ) : Prop := ∃ (n:ℤ) (m:ℕ), x = n / (10:ℝ)^m
