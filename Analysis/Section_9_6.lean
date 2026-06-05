@@ -225,21 +225,57 @@ example : ∃ f: ℝ → ℝ, BddOn f (.Icc (-1) 1) ∧
   := by sorry
 
 /-- Exercise 9.6.1 d) -/
-example : ∃ f: ℝ → ℝ, ¬ BddAboveOn f (.Icc (-1) 1) ∧ ¬ BddBelowOn f (.Icc (-1) 1) := by sorry
+example : ∃ f: ℝ → ℝ, ¬ BddAboveOn f (.Icc (-1) 1) ∧ ¬ BddBelowOn f (.Icc (-1) 1) := by
+  refine ⟨fun x => 1/x, ?_, ?_⟩
+  · rintro ⟨M, hM⟩
+    have hpos : (0:ℝ) < 1/(|M|+2) := by positivity
+    have hx : (1/(|M|+2)) ∈ Set.Icc (-1:ℝ) 1 :=
+      ⟨by linarith, by rw [div_le_one (by positivity)]; nlinarith [abs_nonneg M]⟩
+    have h := hM _ hx
+    simp only [one_div_one_div] at h
+    linarith [le_abs_self M]
+  · rintro ⟨M, hM⟩
+    have hpos : (0:ℝ) < 1/(|M|+2) := by positivity
+    have hle1 : 1/(|M|+2) ≤ 1 := by rw [div_le_one (by positivity)]; nlinarith [abs_nonneg M]
+    have hx : (-(1/(|M|+2))) ∈ Set.Icc (-1:ℝ) 1 := ⟨by linarith, by linarith⟩
+    have h := hM _ hx
+    rw [show (fun x:ℝ => 1/x) (-(1/(|M|+2))) = -(|M|+2) by simp [one_div_one_div]] at h
+    linarith [le_abs_self M]
 
 /-- Exercise 9.6.2 -/
 theorem BddOn.add (f g : ℝ → ℝ) (X : Set ℝ) (hf : BddOn f X) (hg : BddOn g X) :
-    BddOn (f + g) X := by sorry
+    BddOn (f + g) X := by
+  obtain ⟨Mf, hMf⟩ := hf; obtain ⟨Mg, hMg⟩ := hg
+  refine ⟨Mf + Mg, fun x hx => ?_⟩
+  obtain ⟨h1, h2⟩ := abs_le.1 (hMf x hx); obtain ⟨h3, h4⟩ := abs_le.1 (hMg x hx)
+  simp only [Pi.add_apply]; rw [abs_le]; constructor <;> linarith
 
 theorem BddOn.sub (f g : ℝ → ℝ) (X : Set ℝ) (hf : BddOn f X) (hg : BddOn g X) :
-    BddOn (f - g) X := by sorry
+    BddOn (f - g) X := by
+  obtain ⟨Mf, hMf⟩ := hf; obtain ⟨Mg, hMg⟩ := hg
+  refine ⟨Mf + Mg, fun x hx => ?_⟩
+  obtain ⟨h1, h2⟩ := abs_le.1 (hMf x hx); obtain ⟨h3, h4⟩ := abs_le.1 (hMg x hx)
+  simp only [Pi.sub_apply]; rw [abs_le]; constructor <;> linarith
 
 theorem BddOn.mul (f g : ℝ → ℝ) (X : Set ℝ) (hf : BddOn f X) (hg : BddOn g X) :
-    BddOn (f * g) X := by sorry
+    BddOn (f * g) X := by
+  obtain ⟨Mf, hMf⟩ := hf; obtain ⟨Mg, hMg⟩ := hg
+  refine ⟨Mf * Mg, fun x hx => ?_⟩
+  have h1 := hMf x hx; have h2 := hMg x hx
+  simp only [Pi.mul_apply, abs_mul]
+  exact mul_le_mul h1 h2 (abs_nonneg _) (le_trans (abs_nonneg _) h1)
 
 def BddOn.div : Decidable (∀ (f g : ℝ → ℝ) (X : Set ℝ) (_ : ∀ x ∈ X, g x ≠ 0) (_ : BddOn f X)
     (_: BddOn g X), (BddOn (f / g) X)) := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`, depending on whether you believe the given statement to be true or false.
-  sorry
+  apply isFalse
+  intro h
+  obtain ⟨M, hM⟩ := h (fun _ => 1) (fun x => x) (Set.Ioo 0 1) (fun x hx => ne_of_gt hx.1)
+    ⟨1, fun x _ => by norm_num⟩ ⟨1, fun x hx => by rw [abs_le]; constructor <;> [linarith [hx.1]; linarith [hx.2]]⟩
+  have hx : 1/(|M|+2) ∈ Set.Ioo (0:ℝ) 1 :=
+    ⟨by positivity, by rw [div_lt_one (by positivity)]; nlinarith [abs_nonneg M]⟩
+  have := hM _ hx
+  simp only [Pi.div_apply, one_div_one_div, abs_of_nonneg (by positivity : (0:ℝ) ≤ |M|+2)] at this
+  linarith [le_abs_self M]
 
 end Chapter9
