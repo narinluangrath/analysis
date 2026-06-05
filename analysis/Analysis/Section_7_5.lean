@@ -145,7 +145,87 @@ theorem Series.ratio_ineq {c:ℤ → ℝ} (m:ℤ) (hpos: ∀ n ≥ m, c n > 0) :
     := by
   -- This proof is written to follow the structure of the original text.
   refine ⟨ ?_, liminf_le_limsup ?_ ?_, ?_ ⟩ <;> try isBoundedDefault
-  . sorry
+  · -- First conjunct: liminf (c(n+1)/cn) ≤ liminf (cn^(1/n))
+    set M' := liminf (fun n ↦ ((c (n+1) / c n:ℝ):EReal)) .atTop with hM'def
+    -- the root liminf is ≥ 0
+    have hrootnn : (0:EReal) ≤ liminf (fun n ↦ (((c n)^(1/(n:ℝ)):ℝ):EReal)) .atTop := by
+      apply le_liminf_of_le (by isBoundedDefault)
+      filter_upwards [eventually_ge_atTop m] with n hn
+      have := hpos n hn; positivity
+    apply le_of_forall_lt_imp_le_of_dense
+    intro z hz
+    -- if z ≤ 0, done by nonnegativity
+    rcases le_or_gt z 0 with hz0 | hz0
+    · exact le_trans (by exact_mod_cast hz0) hrootnn
+    -- now 0 < z < M', and z is a real (z ≠ ⊤ since z < M' ≤ ⊤... but z could be ⊥? no, z>0)
+    have hztop : z ≠ ⊤ := by
+      intro h; rw [h] at hz; exact absurd hz (not_top_lt)
+    have hzbot : z ≠ ⊥ := by intro h; rw [h] at hz0; exact absurd hz0 (by simp)
+    set y := z.toReal with hydef
+    have hzy : z = (y:EReal) := (coe_toReal hztop hzbot).symm
+    have hypos : 0 < y := by rw [hzy] at hz0; exact_mod_cast hz0
+    rw [hzy] at hz ⊢
+    -- eventually c(n+1)/cn > y
+    have hevent := eventually_lt_of_lt_liminf hz (by isBoundedDefault)
+    rw [eventually_atTop] at hevent; choose N' hN using hevent
+    set N := max N' (max m 1) with hNdef
+    have hge (n:ℤ) (hn: n ≥ N) : y ≤ c (n+1) / c n := by
+      have : n ≥ N' := by omega
+      have npos : 0 < n := by omega
+      specialize hN n this; norm_cast at hN; order
+    set B := c N * y^(-N) with hBdef
+    have hB : 0 < B := by have := hpos N (by omega); positivity
+    have hlow (n:ℤ) (hn: n ≥ N) : B * y^n ≤ c n := by
+      induction n, hn using Int.le_induction with
+      | base =>
+          have : B * y^N = c N := by
+            rw [hBdef, mul_assoc, ← zpow_add₀ (ne_of_gt hypos)]; simp
+          rw [this]
+      | succ k hk ih =>
+        have hck : 0 < c k := hpos k (by omega)
+        have hstep := hge k (by omega)
+        rw [le_div_iff₀ hck] at hstep
+        calc B * y^(k+1) = (B * y^k) * y := by rw [zpow_add_one₀ (ne_of_gt hypos), ← mul_assoc]
+          _ ≤ c k * y := by apply mul_le_mul_of_nonneg_right ih (le_of_lt hypos)
+          _ ≤ c (k+1) := by linarith
+    have hlow_root (n:ℤ) (hn: n ≥ N) : ((B^(1/(n:ℝ)) * y:ℝ):EReal) ≤ (((c n)^(1/(n:ℝ)):ℝ):EReal) := by
+      rw [EReal.coe_le_coe_iff]
+      have hn' : n > 0 := by omega
+      calc B^(1/(n:ℝ)) * y = B^(1/(n:ℝ)) * ((y^n)^(1/(n:ℝ))) := by
+              congr 1
+              rw [←rpow_intCast, ←rpow_mul (by positivity)]
+              symm; convert rpow_one _; field_simp
+        _ = (B * y^n)^(1/(n:ℝ)) := (mul_rpow (by positivity) (by positivity)).symm
+        _ ≤ ((c n)^(1/(n:ℝ))) := by
+            apply rpow_le_rpow (by positivity) (hlow n hn) (by positivity)
+    -- take liminf
+    calc (y:EReal)
+        = (atTop.liminf (fun n:ℤ ↦ ((B^(1/(n:ℝ)):ℝ):EReal))) * (atTop.liminf (fun n:ℤ ↦ ((y:ℝ):EReal))) := by
+          have h1 : atTop.liminf (fun n:ℤ ↦ ((B^(1/(n:ℝ)):ℝ):EReal)) = 1 := by
+            apply Tendsto.liminf_eq
+            have hr : atTop.Tendsto (fun n:ℤ ↦ (B^(1/(n:ℝ)):ℝ)) (nhds 1) := by
+              have hbase : Tendsto (fun x:ℝ ↦ B^x) (nhds (0:ℝ)) (nhds (B^(0:ℝ))) :=
+                (continuous_const_rpow (ne_of_gt hB)).tendsto 0
+              rw [Real.rpow_zero] at hbase
+              have hz : atTop.Tendsto (fun n:ℤ ↦ (1/(n:ℝ))) (nhds 0) := by
+                simpa [one_div] using tendsto_inv_atTop_zero.comp tendsto_intCast_atTop_atTop
+              exact hbase.comp hz
+            have := (continuous_coe_real_ereal.tendsto (1:ℝ)).comp hr
+            simpa using this
+          have h2 : atTop.liminf (fun n:ℤ ↦ ((y:ℝ):EReal)) = (y:EReal) := liminf_const _
+          rw [h1, h2, one_mul]
+      _ ≤ atTop.liminf (fun n:ℤ ↦ ((B^(1/(n:ℝ)) * y:ℝ):EReal)) := by
+          have hu : (fun _:ℤ ↦ (0:EReal)) ≤ᶠ[atTop] fun n:ℤ ↦ ((B^(1/(n:ℝ)):ℝ):EReal) := by
+            apply Eventually.of_forall; intro n; simp; positivity
+          have hv : (fun _:ℤ ↦ (0:EReal)) ≤ᶠ[atTop] fun n:ℤ ↦ ((y:ℝ):EReal) := by
+            apply Eventually.of_forall; intro n; simp; positivity
+          refine le_trans (EReal.le_liminf_mul hu hv) (le_of_eq ?_)
+          apply liminf_congr
+          apply Eventually.of_forall; intro n
+          simp only [Pi.mul_apply]; rw [EReal.coe_mul]
+      _ ≤ atTop.liminf (fun n:ℤ ↦ (((c n)^(1/(n:ℝ)):ℝ):EReal)) := by
+          apply liminf_le_liminf <;> try isBoundedDefault
+          rw [eventually_atTop]; use N
   set L' := limsup (fun n ↦ ((c (n+1) / c n:ℝ):EReal)) .atTop
   by_cases hL : L' = ⊤; · rw [hL]; exact le_top
   have hL'pos : 0 ≤ L' := by
@@ -319,9 +399,53 @@ theorem Series.ratio_test_inconclusive' : ∃ s:Series, (∀ n ≥ s.m, s.seq n 
 theorem Series.root_self_converges : atTop.Tendsto (fun (n:ℕ) ↦ (n:ℝ)^(1 / (n:ℝ))) (nhds 1) :=
   tendsto_rpow_div.comp tendsto_natCast_atTop_atTop
 
+private theorem root_aux (x:ℝ)(q:ℝ)(k:ℕ)(hk:(0:ℝ)<(k:ℝ)) :
+    |(k:ℝ)^q * x^k|^(1/(k:ℝ)) = (k:ℝ)^(q/(k:ℝ)) * |x| := by
+  rw [show |(k:ℝ)^q * x^k| = (k:ℝ)^q * |x|^k by
+        rw [_root_.abs_mul, abs_of_nonneg (by positivity : (0:ℝ) ≤ (k:ℝ)^q), _root_.abs_pow]]
+  rw [Real.mul_rpow (by positivity) (by positivity)]
+  congr 1
+  · rw [← Real.rpow_mul (le_of_lt hk)]; congr 1; field_simp
+  · rw [← Real.rpow_natCast (|x|) k, ← Real.rpow_mul (abs_nonneg x)]
+    rw [show (k:ℝ) * (1/(k:ℝ)) = 1 by field_simp, Real.rpow_one]
+
 /-- Exercise 7.5.2 -/
 theorem Series.poly_mul_geom_converges {x:ℝ} (hx: |x|<1) (q:ℝ) : (fun n:ℕ ↦ (n:ℝ)^q * x^n : Series).converges
   ∧ atTop.Tendsto (fun n:ℕ ↦ (n:ℝ)^q * x^n) (nhds 0) := by
-  sorry
+  set s : Series := (fun n:ℕ ↦ (n:ℝ)^q * x^n : Series) with hsdef
+  have hsm : s.m = 0 := rfl
+  -- The root function n ↦ |s.seq n|^(1/n) tends to |x| over ℤ
+  have htend_root : atTop.Tendsto (fun n:ℤ ↦ ((|s.seq n|^(1/(n:ℝ)):ℝ))) (nhds |x|) := by
+    -- compute n^(q/n) → 1
+    have hroot1 : atTop.Tendsto (fun n:ℤ ↦ ((n:ℝ)^(q/(n:ℝ)))) (nhds 1) := by
+      have := tendsto_rpow_div_mul_add q 1 0 zero_ne_one
+      have h2 : atTop.Tendsto (fun x:ℝ ↦ x^(q/x)) (nhds 1) := by
+        apply this.congr; intro x; congr 1; ring
+      exact h2.comp tendsto_intCast_atTop_atTop
+    have hlim : atTop.Tendsto (fun n:ℤ ↦ ((n:ℝ)^(q/(n:ℝ)) * |x|)) (nhds (1 * |x|)) :=
+      hroot1.mul_const _
+    rw [one_mul] at hlim
+    apply hlim.congr'
+    filter_upwards [eventually_ge_atTop (1:ℤ)] with n hn
+    have hn1 : (1:ℝ) ≤ (n:ℝ) := by exact_mod_cast hn
+    have hnpos : (0:ℝ) < (n:ℝ) := by linarith
+    have hseq : s.seq n = (n.toNat:ℝ)^q * x^(n.toNat) := by
+      simp only [hsdef]; simp [show (0:ℤ) ≤ n by omega]
+    have htn : ((n.toNat:ℝ)) = (n:ℝ) := by
+      rw [show ((n.toNat:ℝ)) = (((n.toNat:ℤ)):ℝ) by push_cast; ring, Int.toNat_of_nonneg (by omega)]
+    rw [hseq, ← htn, root_aux x q n.toNat (by rw [htn]; exact hnpos)]
+  -- absConverges via root test
+  have habs : s.absConverges := by
+    apply Series.root_test_pos
+    have htE : atTop.Tendsto (fun n:ℤ ↦ ((|s.seq n|^(1/(n:ℝ)):ℝ):EReal)) (nhds ((|x|:ℝ):EReal)) :=
+      (continuous_coe_real_ereal.tendsto (|x|:ℝ)).comp htend_root
+    rw [htE.limsup_eq]
+    rw [show (1:EReal) = ((1:ℝ):EReal) by simp, EReal.coe_lt_coe_iff]
+    exact hx
+  refine ⟨ converges_of_absConverges habs, ?_ ⟩
+  have hdecay := decay_of_converges (converges_of_absConverges habs)
+  have := hdecay.comp tendsto_natCast_atTop_atTop
+  apply this.congr
+  intro n; simp [hsdef]
 
 end Chapter7
