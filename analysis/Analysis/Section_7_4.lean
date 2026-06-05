@@ -151,13 +151,50 @@ theorem Series.zeta_2_converges : (fun n:ℕ ↦ 1/(n+1:ℝ)^2 : Series).converg
       exact partial_nonneg htnn _
   exact le_trans key (hQ _)
 
+/-- The swap bijection: n+1 if even, n-1 if odd. -/
+private abbrev Series.swap_pair : ℕ → ℕ := fun n ↦ if Even n then n+1 else n-1
+
+private theorem Series.swap_pair_bij : Function.Bijective swap_pair := by
+  have key : ∀ n, swap_pair n = if n % 2 = 0 then n+1 else n-1 := by
+    intro n; simp only [swap_pair, Nat.even_iff]
+  constructor
+  · intro a b hab
+    rw [key a, key b] at hab
+    split at hab <;> split at hab <;> omega
+  · intro m
+    rcases Nat.even_or_odd m with hm | hm
+    · refine ⟨m+1, ?_⟩; rw [key]
+      rw [Nat.even_iff] at hm; split <;> omega
+    · refine ⟨m-1, ?_⟩; rw [key]
+      rw [Nat.odd_iff] at hm; split <;> omega
+
+private theorem Series.permuted_zeta_eq_perm :
+    (fun n:ℕ ↦ if Even n then 1/(n+2:ℝ)^2 else 1/(n:ℝ)^2)
+      = (fun n ↦ (fun m:ℕ ↦ 1/(m+1:ℝ)^2) (swap_pair n)) := by
+  funext n
+  simp only [swap_pair]
+  by_cases h : Even n
+  · rw [if_pos h, if_pos h]; push_cast; norm_num; ring
+  · rw [if_neg h, if_neg h]
+    rw [Nat.not_even_iff_odd] at h
+    have h1 : 1 ≤ n := h.pos
+    have hc : ((n-1:ℕ):ℝ) = (n:ℝ) - 1 := by
+      have : (n-1:ℕ) + 1 = n := by omega
+      have := congrArg (Nat.cast (R:=ℝ)) this; push_cast at this; linarith
+    rw [hc]; norm_num
+
+private theorem Series.zeta_perm_nonneg : ((fun m:ℕ ↦ 1/(m+1:ℝ)^2 : ℕ → ℝ):Series).nonneg := by
+  intro n; by_cases h : n ≥ 0 <;> simp [h]; positivity
+
 theorem Series.permuted_zeta_2_converges :
   (fun n:ℕ ↦ if Even n then 1/(n+2:ℝ)^2 else 1/(n:ℝ)^2 : Series).converges := by
-    sorry
+    have h := (converges_of_permute_nonneg (a := fun m:ℕ ↦ 1/(m+1:ℝ)^2) zeta_perm_nonneg zeta_2_converges swap_pair_bij).1
+    rw [permuted_zeta_eq_perm]; exact h
 
 theorem Series.permuted_zeta_2_eq_zeta_2 :
   (fun n:ℕ ↦ if Even n then 1/(n+2:ℝ)^2 else 1/(n:ℝ)^2 : Series).sum = (fun n:ℕ ↦ 1/(n+1:ℝ)^2 : Series).sum := by
-    sorry
+    have h := ((converges_of_permute_nonneg (a := fun m:ℕ ↦ 1/(m+1:ℝ)^2) zeta_perm_nonneg zeta_2_converges swap_pair_bij).2).symm
+    rw [permuted_zeta_eq_perm]; exact h
 
 /-- Proposition 7.4.3 (Rearrangement of series) -/
 theorem Series.absConverges_of_permute {a:ℕ → ℝ} (ha : (a:Series).absConverges)
