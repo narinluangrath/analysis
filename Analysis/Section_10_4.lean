@@ -80,12 +80,14 @@ example {n:ℕ} : ContinuousOn (fun x:ℝ ↦ x^(1/n:ℝ)) (.Ioi 0) := by
 
 /-- Exercise 10.4.1(b) -/
 example {n:ℕ} {x:ℝ} (hx: x ∈ Set.Ioi 0) : HasDerivWithinAt (fun x:ℝ ↦ x^(1/n:ℝ))
-  ((n:ℝ)⁻¹ * x^((n:ℝ)⁻¹-1)) (.Ioi 0) x := by sorry
+  ((n:ℝ)⁻¹ * x^((n:ℝ)⁻¹-1)) (.Ioi 0) x := by
+  simp only [← one_div]
+  exact (Real.hasDerivAt_rpow_const (Or.inl (ne_of_gt hx))).hasDerivWithinAt
 
 /-- Exercise 10.4.2(a) -/
 example (q:ℚ) {x:ℝ} (hx: x ∈ Set.Ioi 0) :
-  HasDerivWithinAt (fun x:ℝ ↦ x^(q:ℝ)) (q * x^(q-1:ℝ)) (.Ioi 0) x := by
-  sorry
+  HasDerivWithinAt (fun x:ℝ ↦ x^(q:ℝ)) (q * x^(q-1:ℝ)) (.Ioi 0) x :=
+  (Real.hasDerivAt_rpow_const (Or.inl (ne_of_gt hx))).hasDerivWithinAt
 
 /-- Exercise 10.4.2(b) -/
 example (q:ℚ) : (nhdsWithin 1 (.Ioi 0 \ {1})).Tendsto (fun x:ℝ ↦ (x^(q:ℝ)-1)/(x-1)) (nhds q) := by
@@ -110,7 +112,7 @@ example (α:ℝ) : (nhdsWithin 1 (.Ioi 0 \ {1})).Tendsto (fun x:ℝ ↦ (x^α-1^
   exact hd.mono_left (nhdsWithin_mono 1 (fun x hx => hx.2))
 
 /-- Exercise 10.4.3(b) -/
-example (α:ℝ) {x:ℝ} (hx: x ∈ Set.Ioi 0) : HasDerivWithinAt (fun x:ℝ ↦ x^α) (α * x^(α-1)) (.Ioi 0) x := by
-  sorry
+example (α:ℝ) {x:ℝ} (hx: x ∈ Set.Ioi 0) : HasDerivWithinAt (fun x:ℝ ↦ x^α) (α * x^(α-1)) (.Ioi 0) x :=
+  (Real.hasDerivAt_rpow_const (Or.inl (ne_of_gt hx))).hasDerivWithinAt
 
 end Chapter10
