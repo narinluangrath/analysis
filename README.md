@@ -4,7 +4,7 @@ A fork of **[teorth/analysis](https://github.com/teorth/analysis)** (Terence Tao
 
 The upstream repository deliberately leaves exercises as `sorry` and does not host solutions; this fork is an independent solving effort. `lake build` is green at every commit.
 
-**Progress: 1567 / 2083 exercises solved (75%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
+**Progress: 1570 / 2083 exercises solved (75%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
 
 ## Chapter 2 — Natural numbers
 
@@ -66,7 +66,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | 7.1 | Finite series | 28/28 | 0 | ✅ |
 | 7.2 | Infinite series | 31/31 | 0 | ✅ |
 | 7.3 | Sums of non-negative numbers | 8/8 | 0 | ✅ |
-| 7.4 | Rearrangement of series | 10/12 | 2 | 🟡 |
+| 7.4 | Rearrangement of series | 12/12 | 0 | ✅ |
 | 7.5 | The root and ratio tests | 9/9 | 0 | ✅ |
 
 ## Chapter 8 — Infinite sets
@@ -74,7 +74,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | Section | Title | Solved | Remaining | Status |
 |---|---|---:|---:|:--:|
 | 8.1 | Countability | 32/32 | 0 | ✅ |
-| 8.2 | Summation on infinite sets | 20/27 | 7 | 🟡 |
+| 8.2 | Summation on infinite sets | 21/27 | 6 | 🟡 |
 | 8.3 | Uncountable sets | 9/9 | 0 | ✅ |
 | 8.4 | The axiom of choice | 6/6 | 0 | ✅ |
 | 8.5 | Ordered sets | 72/75 | 3 | 🟡 |
