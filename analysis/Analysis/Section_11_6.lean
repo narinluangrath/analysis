@@ -227,6 +227,49 @@ example : ∃ (f:ℝ → ℝ) (hnon: ∀ x ≥ 0, f x ≥ 0), Summable f ∧ ¬ 
   sorry
 
 example : ∃ (f:ℝ → ℝ) (hnon: ∀ x ≥ 0, f x ≥ 0), ¬ Summable f ∧ ∃ M, ∀ N ≥ 0, integ f (Icc 0 N) ≤ M := by
-  sorry
+  classical
+  set I0 : BoundedInterval := Icc 0 1 with hI0def
+  refine ⟨fun x => if x ∈ I0 then 1 else 0, ?_, ?_, 1, ?_⟩
+  · intro x hx; by_cases h : x ∈ I0 <;> simp [h]
+  · -- not summable: support is the uncountable interval [0,1]
+    intro hsum
+    have hcount := hsum.countable_support
+    have hsupp : Function.support (fun x : ℝ => if x ∈ I0 then (1:ℝ) else 0) = (I0 : Set ℝ) := by
+      ext x
+      simp only [Function.mem_support, ne_eq, ite_eq_right_iff, one_ne_zero, imp_false, not_not,
+        BoundedInterval.mem_iff]
+    rw [hsupp] at hcount
+    have hI0set : (I0 : Set ℝ) = Set.Icc (0:ℝ) 1 := by rw [hI0def, BoundedInterval.set_Icc]
+    rw [hI0set] at hcount
+    have h2 := hcount.le_aleph0
+    rw [Cardinal.mk_Icc_real (by norm_num : (0:ℝ) < 1)] at h2
+    exact absurd h2 (not_le.mpr Cardinal.aleph0_lt_continuum)
+  · intro N hN
+    rcases le_or_gt N 1 with hNle | hNgt
+    · -- bound by the length of the interval, which is ≤ 1
+      have := upper_integral_le (f := fun x => if x ∈ I0 then (1:ℝ) else 0)
+        (I := Icc 0 N) (M := 1) (by intro x hx; by_cases h : x ∈ I0 <;> simp [h])
+      show upper_integral _ _ ≤ 1
+      have hlen : |(Icc (0:ℝ) N)|ₗ ≤ 1 := by
+        simp only [BoundedInterval.length]; rw [_root_.max_le_iff]; exact ⟨by linarith, by linarith⟩
+      calc upper_integral _ _ ≤ 1 * |(Icc (0:ℝ) N)|ₗ := this
+        _ ≤ 1 := by rw [one_mul]; exact hlen
+    · -- N > 1: the integral equals the integral of the constant 1 over [0,1], i.e. 1
+      have hsub : I0 ⊆ (Icc (0:ℝ) N) := by
+        rw [hI0def, BoundedInterval.subset_iff, BoundedInterval.set_Icc, BoundedInterval.set_Icc]
+        apply Set.Icc_subset_Icc (le_refl 0) (le_of_lt hNgt)
+      have hpc : PiecewiseConstantOn (fun _ : ℝ => (1:ℝ)) I0 :=
+        (ConstantOn.of_const' (1:ℝ) (I0:Set ℝ)).piecewiseConstantOn
+      have hext := PiecewiseConstantOn.integ_of_extend hsub hpc
+      have hfpc : PiecewiseConstantOn (fun x => if x ∈ I0 then (1:ℝ) else 0) (Icc 0 N) :=
+        PiecewiseConstantOn.of_extend hsub hpc
+      have hriemann := (integ_of_piecewise_const hfpc).2
+      show upper_integral _ _ ≤ 1
+      rw [show upper_integral (fun x => if x ∈ I0 then (1:ℝ) else 0) (Icc 0 N)
+        = integ (fun x => if x ∈ I0 then (1:ℝ) else 0) (Icc 0 N) from rfl]
+      rw [hriemann]
+      unfold PiecewiseConstantOn.integ'
+      rw [hext, PiecewiseConstantOn.integ_const]
+      rw [hI0def]; simp only [BoundedInterval.length]; norm_num
 
 end Chapter11
