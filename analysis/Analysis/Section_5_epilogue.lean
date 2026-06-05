@@ -360,13 +360,87 @@ theorem Sequence.difference_approaches_zero {a: ℕ → ℚ} (ha: Sequence.IsCau
 
 -- There exists a Cauchy sequence entirely above the LIM
 theorem Real.exists_equiv_above {a: ℕ → ℚ} (ha: Sequence.IsCauchy a) 
-  : ∃(b: ℕ → ℚ), Sequence.IsCauchy b ∧ Sequence.Equiv a b ∧ ∀n, LIM a ≤ b n := by 
-    sorry
+  : ∃(b: ℕ → ℚ), Sequence.IsCauchy b ∧ Sequence.Equiv a b ∧ ∀n, LIM a ≤ b n := by
+    have hpick : ∀ n : ℕ, ∃ q : ℚ, LIM a < (q:Real) ∧ (q:Real) < LIM a + (1/(n+1):ℚ) := by
+      intro n; apply Real.rat_between
+      have : (0:Real) < ((1/(n+1):ℚ):Real) := by
+        have : (0:ℚ) < 1/(n+1) := by positivity
+        exact_mod_cast this
+      linarith
+    choose b hb1 hb2 using hpick
+    have habove : ∀ n, LIM a ≤ (b n : Real) := fun n => le_of_lt (hb1 n)
+    have hequiv : Sequence.Equiv a b := by
+      rw [Sequence.equiv_iff]
+      intro ε hε
+      obtain ⟨N1, hN1⟩ := Sequence.difference_approaches_zero ha (ε/2) (by linarith)
+      obtain ⟨N2, hN2⟩ := exists_nat_gt (2/ε : ℚ)
+      refine ⟨max N1 (N2+1), fun n hn => ?_⟩
+      have hn1 : n ≥ N1 := le_trans (le_max_left _ _) hn
+      have hn2 : N2 + 1 ≤ n := le_trans (le_max_right _ _) hn
+      have hsmall : (1/(n+1):ℚ) ≤ ε/2 := by
+        rw [div_le_iff₀ (by positivity), ← sub_nonneg]
+        have hb : (2/ε:ℚ) < (n:ℚ)+1 := by
+          have : (N2:ℚ) ≤ (n:ℚ) := by exact_mod_cast (by omega : N2 ≤ n)
+          linarith
+        have : (2:ℚ) ≤ ε * ((n:ℚ)+1) := by rw [div_lt_iff₀ hε] at hb; nlinarith
+        linarith
+      have hd2 : |LIM a - (a n:Real)| ≤ ((ε/2:ℚ):Real) := hN1 n hn1
+      have hbub : (b n:Real) - LIM a ≤ ((ε/2:ℚ):Real) := by
+        have h1 := hb2 n
+        have h2 : ((1/(n+1):ℚ):Real) ≤ ((ε/2:ℚ):Real) := by exact_mod_cast hsmall
+        linarith
+      have hblb : (b n:Real) - LIM a ≥ 0 := by have := habove n; linarith
+      have key : |((a n:Real) - (b n:Real))| ≤ ((ε:ℚ):Real) := by
+        rw [abs_le] at hd2 ⊢
+        refine ⟨?_, ?_⟩ <;> push_cast at hd2 hbub hblb ⊢ <;> linarith [hd2.1, hd2.2]
+      have : ((|a n - b n|:ℚ):Real) ≤ ((ε:ℚ):Real) := by
+        rw [show ((|a n - b n|:ℚ):Real) = |((a n:Real) - (b n:Real))| by
+          rw [Rat.cast_abs]; push_cast; ring_nf]
+        exact key
+      exact_mod_cast this
+    exact ⟨b, (Sequence.isCauchy_of_equiv hequiv).mp ha, hequiv, habove⟩
 
 -- There exists a Cauchy sequence entirely below the LIM
 theorem Real.exists_equiv_below {a: ℕ → ℚ} (ha: Sequence.IsCauchy a) 
-  : ∃(b: ℕ → ℚ), Sequence.IsCauchy b ∧ Sequence.Equiv a b ∧ ∀n, b n ≤ LIM a := by 
-    sorry
+  : ∃(b: ℕ → ℚ), Sequence.IsCauchy b ∧ Sequence.Equiv a b ∧ ∀n, b n ≤ LIM a := by
+    have hpick : ∀ n : ℕ, ∃ q : ℚ, LIM a - (1/(n+1):ℚ) < (q:Real) ∧ (q:Real) < LIM a := by
+      intro n; apply Real.rat_between
+      have : (0:Real) < ((1/(n+1):ℚ):Real) := by
+        have : (0:ℚ) < 1/(n+1) := by positivity
+        exact_mod_cast this
+      linarith
+    choose b hb1 hb2 using hpick
+    have hbelow : ∀ n, (b n : Real) ≤ LIM a := fun n => le_of_lt (hb2 n)
+    have hequiv : Sequence.Equiv a b := by
+      rw [Sequence.equiv_iff]
+      intro ε hε
+      obtain ⟨N1, hN1⟩ := Sequence.difference_approaches_zero ha (ε/2) (by linarith)
+      obtain ⟨N2, hN2⟩ := exists_nat_gt (2/ε : ℚ)
+      refine ⟨max N1 (N2+1), fun n hn => ?_⟩
+      have hn1 : n ≥ N1 := le_trans (le_max_left _ _) hn
+      have hn2 : N2 + 1 ≤ n := le_trans (le_max_right _ _) hn
+      have hsmall : (1/(n+1):ℚ) ≤ ε/2 := by
+        rw [div_le_iff₀ (by positivity), ← sub_nonneg]
+        have hb : (2/ε:ℚ) < (n:ℚ)+1 := by
+          have : (N2:ℚ) ≤ (n:ℚ) := by exact_mod_cast (by omega : N2 ≤ n)
+          linarith
+        have : (2:ℚ) ≤ ε * ((n:ℚ)+1) := by rw [div_lt_iff₀ hε] at hb; nlinarith
+        linarith
+      have hd2 : |LIM a - (a n:Real)| ≤ ((ε/2:ℚ):Real) := hN1 n hn1
+      have hbub : LIM a - (b n:Real) ≤ ((ε/2:ℚ):Real) := by
+        have h1 := hb1 n
+        have h2 : ((1/(n+1):ℚ):Real) ≤ ((ε/2:ℚ):Real) := by exact_mod_cast hsmall
+        linarith
+      have hblb : LIM a - (b n:Real) ≥ 0 := by have := hbelow n; linarith
+      have key : |((a n:Real) - (b n:Real))| ≤ ((ε:ℚ):Real) := by
+        rw [abs_le] at hd2 ⊢
+        refine ⟨?_, ?_⟩ <;> push_cast at hd2 hbub hblb ⊢ <;> linarith [hd2.1, hd2.2]
+      have : ((|a n - b n|:ℚ):Real) ≤ ((ε:ℚ):Real) := by
+        rw [show ((|a n - b n|:ℚ):Real) = |((a n:Real) - (b n:Real))| by
+          rw [Rat.cast_abs]; push_cast; ring_nf]
+        exact key
+      exact_mod_cast this
+    exact ⟨b, (Sequence.isCauchy_of_equiv hequiv).mp ha, hequiv, hbelow⟩
 
 ----
 
@@ -375,34 +449,129 @@ theorem Real.exists_equiv_below {a: ℕ → ℚ} (ha: Sequence.IsCauchy a)
 #check Real.mk_le_of_forall_le
 #check Real.mk_const
 
+-- Relating the ordering of `LIM a` against a rational to the ordering of `Real.mk ha.CauSeq`
+theorem Real.keyle {a:ℕ → ℚ} (ha: Sequence.IsCauchy a) (q:ℚ) :
+    LIM a ≤ (q:Real) ↔ Real.mk ha.CauSeq ≤ (q:ℝ) := by
+  constructor
+  · intro h
+    apply le_of_forall_pos_le_add
+    intro ε hε
+    obtain ⟨ε', hε'0, hε'ε⟩ := exists_rat_btwn hε
+    obtain ⟨N, hN⟩ := Sequence.difference_approaches_zero ha ε' (by exact_mod_cast hε'0)
+    apply Real.mk_le_of_forall_le
+    refine ⟨N, fun j hj => ?_⟩
+    have hd := hN j hj
+    have hle : (a j : Real) ≤ (q:Real) + (ε':ℚ) := by
+      rw [abs_le] at hd; push_cast at hd; linarith [hd.1, hd.2]
+    have hcoe : (a j : ℚ) ≤ q + ε' := by
+      by_contra hc; push_neg at hc
+      have : ((q+ε':ℚ):Real) < (a j:Real) := (Real.lt_of_coe _ _).mp (by exact_mod_cast hc)
+      push_cast at this; linarith
+    show ((a j:ℚ):ℝ) ≤ (q:ℝ) + ε
+    have : ((a j:ℚ):ℝ) ≤ ((q + ε':ℚ):ℝ) := by exact_mod_cast hcoe
+    push_cast at this; linarith
+  · intro h
+    by_contra hcon
+    push_neg at hcon
+    obtain ⟨r, hqr, hrL⟩ := Real.rat_between hcon
+    have hrq : (0:ℚ) < r - q := by
+      have := (Real.lt_of_coe q r).mpr hqr; linarith
+    set δ : ℚ := (r - q)/2 with hδ
+    have hδ0 : 0 < δ := by rw [hδ]; linarith
+    obtain ⟨N, hN⟩ := Sequence.difference_approaches_zero ha δ hδ0
+    set r' : ℚ := q + δ with hr'
+    have hr'q : q < r' := by rw [hr']; linarith
+    have hlower : ∀ j ≥ N, (r':ℝ) ≤ ((a j:ℚ):ℝ) := by
+      intro j hj
+      have hd := hN j hj
+      rw [abs_le] at hd
+      have h2 : LIM a - (a j:Real) ≤ ((δ:ℚ):Real) := hd.2
+      have h1 : (r:Real) < LIM a := hrL
+      have h3 : (r':Real) ≤ (a j:Real) := by
+        have : (a j:Real) ≥ LIM a - (δ:Real) := by push_cast at h2 ⊢; linarith
+        have hrr : (r':Real) = (r:Real) - (δ:Real) := by rw [hr', hδ]; push_cast; ring
+        rw [hrr]; push_cast at h1 ⊢; linarith
+      have hcoe : (r':ℚ) ≤ a j := by
+        by_contra hc; push_neg at hc
+        exact absurd h3 (not_le.mpr ((Real.lt_of_coe _ _).mp hc))
+      exact_mod_cast hcoe
+    have hge : (r':ℝ) ≤ Real.mk ha.CauSeq := Real.le_mk_of_forall_le ⟨N, hlower⟩
+    have hle : (r':ℝ) ≤ (q:ℝ) := le_trans hge h
+    have : r' ≤ q := by exact_mod_cast hle
+    linarith
+
 -- Transform a `Real` to an `ℝ` by going through Cauchy Sequences
 -- we can use the conversion of Real.mk_eq to use different sequences to show different parts
-theorem Real.equivR_eq' {a: ℕ → ℚ} (ha: Sequence.IsCauchy a) 
-  : (LIM a).equivR = Real.mk ha.CauSeq := by 
-    by_cases hq: ∃(q: ℚ), q = LIM a
-    · sorry
+theorem Real.equivR_eq' {a: ℕ → ℚ} (ha: Sequence.IsCauchy a)
+  : (LIM a).equivR = Real.mk ha.CauSeq := by
     show sSup (Rat.cast '' (LIM a).toSet_Rat) = _
     refine IsLUB.csSup_eq ⟨?_, ?_⟩ (Set.Nonempty.image _ <| Real.toSet_Rat_nonempty _)
-    · -- show that `Real.mk ha.CauSeq` is an upper bound
-      intro _ hy
-      obtain ⟨y, hy, h⟩ := Set.mem_image _ _ _ |>.mp hy
-      rw [← h, show (y: ℝ) = Real.mk (CauSeq.const _ y) from rfl]
-      sorry
-    -- show that for any other upper bound, `Real.mk ha.CauSeq` is smaller
-    intro M hM
-    sorry
+    · rintro _ ⟨q, hq, rfl⟩
+      simp only [Real.toSet_Rat, Set.mem_setOf_eq] at hq
+      have : ¬ (LIM a ≤ (q:Real)) := not_le.mpr hq
+      rw [keyle ha] at this
+      exact le_of_lt (not_le.mp this)
+    · intro M hM
+      apply le_of_forall_rat_lt_imp_le
+      intro q hq
+      have hlt : (q:Real) < LIM a := by
+        by_contra hc; push_neg at hc
+        rw [keyle ha] at hc; exact absurd hq (not_lt.mpr hc)
+      exact hM ⟨q, hlt, rfl⟩
 
 lemma Real.equivR_eq (x: Real) : ∃(a : ℕ → ℚ) (ha: Sequence.IsCauchy a), 
   x = LIM a ∧ x.equivR = Real.mk ha.CauSeq := by 
     obtain ⟨a, ha, rfl⟩ := x.eq_lim
     exact ⟨a, ha, rfl, equivR_eq' ha⟩
 
+-- `(q:ℝ) < equivR x ↔ (q:Real) < x`, from `keyle`
+theorem Real.equivR_rat_lt {x:Real} (q:ℚ) : ((q:ℝ) < equivR x) ↔ ((q:Real) < x) := by
+  obtain ⟨a, ha, rfl, hax⟩ := Real.equivR_eq x
+  rw [hax, ← not_le, ← not_le, Real.keyle ha]
+
+theorem Real.real_le_iff (x y : Real) : x ≤ y ↔ ∀ q:ℚ, (q:Real) < x → (q:Real) < y := by
+  constructor
+  · intro h q hq; exact lt_of_lt_of_le hq h
+  · intro h
+    by_contra hc; push_neg at hc
+    obtain ⟨q, hyq, hqx⟩ := Real.rat_between hc
+    exact absurd (h q hqx) (not_lt.mpr (le_of_lt hyq))
+
+theorem Real.real_le_iff_R (x y : ℝ) : x ≤ y ↔ ∀ q:ℚ, (q:ℝ) < x → (q:ℝ) < y := by
+  constructor
+  · intro h q hq; exact lt_of_lt_of_le hq h
+  · intro h
+    by_contra hc; push_neg at hc
+    obtain ⟨q, hyq, hqx⟩ := exists_rat_btwn hc
+    exact absurd (h q hqx) (not_lt.mpr (le_of_lt hyq))
+
+theorem Real.equivR_le_iff (x y : Real) : equivR x ≤ equivR y ↔ x ≤ y := by
+  rw [real_le_iff_R, real_le_iff]
+  constructor
+  · intro h q hq; rw [← equivR_rat_lt]; exact h q ((equivR_rat_lt q).mpr hq)
+  · intro h q hq; rw [equivR_rat_lt]; exact h q ((equivR_rat_lt q).mp hq)
+
 /-- The isomorphism preserves order and ring operations -/
 noncomputable abbrev Real.equivR_ordered_ring : Real ≃+*o ℝ where
   toEquiv := equivR
-  map_add' := by sorry
-  map_mul' := by sorry
-  map_le_map_iff' := by sorry
+  map_add' := by
+    intro x y
+    show equivR (x + y) = equivR x + equivR y
+    obtain ⟨a, ha, rfl, hax⟩ := Real.equivR_eq x
+    obtain ⟨b, hb, rfl, hby⟩ := Real.equivR_eq y
+    rw [hax, hby, Real.LIM_add ha hb, equivR_eq' (Sequence.IsCauchy.add ha hb)]
+    rw [show (Sequence.IsCauchy.add ha hb).CauSeq = ha.CauSeq + hb.CauSeq from rfl, Real.mk_add]
+  map_mul' := by
+    intro x y
+    show equivR (x * y) = equivR x * equivR y
+    obtain ⟨a, ha, rfl, hax⟩ := Real.equivR_eq x
+    obtain ⟨b, hb, rfl, hby⟩ := Real.equivR_eq y
+    rw [hax, hby, Real.LIM_mul ha hb, equivR_eq' (Sequence.IsCauchy.mul ha hb)]
+    rw [show (Sequence.IsCauchy.mul ha hb).CauSeq = ha.CauSeq * hb.CauSeq from rfl, Real.mk_mul]
+  map_le_map_iff' := by
+    intro x y
+    show equivR x ≤ equivR y ↔ x ≤ y
+    exact Real.equivR_le_iff x y
 
 -- helpers for converting properties between Real and ℝ
 lemma Real.equivR_map_mul {x y : Real} : equivR (x * y) = equivR x * equivR y :=
@@ -411,17 +580,40 @@ lemma Real.equivR_map_mul {x y : Real} : equivR (x * y) = equivR x * equivR y :=
 lemma Real.equivR_map_inv {x: Real} : equivR (x⁻¹) = (equivR x)⁻¹ :=
   map_inv₀ equivR_ordered_ring _
 
-theorem Real.equivR_map_pos {x: Real} : 0 < x ↔ 0 < equivR x := by sorry
+theorem Real.equivR_map_pos {x: Real} : 0 < x ↔ 0 < equivR x := by
+  have hz : equivR (0:Real) = 0 := map_zero equivR_ordered_ring
+  have hinj : Function.Injective equivR := equivR.injective
+  rw [lt_iff_le_and_ne, lt_iff_le_and_ne]
+  constructor
+  · rintro ⟨h1, h2⟩
+    refine ⟨?_, ?_⟩
+    · have := (equivR_le_iff 0 x).mpr h1; rwa [hz] at this
+    · intro he; exact h2 (hinj (by rw [hz]; exact he))
+  · rintro ⟨h1, h2⟩
+    refine ⟨?_, ?_⟩
+    · have : equivR 0 ≤ equivR x := by rw [hz]; exact h1
+      exact (equivR_le_iff 0 x).mp this
+    · intro he; exact h2 (by rw [← he, hz])
 
-theorem Real.equivR_map_nonneg {x: Real} : 0 ≤ x ↔ 0 ≤ equivR x := by sorry
+theorem Real.equivR_map_nonneg {x: Real} : 0 ≤ x ↔ 0 ≤ equivR x := by
+  rw [le_iff_lt_or_eq, le_iff_lt_or_eq, equivR_map_pos]
+  have hz : equivR (0:Real) = 0 := map_zero equivR_ordered_ring
+  have hinj : Function.Injective equivR := equivR.injective
+  constructor
+  · rintro (h|h)
+    · exact Or.inl h
+    · exact Or.inr (by rw [← h, hz])
+  · rintro (h|h)
+    · exact Or.inl h
+    · exact Or.inr (hinj (by rw [hz]; exact h))
 
 
 -- Showing equivalence of the different pows
-theorem Real.pow_of_equivR (x:Real) (n:ℕ) : equivR (x^n) = (equivR x)^n := by
-  sorry
+theorem Real.pow_of_equivR (x:Real) (n:ℕ) : equivR (x^n) = (equivR x)^n :=
+  map_pow equivR_ordered_ring x n
 
-theorem Real.zpow_of_equivR (x:Real) (n:ℤ) : equivR (x^n) = (equivR x)^n := by
-  sorry
+theorem Real.zpow_of_equivR (x:Real) (n:ℤ) : equivR (x^n) = (equivR x)^n :=
+  map_zpow₀ equivR_ordered_ring x n
 
 theorem Real.ratPow_of_equivR (x:Real) (q:ℚ) : equivR (x^q) = (equivR x)^(q:ℝ) := by
   sorry
