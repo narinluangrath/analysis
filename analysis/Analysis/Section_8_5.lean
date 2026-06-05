@@ -307,6 +307,7 @@ example {X:Type} [PartialOrder X] {Y Y':Set X} (hY: IsTotal Y) (hY': IsTotal Y')
     · exact absurd ⟨⟨a,haY⟩, haB⟩ hcaseY
     · exact absurd ⟨⟨a,haY'⟩, haB⟩ hcaseY'
 
+set_option maxHeartbeats 1000000 in
 /-- Lemma 8.5.14-/
 theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y : Set X, IsTotal Y ∧ WellFoundedLT Y ∧ (∃ hx₀ : x₀ ∈ Y, IsMin (⟨ x₀, hx₀ ⟩: Y)) ∧ ¬ ∃ x, IsStrictUpperBound Y x := by
   -- This proof is based on the original text with some technical simplifications.
@@ -352,8 +353,158 @@ theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y 
     exact absurd hx.1 hx.2
 
   -- Exercise 8.5.13
+  -- Generic facts about a good set `W : Ω`.
+  -- The good-set recursion and the `F` description.
+  have good_eq (W : Ω) {x:X} (hx : x ∈ (W:Set X) \ {x₀}) : x = s (F W.1 x) := W.2 x hx
+  have Fdesc (W : Ω) {x:X} (hx : x ∈ (W:Set X) \ {x₀}) :
+      (F W.1 x : Set X) = { y ∈ (W:Set X) | y < x } := by rw [hF hx]
+  -- minimal-element extraction for a good set
+  have memΩ₀ (W : Ω) : IsTotal (W:Set X) ∧ WellFoundedLT (W:Set X) ∧ x₀ ∈ (W:Set X) ∧ ∀ x ∈ (W:Set X), x₀ ≤ x := W.1.2
+  have keyW (W : Ω) : ∀ T : Set (W:Set X), T.Nonempty → ∃ y:(W:Set X), y ∈ T ∧ ∀ z ∈ T, y ≤ z := by
+    obtain ⟨htot, hwell, -, -⟩ := memΩ₀ W
+    rw [WellFoundedLT.iff' htot] at hwell
+    intro T hT; obtain ⟨⟨⟨m, hmW⟩, hmT⟩, hmin⟩ := hwell T hT
+    exact ⟨⟨m, hmW⟩, hmT, fun z hz => (htot ⟨m,hmW⟩ z).elim id (fun h => hmin (b := ⟨z,hz⟩) h)⟩
+  have wf_min (W : Ω) (S : Set X) (hS : S ⊆ (W:Set X)) (hne : S.Nonempty) :
+      ∃ m ∈ S, ∀ z ∈ S, m ≤ z := by
+    set T : Set (W:Set X) := { w | (w:X) ∈ S } with hT
+    have hTne : T.Nonempty := by
+      obtain ⟨a, haS⟩ := hne; exact ⟨⟨a, hS haS⟩, haS⟩
+    obtain ⟨⟨m, hmW⟩, hmT, hmin⟩ := keyW W T hTne
+    refine ⟨m, hmT, ?_⟩
+    intro z hzS
+    exact hmin ⟨z, hS hzS⟩ hzS
+  -- `x₀` is the minimum of any good set
+  have x0min (W : Ω) : ∀ z ∈ (W:Set X), x₀ ≤ z := (memΩ₀ W).2.2.2
+  have x0mem (W : Ω) : x₀ ∈ (W:Set X) := (memΩ₀ W).2.2.1
+  have x0total (W : Ω) : IsTotal (W:Set X) := (memΩ₀ W).1
+
+  -- Exercise 8.5.13
   have ex_8_5_13 {Y Y':Ω} (x:X) (h: x ∈ (Y':Set X) \ Y) : IsStrictUpperBound Y x := by
-    sorry
+    -- The nesting predicate `Q p` for `p ∈ Y'`.
+    set Q : X → Prop := fun p =>
+      (p ∈ (Y:Set X) ∧ {y ∈ (Y':Set X) | y < p} = {y ∈ (Y:Set X) | y < p})
+        ∨ IsStrictUpperBound (Y:Set X) p
+      with hQdef
+    -- Strong induction: every `p ∈ Y'` satisfies `Q p`.
+    have hnest : ∀ p ∈ (Y':Set X), Q p := by
+      by_contra hcon
+      push_neg at hcon
+      obtain ⟨p0, hp0Y', hp0Q⟩ := hcon
+      -- minimal `p ∈ Y'` with `¬ Q p`
+      set S : Set X := {q ∈ (Y':Set X) | ¬ Q q} with hSdef
+      have hSsub : S ⊆ (Y':Set X) := fun q hq => hq.1
+      have hSne : S.Nonempty := ⟨p0, hp0Y', hp0Q⟩
+      obtain ⟨p, ⟨hpY', hpQ⟩, hpmin⟩ := wf_min Y' S hSsub hSne
+      -- IH: any `q ∈ Y'` with `q < p` satisfies `Q q`
+      have IH : ∀ q ∈ (Y':Set X), q < p → Q q := by
+        intro q hqY' hqp
+        by_contra hq
+        have : p ≤ q := hpmin q ⟨hqY', hq⟩
+        order
+      apply hpQ
+      -- handle `p = x₀`
+      by_cases hpx0 : p = x₀
+      · left
+        refine ⟨hpx0 ▸ x0mem Y, ?_⟩
+        have hempty1 : {y ∈ (Y':Set X) | y < p} = (∅:Set X) := by
+          ext y; simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+          rintro ⟨hyY', hyx0⟩
+          have := x0min Y' y hyY'; rw [hpx0] at hyx0; order
+        have hempty2 : {y ∈ (Y:Set X) | y < p} = (∅:Set X) := by
+          ext y; simp only [Set.mem_setOf_eq, Set.mem_empty_iff_false, iff_false]
+          rintro ⟨hyY, hyx0⟩
+          have := x0min Y y hyY; rw [hpx0] at hyx0; order
+        rw [hempty1, hempty2]
+      -- `p ≠ x₀`, so `p ∈ Y' \ {x₀}` and `F Y' p = {y ∈ Y' | y < p}`.
+      have hpdiff : p ∈ (Y':Set X) \ {x₀} := ⟨hpY', hpx0⟩
+      have hAeq : (F Y'.1 p : Set X) = {y ∈ (Y':Set X) | y < p} := Fdesc Y' hpdiff
+      set A : Set X := {y ∈ (Y':Set X) | y < p} with hA
+      have hpeqsA : p = s (F Y'.1 p) := good_eq Y' hpdiff
+      -- Case split : is some `m ∈ A` a strict upper bound of `Y`?
+      by_cases hcase2 : ∃ m ∈ A, IsStrictUpperBound (Y:Set X) m
+      · obtain ⟨m, hmA, hmSUB⟩ := hcase2
+        have hmp : m < p := hmA.2
+        right
+        refine ⟨fun w hw => (lt_of_le_of_lt (hmSUB.1 w hw) hmp).le, ?_⟩
+        intro hpY
+        have := hmSUB.1 p hpY; order
+      push_neg at hcase2
+      -- From the IH, every `m ∈ A` lies in `Y` with matching initial segments.
+      have hAprops : ∀ m ∈ A, m ∈ (Y:Set X) ∧
+          {y ∈ (Y':Set X) | y < m} = {y ∈ (Y:Set X) | y < m} := by
+        intro m hmA
+        rcases IH m hmA.1 hmA.2 with hfirst | hSUB
+        · exact hfirst
+        · exact absurd hSUB (hcase2 m hmA)
+      have hAsubY : A ⊆ (Y:Set X) := fun m hmA => (hAprops m hmA).1
+      -- `A` is downward closed in `Y`.
+      have hAdown : ∀ a ∈ A, ∀ b ∈ (Y:Set X), b < a → b ∈ A := by
+        intro a haA b hbY hba
+        obtain ⟨haY, hseg⟩ := hAprops a haA
+        have hbseg : b ∈ {y ∈ (Y:Set X) | y < a} := ⟨hbY, hba⟩
+        rw [← hseg] at hbseg
+        obtain ⟨hbY', hba'⟩ := hbseg
+        exact ⟨hbY', lt_trans hba' haA.2⟩
+      -- decide whether `p` is a strict upper bound of `Y`.
+      by_cases hYsubA : (Y:Set X) ⊆ A
+      · -- then `p` is a strict upper bound of `Y`
+        right
+        refine ⟨fun w hw => (hYsubA hw).2.le, ?_⟩
+        intro hpY
+        exact absurd (hYsubA hpY).2 (lt_irrefl p)
+      · -- `Y \ A` nonempty : take its minimum `n`.
+        rw [Set.not_subset] at hYsubA
+        obtain ⟨w0, hw0Y, hw0A⟩ := hYsubA
+        set D : Set X := {y ∈ (Y:Set X) | y ∉ A} with hDdef
+        have hDsub : D ⊆ (Y:Set X) := fun y hy => hy.1
+        have hDne : D.Nonempty := ⟨w0, hw0Y, hw0A⟩
+        obtain ⟨n, ⟨hnY, hnA⟩, hnmin⟩ := wf_min Y D hDsub hDne
+        -- show `A = {y ∈ Y | y < n}`
+        have hseg_n : A = {y ∈ (Y:Set X) | y < n} := by
+          apply Set.eq_of_subset_of_subset
+          · intro a haA
+            refine ⟨hAsubY haA, ?_⟩
+            -- `a < n` by totality of `Y`
+            rcases x0total Y ⟨a, hAsubY haA⟩ ⟨n, hnY⟩ with hle | hle
+            · rcases lt_or_eq_of_le (by simpa using hle) with h | h
+              · exact h
+              · exact absurd (h ▸ haA) hnA
+            · -- `n ≤ a` impossible : would force `n ∈ A`
+              have hna : n < a := by
+                rcases lt_or_eq_of_le (by simpa using hle) with h | h
+                · exact h
+                · exact absurd (h ▸ haA) hnA
+              exact absurd (hAdown a haA n hnY hna) hnA
+          · intro c hc
+            obtain ⟨hcY, hcn⟩ := hc
+            by_contra hcA
+            have : n ≤ c := hnmin c ⟨hcY, hcA⟩
+            order
+        -- `x₀ ∈ A`, hence `n ≠ x₀`.
+        have hx0A : x₀ ∈ A := by
+          refine ⟨x0mem Y', ?_⟩
+          exact lt_of_le_of_ne (x0min Y' p hpY') (Ne.symm hpx0)
+        have hnx0 : n ≠ x₀ := fun hn0 => hnA (hn0 ▸ hx0A)
+        -- hence `n` is the `s`-successor of `A`, equal to `p`.
+        have hndiff : n ∈ (Y:Set X) \ {x₀} := ⟨hnY, hnx0⟩
+        have hFYn : (F Y.1 n : Set X) = {y ∈ (Y:Set X) | y < n} := Fdesc Y hndiff
+        have hFeq : F Y.1 n = F Y'.1 p := by
+          apply Subtype.ext
+          rw [hFYn, hAeq, hseg_n]
+        have hnp : n = p := by
+          have := good_eq Y hndiff
+          rw [hFeq, ← hpeqsA] at this
+          exact this
+        -- conclude the first disjunct
+        left
+        refine ⟨hnp ▸ hnY, ?_⟩
+        rw [← hA, hseg_n, hnp]
+    -- Apply the nesting result to the given `x`.
+    obtain ⟨hxY', hxnY⟩ := h
+    rcases hnest x hxY' with ⟨hxY, _⟩ | hSUB
+    · exact absurd hxY hxnY
+    · exact hSUB
 
   have : IsTotal Ω := by
     unfold IsTotal; by_contra!; obtain ⟨ ⟨ ⟨ Y, hY1 ⟩, hY2 ⟩, ⟨ ⟨ Y', hY'1⟩, hY'2 ⟩, h1, h2 ⟩ := this
