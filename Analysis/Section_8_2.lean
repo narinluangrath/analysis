@@ -926,9 +926,103 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
     · exact absurd hxy.symm (hn'_ne y x h)
     · exact h
     · exact absurd hxy (hn'_ne x y h)
+  -- Scaffolding: nonemptiness of greedy sets at each step
+  have hnep : ∀ j:ℕ, { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i }.Nonempty := by
+    intro j; have := hn'_plus_inf j; exact Set.nonempty_coe_sort.mp inferInstance
+  have hnem : ∀ j:ℕ, { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i }.Nonempty := by
+    intro j; have := hn'_minus_inf j; exact Set.nonempty_coe_sort.mp inferInstance
+  -- membership of the chosen index, with sign information
+  have hmem_pos : ∀ j:ℕ, ∑ i:Fin j, a (n' i) < L →
+      n' j ∈ { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := by
+    intro j hc; have key := hn' j; rw [if_pos hc] at key; rw [key]
+    exact (Nat.min_spec (hnep j)).1
+  have hmem_neg : ∀ j:ℕ, ¬ (∑ i:Fin j, a (n' i) < L) →
+      n' j ∈ { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := by
+    intro j hc; have key := hn' j; rw [if_neg hc] at key; rw [key]
+    exact (Nat.min_spec (hnem j)).1
+  -- sign of the picked term
+  have hsign_pos : ∀ j:ℕ, ∑ i:Fin j, a (n' i) < L → 0 ≤ a (n' j) := by
+    intro j hc; have h := hmem_pos j hc
+    simp only [Set.mem_setOf_eq, A_plus] at h; exact h.1
+  have hsign_neg : ∀ j:ℕ, ¬ (∑ i:Fin j, a (n' i) < L) → a (n' j) < 0 := by
+    intro j hc; have h := hmem_neg j hc
+    simp only [Set.mem_setOf_eq, A_minus] at h; exact h.1
+  -- Bridge: the series partial sum of (a∘n') equals the finite sum over Fin j.
+  have hbridge : ∀ j:ℕ, ((a ∘ n':Series).partial ((j:ℤ) - 1)) = ∑ i:Fin j, a (n' i) := by
+    intro j; induction j with
+    | zero =>
+      rw [show ((0:ℕ):ℤ)-1 = -1 by ring,
+        Series.partial_of_lt (show (-1:ℤ) < ((a∘n':Series)).m by norm_num [Series.instCoe])]
+      simp
+    | succ k ih =>
+      have hstep : ((a ∘ n':Series).partial (((k:ℤ)+1) - 1))
+          = ((a ∘ n':Series).partial ((k:ℤ) - 1)) + (a ∘ n':Series).seq (k:ℤ) := by
+        have hm0 : ((a∘n':Series)).m = 0 := rfl
+        have := (a ∘ n':Series).partial_succ (N := (k:ℤ)-1)
+          (by rw [hm0]; omega)
+        rw [show (k:ℤ)-1+1 = (k:ℤ)+1-1 by ring] at this
+        convert this using 2 <;> ring
+      rw [show ((k:ℕ):ℤ)+1-1 = ((k+1:ℕ):ℤ)-1 by push_cast; ring] at hstep
+      rw [hstep, ih, Fin.sum_univ_castSucc]
+      simp [Function.comp]
   have h_case_I : Infinite { j | ∑ i:Fin j, a (n' i) < L } := by sorry
   have h_case_II : Infinite { j | ∑ i:Fin j, a (n' i) ≥ L } := by sorry
-  have hn'_surj : Surjective n' := by sorry
+  -- Greedy exhaustion for A_plus: any x ∈ A_plus is eventually picked.
+  have hexh_plus : ∀ x ∈ A_plus, ∃ j, n' j = x := by
+    intro x hx
+    by_contra hcon; push_neg at hcon
+    -- x never picked ⟹ at every positive step, x is eligible and ≥ the pick
+    -- the positive picks are distinct elements of A_plus ∩ [0,x], a finite set
+    set Pos := { n ∈ A_plus | n ≤ x } with hPos
+    have hPosfin : Pos.Finite := Set.Finite.subset (Set.finite_Iic x) (by
+      intro n hn; simp only [hPos, Set.mem_setOf_eq] at hn; exact hn.2)
+    -- the map sending a positive step j to n' j lands in Pos and is injective
+    have hstep_in : ∀ j, (∑ i:Fin j, a (n' i) < L) → n' j ∈ Pos := by
+      intro j hc
+      have hmem := hmem_pos j hc
+      have hxelig : x ∈ { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := by
+        refine ⟨hx, ?_⟩; intro i; exact fun h => hcon i h.symm
+      have key := hn' j; rw [if_pos hc] at key
+      have hle : n' j ≤ x := by rw [key]; exact (Nat.min_spec (hnep j)).2 x hxelig
+      simp only [hPos, Set.mem_setOf_eq]
+      exact ⟨(by simp only [Set.mem_setOf_eq, A_plus] at hmem ⊢; exact hmem.1), hle⟩
+    -- Now: infinitely many positive steps, all mapping injectively into finite Pos: contradiction
+    have hPsetinf : ({j | ∑ i:Fin j, a (n' i) < L}).Infinite := Set.infinite_coe_iff.mp h_case_I
+    have himg_sub : n' '' {j | ∑ i:Fin j, a (n' i) < L} ⊆ Pos := by
+      rintro y ⟨j, hj, rfl⟩; exact hstep_in j hj
+    have himg_inf : (n' '' {j | ∑ i:Fin j, a (n' i) < L}).Infinite :=
+      hPsetinf.image (Set.injOn_of_injective hn'_inj)
+    exact (hPosfin.subset himg_sub).not_infinite himg_inf
+  -- Greedy exhaustion for A_minus: any x ∈ A_minus is eventually picked.
+  have hexh_minus : ∀ x ∈ A_minus, ∃ j, n' j = x := by
+    intro x hx
+    by_contra hcon; push_neg at hcon
+    set Neg := { n ∈ A_minus | n ≤ x } with hNeg
+    have hNegfin : Neg.Finite := Set.Finite.subset (Set.finite_Iic x) (by
+      intro n hn; simp only [hNeg, Set.mem_setOf_eq] at hn; exact hn.2)
+    have hstep_in : ∀ j, ¬ (∑ i:Fin j, a (n' i) < L) → n' j ∈ Neg := by
+      intro j hc
+      have hmem := hmem_neg j hc
+      have hxelig : x ∈ { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := by
+        refine ⟨hx, ?_⟩; intro i; exact fun h => hcon i h.symm
+      have key := hn' j; rw [if_neg hc] at key
+      have hle : n' j ≤ x := by rw [key]; exact (Nat.min_spec (hnem j)).2 x hxelig
+      simp only [hNeg, Set.mem_setOf_eq]
+      exact ⟨(by simp only [Set.mem_setOf_eq, A_minus] at hmem ⊢; exact hmem.1), hle⟩
+    have hPsetinf : ({j | ∑ i:Fin j, a (n' i) ≥ L}).Infinite := Set.infinite_coe_iff.mp h_case_II
+    have himg_sub : n' '' {j | ∑ i:Fin j, a (n' i) ≥ L} ⊆ Neg := by
+      rintro y ⟨j, hj, rfl⟩
+      exact hstep_in j (by simp only [Set.mem_setOf_eq] at hj; exact not_lt.mpr hj)
+    have himg_inf : (n' '' {j | ∑ i:Fin j, a (n' i) ≥ L}).Infinite :=
+      hPsetinf.image (Set.injOn_of_injective hn'_inj)
+    exact (hNegfin.subset himg_sub).not_infinite himg_inf
+  have hn'_surj : Surjective n' := by
+    intro x
+    rcases (show x ∈ A_plus ∨ x ∈ A_minus by
+      have : x ∈ A_plus ∪ A_minus := by rw [hunion]; trivial
+      exact this) with hx | hx
+    · exact hexh_plus x hx
+    · exact hexh_minus x hx
   have hconv : atTop.Tendsto (a ∘ n') (nhds 0) := by sorry
   have hsum : (a ∘ n':Series).convergesTo L := by sorry
   use n'
