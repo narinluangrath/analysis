@@ -62,7 +62,32 @@ lemma SetTheory.Set.pair_eq_singleton_iff {a b c: Object} : {a, b} = ({c}: Set) 
 /-- Exercise 3.5.1, first part -/
 def OrderedPair.toObject : OrderedPair ↪ Object where
   toFun p := ({ (({p.fst}:Set):Object), (({p.fst, p.snd}:Set):Object) }:Set)
-  inj' := by sorry
+  inj' := by
+    intro p q h
+    simp only at h
+    rw [SetTheory.Set.coe_eq_iff] at h
+    have key := SetTheory.Set.pair_eq_pair h
+    simp only [SetTheory.Set.coe_eq_iff] at key
+    have hsingle : ∀ {a c:Object}, ({a}:Set) = {c} → a = c := by
+      intro a c hac
+      have : a ∈ ({c}:Set) := hac ▸ (SetTheory.Set.mem_singleton a a).mpr rfl
+      exact (SetTheory.Set.mem_singleton a c).mp this
+    have hfst : p.fst = q.fst := by
+      rcases key with ⟨h1, _⟩ | ⟨h1, _⟩
+      · exact hsingle h1
+      · exact (SetTheory.Set.pair_eq_singleton_iff.mp h1.symm).1.symm
+    have hsnd : p.snd = q.snd := by
+      rcases key with ⟨h1, h2⟩ | ⟨h1, h2⟩
+      · rw [hsingle h1] at h2
+        rcases SetTheory.Set.pair_eq_pair h2 with ⟨_, hh⟩ | ⟨hh1, hh2⟩
+        · exact hh
+        · rw [hh2, hh1]
+      · have hq := SetTheory.Set.pair_eq_singleton_iff.mp h1.symm
+        have hp := SetTheory.Set.pair_eq_singleton_iff.mp h2
+        rw [hp.2, hq.1, ← hq.2]
+    ext
+    · exact hfst
+    · exact hsnd
 
 instance OrderedPair.inst_coeObject : Coe OrderedPair Object where
   coe := toObject
@@ -268,18 +293,89 @@ noncomputable abbrev SetTheory.Set.iProd_of_const_equiv (I:Set) (X: Set) :
 /-- Example 3.5.10 -/
 noncomputable abbrev SetTheory.Set.iProd_equiv_prod (X: ({0,1}:Set) → Set) :
     iProd X ≃ (X ⟨ 0, by simp ⟩) ×ˢ (X ⟨ 1, by simp ⟩) where
-  toFun := sorry
-  invFun := sorry
-  left_inv := sorry
-  right_inv := sorry
+  toFun t := mk_cartesian
+    (((mem_iProd _).mp t.property).choose ⟨0, by simp⟩)
+    (((mem_iProd _).mp t.property).choose ⟨1, by simp⟩)
+  invFun z := ⟨tuple (fun i => letI := Classical.propDecidable; if h : i.val = 0 then
+      (by rw [show i = (⟨0, by simp⟩ : ({0,1}:Set)) from Subtype.val_inj.mp h]; exact fst z)
+    else
+      have h1 : i.val = 1 := by have := i.property; rw [mem_pair] at this; tauto
+      (by rw [show i = (⟨1, by simp⟩ : ({0,1}:Set)) from Subtype.val_inj.mp h1]; exact snd z)),
+    by apply tuple_mem_iProd⟩
+  left_inv t := by
+    apply Subtype.val_inj.mp
+    simp only
+    conv_rhs => rw [((mem_iProd _).mp t.property).choose_spec]
+    rw [tuple_inj]
+    funext j
+    by_cases hj : j.val = 0
+    · have hje : j = (⟨0, by simp⟩ : ({0,1}:Set)) := Subtype.val_inj.mp hj
+      subst hje; simp [fst_of_mk_cartesian]
+    · have hj1 : j.val = 1 := by have := j.property; rw [mem_pair] at this; tauto
+      have hje : j = (⟨1, by simp⟩ : ({0,1}:Set)) := Subtype.val_inj.mp hj1
+      subst hje; simp [hj, snd_of_mk_cartesian]
+  right_inv z := by
+    simp only
+    generalize_proofs h1 h2 pa pb hex
+    have hc := hex.choose_spec
+    rw [tuple_inj] at hc
+    have e0 := congrFun hc ⟨0, h1⟩
+    have e1 := congrFun hc ⟨1, h2⟩
+    simp only [eq_mpr_eq_cast, cast_eq, dif_pos, dif_neg,
+      (by simp : ((0:Object) = 0) = True), (by simp : ((1:Object) = 0) = False)] at e0 e1
+    simp only [dif_neg (not_false), reduceDIte] at e1
+    rw [show hex.choose ⟨0, h1⟩ = fst z from e0.symm,
+        show hex.choose ⟨1, h2⟩ = snd z from e1.symm]
+    exact mk_cartesian_fst_snd_eq z
 
 /-- Example 3.5.10 -/
 noncomputable abbrev SetTheory.Set.iProd_equiv_prod_triple (X: ({0,1,2}:Set) → Set) :
     iProd X ≃ (X ⟨ 0, by simp ⟩) ×ˢ (X ⟨ 1, by simp ⟩) ×ˢ (X ⟨ 2, by simp ⟩) where
-  toFun := sorry
-  invFun := sorry
-  left_inv := sorry
-  right_inv := sorry
+  toFun t := mk_cartesian
+    (((mem_iProd _).mp t.property).choose ⟨0, by simp⟩)
+    (mk_cartesian
+      (((mem_iProd _).mp t.property).choose ⟨1, by simp⟩)
+      (((mem_iProd _).mp t.property).choose ⟨2, by simp⟩))
+  invFun z := ⟨tuple (fun i => letI := Classical.propDecidable;
+    if h0 : i.val = 0 then
+      (by rw [show i = (⟨0, by simp⟩ : ({0,1,2}:Set)) from Subtype.val_inj.mp h0]; exact fst z)
+    else if h1 : i.val = 1 then
+      (by rw [show i = (⟨1, by simp⟩ : ({0,1,2}:Set)) from Subtype.val_inj.mp h1]; exact fst (snd z))
+    else
+      have h2 : i.val = 2 := by have := i.property; rw [mem_triple] at this; tauto
+      (by rw [show i = (⟨2, by simp⟩ : ({0,1,2}:Set)) from Subtype.val_inj.mp h2]; exact snd (snd z))),
+    by apply tuple_mem_iProd⟩
+  left_inv t := by
+    apply Subtype.val_inj.mp
+    simp only
+    conv_rhs => rw [((mem_iProd _).mp t.property).choose_spec]
+    rw [tuple_inj]
+    funext j
+    by_cases hj0 : j.val = 0
+    · have hje : j = (⟨0, by simp⟩ : ({0,1,2}:Set)) := Subtype.val_inj.mp hj0
+      subst hje; simp
+    · by_cases hj1 : j.val = 1
+      · have hje : j = (⟨1, by simp⟩ : ({0,1,2}:Set)) := Subtype.val_inj.mp hj1
+        subst hje; simp [hj0]
+      · have hj2 : j.val = 2 := by have := j.property; rw [mem_triple] at this; tauto
+        have hje : j = (⟨2, by simp⟩ : ({0,1,2}:Set)) := Subtype.val_inj.mp hj2
+        subst hje; simp [hj0, hj1]
+  right_inv z := by
+    simp only
+    generalize_proofs h0 h1 h2 pa pb pc hex
+    have hc := hex.choose_spec
+    rw [tuple_inj] at hc
+    have e0 := congrFun hc ⟨0, h0⟩
+    have e1 := congrFun hc ⟨1, h1⟩
+    have e2 := congrFun hc ⟨2, h2⟩
+    simp only [eq_mpr_eq_cast, cast_eq, reduceDIte,
+      (by simp : ((0:Object) = 0) = True), (by simp : ((1:Object) = 0) = False),
+      (by simp : ((2:Object) = 0) = False), (by simp : ((1:Object) = 1) = True),
+      (by simp : ((2:Object) = 1) = False)] at e0 e1 e2
+    rw [show hex.choose ⟨0, h0⟩ = fst z from e0.symm,
+        show hex.choose ⟨1, h1⟩ = fst (snd z) from e1.symm,
+        show hex.choose ⟨2, h2⟩ = snd (snd z) from e2.symm]
+    rw [mk_cartesian_fst_snd_eq, mk_cartesian_fst_snd_eq]
 
 /-- Connections with Mathlib's `Set.pi` -/
 noncomputable abbrev SetTheory.Set.iProd_equiv_pi (I:Set) (X: I → Set) :
@@ -407,7 +503,34 @@ theorem SetTheory.Set.finite_choice {n:ℕ} {X: Fin n → Set} (h: ∀ i, X i �
 /-- Exercise 3.5.1, second part (requires axiom of regularity) -/
 abbrev OrderedPair.toObject' : OrderedPair ↪ Object where
   toFun p := ({ p.fst, (({p.fst, p.snd}:Set):Object) }:Set)
-  inj' := by sorry
+  inj' := by
+    intro p q h
+    simp only at h
+    rw [SetTheory.Set.coe_eq_iff] at h
+    have key := SetTheory.Set.pair_eq_pair h
+    rcases key with ⟨h1, h2⟩ | ⟨h1, h2⟩
+    · -- good case
+      rw [SetTheory.Set.coe_eq_iff] at h2
+      have hsnd : p.snd = q.snd := by
+        rw [h1] at h2
+        rcases SetTheory.Set.pair_eq_pair h2 with ⟨_, hh⟩ | ⟨hh1, hh2⟩
+        · exact hh
+        · rw [hh2, hh1]
+      ext
+      · exact h1
+      · exact hsnd
+    · -- bad case ruled out by regularity
+      exfalso
+      set P : SetTheory.Set := {p.fst, p.snd}
+      set Q : SetTheory.Set := {q.fst, q.snd}
+      -- h1 : p.fst = (Q:Object), h2 : (P:Object) = q.fst
+      have hQinP : (Q:Object) ∈ P := by
+        rw [← h1]; exact (SetTheory.Set.mem_pair _ _ _).mpr (Or.inl rfl)
+      have hPinQ : (P:Object) ∈ Q := by
+        rw [h2]; exact (SetTheory.Set.mem_pair _ _ _).mpr (Or.inl rfl)
+      rcases SetTheory.Set.not_mem_mem P Q with hc | hc
+      · exact hc hPinQ
+      · exact hc hQinP
 
 /-- An alternate definition of a tuple, used in Exercise 3.5.2 -/
 structure SetTheory.Set.Tuple (n:ℕ) where
@@ -454,10 +577,45 @@ theorem SetTheory.Set.Tuple.eq {n:ℕ} (t t':Tuple n) :
 
 noncomputable abbrev SetTheory.Set.iProd_equiv_tuples (n:ℕ) (X: Fin n → Set) :
     iProd X ≃ { t:Tuple n // ∀ i, (t.x i:Object) ∈ X i } where
-  toFun := sorry
-  invFun := sorry
-  left_inv := sorry
-  right_inv := sorry
+  toFun t :=
+    let f := ((mem_iProd _).mp t.property).choose
+    ⟨{ X := (Fin n).replace (P := fun i y => y = (f i).val) (by rintro i y y' ⟨rfl, h⟩; exact h.symm)
+       x := fun i => ⟨(f i).val, by rw [replacement_axiom]; exact ⟨i, rfl⟩⟩
+       surj := by
+         rintro ⟨s, hs⟩
+         rw [replacement_axiom] at hs
+         obtain ⟨i, hi⟩ := hs
+         exact ⟨i, by apply Subtype.val_inj.mp; exact hi.symm⟩ },
+     by intro i; simp only; rw [show (f i).val = ((f i:X i):Object) from rfl]; exact (f i).property⟩
+  invFun p := ⟨tuple (fun i => ⟨(p.val.x i).val, p.property i⟩), by apply tuple_mem_iProd⟩
+  left_inv t := by
+    apply Subtype.val_inj.mp
+    simp only
+    conv_rhs => rw [((mem_iProd _).mp t.property).choose_spec]
+  right_inv p := by
+    obtain ⟨t, ht⟩ := p
+    apply Subtype.val_inj.mp
+    simp only
+    generalize_proofs g1 g2 g3 hex
+    have hc := g1.choose_spec
+    rw [tuple_inj] at hc
+    have key : ∀ i, (t.x i).val = (g1.choose i).val :=
+      fun i => congrArg Subtype.val (congrFun hc i)
+    apply Tuple.ext
+    · apply ext
+      intro y
+      rw [replacement_axiom]
+      constructor
+      · rintro ⟨i, rfl⟩
+        rw [← key i]
+        exact (t.x i).property
+      · intro hy
+        obtain ⟨i, hi⟩ := t.surj ⟨y, hy⟩
+        refine ⟨i, ?_⟩
+        rw [← key i, hi]
+    · intro i
+      simp only
+      rw [← key i]
 
 /--
   Exercise 3.5.3. The spirit here is to avoid direct rewrites (which make all of these claims
@@ -772,11 +930,42 @@ theorem SetTheory.Set.is_graph {X Y G:Set} (hG: G ⊆ X ×ˢ Y)
   exercise is to derive it from `SetTheory.Set.exists_powerset` instead.
 -/
 theorem SetTheory.Set.powerset_axiom' (X Y:Set) :
-    ∃! S:Set, ∀(F:Object), F ∈ S ↔ ∃ f: Y → X, f = F := sorry
+    ∃! S:Set, ∀(F:Object), F ∈ S ↔ ∃ f: Y → X, f = F := by
+  apply existsUnique_of_exists_of_unique
+  · exact ⟨X ^ Y, fun F => powerset_axiom F⟩
+  · intro S S' hS hS'
+    apply ext
+    intro z
+    rw [hS z, hS' z]
 
 /-- Exercise 3.5.12, with errata from web site incorporated -/
 theorem SetTheory.Set.recursion (X: Set) (f: nat → X → X) (c:X) :
-    ∃! a: nat → X, a 0 = c ∧ ∀ n, a (n + 1:ℕ) = f n (a n) := by sorry
+    ∃! a: nat → X, a 0 = c ∧ ∀ n, a (n + 1:ℕ) = f n (a n) := by
+  classical
+  let g : ℕ → X := fun k => Nat.rec c (fun j prev => f (j:Nat) prev) k
+  have g0 : g 0 = c := rfl
+  have gsucc : ∀ k:ℕ, g (k+1) = f (k:Nat) (g k) := fun k => rfl
+  apply existsUnique_of_exists_of_unique
+  · refine ⟨fun m => g (m:ℕ), ?_, ?_⟩
+    · show g ((0:Nat):ℕ) = c
+      rw [show ((0:Nat):ℕ) = 0 from by simp, g0]
+    · intro n
+      simp only
+      rw [show ((((n:ℕ) + 1 : ℕ):Nat):ℕ) = (n:ℕ) + 1 from by simp, gsucc]
+      congr 2
+      simp
+  · rintro a b ⟨ha0, ha⟩ ⟨hb0, hb⟩
+    funext m
+    obtain ⟨k, rfl⟩ : ∃ k:ℕ, m = (k:Nat) := ⟨(m:ℕ), by simp⟩
+    induction k with
+    | zero =>
+      have : ((0:ℕ):Nat) = (0:Nat) := rfl
+      rw [this, ha0, hb0]
+    | succ j ih =>
+      have haj := ha (j:Nat)
+      have hbj := hb (j:Nat)
+      simp only [nat_equiv_coe_of_coe] at haj hbj
+      rw [haj, hbj, ih]
 
 /-- Exercise 3.5.13 -/
 theorem SetTheory.Set.nat_unique (nat':Set) (zero:nat') (succ:nat' → nat')
@@ -786,18 +975,82 @@ theorem SetTheory.Set.nat_unique (nat':Set) (zero:nat') (succ:nat' → nat')
     ∧ ∀ (n:nat) (n':nat'), f n = n' ↔ f (n+1:ℕ) = succ n' := by
   have nat_coe_eq {m:nat} {n} : (m:ℕ) = n → m = n := by aesop
   have nat_coe_eq_zero {m:nat} : (m:ℕ) = 0 → m = 0 := nat_coe_eq
-  obtain ⟨f, hf⟩ := recursion nat' sorry sorry
-  apply existsUnique_of_exists_of_unique
-  · use f
+  obtain ⟨f, ⟨hf0, hfs0⟩, _⟩ := recursion nat' (fun _ prev => succ prev) zero
+  -- f 0 = zero, f (n+1) = succ (f n)
+  have hfs : ∀ n:ℕ, f ((n+1:ℕ):Nat) = succ (f (n:Nat)) := hfs0
+  -- the iff condition
+  have hiff : ∀ (n:nat) (n':nat'), f n = n' ↔ f (n+1:ℕ) = succ n' := by
+    intro n n'
+    have key : f (n+1:ℕ) = succ (f n) := by
+      have := hfs (n:ℕ); simpa [nat_equiv_coe_of_coe] using this
+    rw [key]
     constructor
-    · constructor
-      · intro x1 x2 heq
-        induction' hx1: (x1:ℕ) with i ih generalizing x1 x2
-        · sorry
-        sorry
-      sorry
-    sorry
-  sorry
+    · intro h; rw [h]
+    · intro h; by_contra hne
+      exact succ_of_ne _ _ hne h
+  -- surjectivity onto nat' via induction principle
+  have hsurj : Function.Surjective f := by
+    have : ∀ y:nat', ∃ n:nat, f n = y := by
+      apply ind
+      · exact ⟨0, hf0⟩
+      · rintro y ⟨n, hn⟩
+        refine ⟨(n+1:ℕ), ?_⟩
+        have := hfs (n:ℕ)
+        simpa [nat_equiv_coe_of_coe, hn] using this
+    exact this
+  -- injectivity
+  have hinj : Function.Injective f := by
+    intro x1 x2 heq
+    obtain ⟨k1, rfl⟩ : ∃ k:ℕ, x1 = (k:Nat) := ⟨(x1:ℕ), by simp⟩
+    obtain ⟨k2, rfl⟩ : ∃ k:ℕ, x2 = (k:Nat) := ⟨(x2:ℕ), by simp⟩
+    -- f (k:Nat) determines k; prove by showing f is "strictly" via succ_ne
+    rw [nat_equiv_inj]
+    by_contra hne
+    -- WLOG k1 < k2 or k2 < k1
+    -- prove ∀ a b:ℕ, a < b → f (a:Nat) ≠ f (b:Nat)
+    have hmono : ∀ a b:ℕ, a < b → f (a:Nat) ≠ f (b:Nat) := by
+      intro a b hab
+      obtain ⟨d, rfl⟩ : ∃ d:ℕ, b = a + d + 1 := ⟨b - a - 1, by omega⟩
+      -- f (a+d+1) = succ^(d+1) applied... use induction on a
+      clear hne heq hab
+      induction a generalizing d with
+      | zero =>
+        intro hcon
+        -- f 0 = zero, f (d+1) = succ (...), so zero = succ(...) contradiction
+        rw [show ((0:ℕ):Nat) = (0:Nat) from rfl, hf0] at hcon
+        have hd : f ((d+1:ℕ):Nat) = succ (f (d:Nat)) := hfs d
+        rw [show ((0+d+1:ℕ):Nat) = ((d+1:ℕ):Nat) from by congr 1; omega, hd] at hcon
+        exact succ_ne _ hcon.symm
+      | succ a iha =>
+        intro hcon
+        have e1 : f ((a+1:ℕ):Nat) = succ (f (a:Nat)) := hfs a
+        have e2 : f ((a+d+1+1:ℕ):Nat) = succ (f ((a+d+1:ℕ):Nat)) := hfs (a+d+1)
+        rw [e1] at hcon
+        rw [show ((a+1+d+1:ℕ):Nat) = ((a+d+1+1:ℕ):Nat) from by congr 1; omega, e2] at hcon
+        have := succ_of_ne _ _ (iha d)
+        exact this hcon
+    rcases Nat.lt_or_ge k1 k2 with h | h
+    · exact hmono k1 k2 h heq
+    · rcases Nat.lt_or_ge k2 k1 with h2 | h2
+      · exact hmono k2 k1 h2 heq.symm
+      · exact hne (by omega)
+  have key : ∀ g : nat → nat', (Function.Bijective g ∧ g 0 = zero
+      ∧ ∀ (n:nat) (n':nat'), g n = n' ↔ g (n+1:ℕ) = succ n') → g = f := by
+    rintro g ⟨_, hg0, hgiff⟩
+    funext m
+    obtain ⟨k, rfl⟩ : ∃ k:ℕ, m = (k:Nat) := ⟨(m:ℕ), by simp⟩
+    induction k with
+    | zero => rw [show ((0:ℕ):Nat) = (0:Nat) from rfl, hf0, hg0]
+    | succ j ih =>
+      have hfj : f ((j+1:ℕ):Nat) = succ (f (j:Nat)) := hfs j
+      have hgj : g ((j+1:ℕ):Nat) = succ (g (j:Nat)) := by
+        have := (hgiff (j:Nat) (g (j:Nat))).mp rfl
+        simpa [nat_equiv_coe_of_coe] using this
+      rw [hfj, hgj, ih]
+  apply existsUnique_of_exists_of_unique
+  · exact ⟨f, ⟨hinj, hsurj⟩, hf0, hiff⟩
+  · intro a b ha hb
+    rw [key a ha, key b hb]
 
 
 end Chapter3
