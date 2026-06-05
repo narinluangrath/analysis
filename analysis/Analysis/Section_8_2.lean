@@ -755,6 +755,111 @@ theorem divergent_parts_of_divergent {a: ℕ → ℝ} (ha: (a:Series).converges)
       rw [← parbridge N]; have := hC N; rw [_root_.abs_le] at this; linarith [this.2]
     have := hMr N; linarith
 
+/-- The positive and negative index sets of a conditionally convergent series are both infinite. -/
+private theorem divergent_parts_infinite {a: ℕ → ℝ} (ha: (a:Series).converges)
+    (ha': ¬ (a:Series).absConverges) :
+    Set.Infinite { n | a n ≥ 0 } ∧ Set.Infinite { n | a n < 0 } := by
+  classical
+  -- Bridges between partial sums and finite range-sums.
+  have absbridge : ∀ N:ℕ, (a:Series).abs.partial ((N:ℤ)-1) = ∑ n ∈ Finset.range N, |a n| := by
+    intro N; cases N with
+    | zero => simp [Series.partial, Series.partial_of_lt]
+    | succ M =>
+      rw [show ((M+1:ℕ):ℤ)-1 = (M:ℤ) by push_cast; ring]
+      simp only [Series.partial, Series.abs, Series.mk']
+      rw [Finset.Icc_eq_cast, Finset.sum_map, Nat.range_succ_eq_Icc_zero M]
+      apply Finset.sum_congr rfl; intro n hn; simp [Nat.castEmbedding, Series.eval_coe]
+  have parbridge : ∀ N:ℕ, (a:Series).partial ((N:ℤ)-1) = ∑ n ∈ Finset.range N, a n := by
+    intro N; cases N with
+    | zero => simp [Series.partial, Series.partial_of_lt]
+    | succ M =>
+      rw [show ((M+1:ℕ):ℤ)-1 = (M:ℤ) by push_cast; ring]
+      simp only [Series.partial]
+      rw [Finset.Icc_eq_cast, Finset.sum_map, Nat.range_succ_eq_Icc_zero M]
+      apply Finset.sum_congr rfl; intro n hn; simp [Nat.castEmbedding, Series.eval_coe]
+  have habnn : (a:Series).abs.nonneg := by
+    intro n; simp only [Series.abs, Series.mk']; split_ifs
+    · exact abs_nonneg _
+    · exact le_refl 0
+  obtain ⟨La, hLa⟩ := ha
+  obtain ⟨C, hC⟩ : ∃ C, ∀ N:ℕ, |(a:Series).partial ((N:ℤ)-1)| ≤ C := by
+    set g : ℕ → ℝ := fun N => (a:Series).partial ((N:ℤ)-1) with hg
+    have htend : Tendsto g atTop (nhds La) := by
+      apply hLa.comp; apply Filter.tendsto_atTop_atTop.mpr
+      intro b; exact ⟨(b+1).toNat, fun n hn => by omega⟩
+    have hb := htend.cauchySeq.isBounded_range
+    rw [Metric.isBounded_iff_subset_closedBall 0] at hb
+    obtain ⟨C, hC⟩ := hb
+    exact ⟨C, fun N => by simpa [Metric.mem_closedBall, Real.dist_eq, hg] using hC (Set.mem_range_self N)⟩
+  have decompabs : ∀ N:ℕ, ∑ n ∈ Finset.range N, |a n|
+      = (∑ n ∈ Finset.range N, max (a n) 0) + (∑ n ∈ Finset.range N, max (-(a n)) 0) := by
+    intro N; rw [← Finset.sum_add_distrib]; apply Finset.sum_congr rfl
+    intro n _; rcases le_total 0 (a n) with h | h
+    · rw [abs_of_nonneg h, max_eq_left h, max_eq_right (by linarith)]; ring
+    · rw [abs_of_nonpos h, max_eq_right h, max_eq_left (by linarith)]; ring
+  have decompsum : ∀ N:ℕ, ∑ n ∈ Finset.range N, a n
+      = (∑ n ∈ Finset.range N, max (a n) 0) - (∑ n ∈ Finset.range N, max (-(a n)) 0) := by
+    intro N; rw [← Finset.sum_sub_distrib]; apply Finset.sum_congr rfl
+    intro n _; rcases le_total 0 (a n) with h | h
+    · rw [max_eq_left h, max_eq_right (by linarith)]; ring
+    · rw [max_eq_right h, max_eq_left (by linarith)]; ring
+  have makeconv : ∀ B:ℝ, (∀ N:ℕ, ∑ n ∈ Finset.range N, |a n| ≤ B) → (a:Series).absConverges := by
+    intro B hB
+    rw [Series.absConverges, Series.converges_of_nonneg_iff habnn]
+    refine ⟨max B 0, fun K => ?_⟩
+    rcases lt_or_ge K 0 with hK | hK
+    · rw [Series.partial_of_lt (by simpa using hK)]; exact le_max_right _ _
+    · have : K = ((K.toNat + 1 : ℕ):ℤ) - 1 := by omega
+      rw [this, absbridge]; exact le_trans (hB _) (le_max_left _ _)
+  -- A bound on one part's partial sums forces absConverges (via the convergence bound C).
+  have boundp : ∀ Bp:ℝ, (∀ N:ℕ, ∑ n ∈ Finset.range N, max (a n) 0 ≤ Bp) → (a:Series).absConverges := by
+    intro Bp hPr
+    apply makeconv (2*Bp + C); intro N
+    rw [decompabs N]
+    have e1 : ∑ n ∈ Finset.range N, max (-(a n)) 0
+        = (∑ n ∈ Finset.range N, max (a n) 0) - ∑ n ∈ Finset.range N, a n := by
+      rw [decompsum N]; ring
+    rw [e1]
+    have hca : ∑ n ∈ Finset.range N, a n ≥ -C := by
+      rw [← parbridge N]; have := hC N; rw [_root_.abs_le] at this; linarith [this.1]
+    have := hPr N; linarith
+  have boundm : ∀ Bm:ℝ, (∀ N:ℕ, ∑ n ∈ Finset.range N, max (-(a n)) 0 ≤ Bm) → (a:Series).absConverges := by
+    intro Bm hMr
+    apply makeconv (2*Bm + C); intro N
+    rw [decompabs N]
+    have e1 : ∑ n ∈ Finset.range N, max (a n) 0
+        = (∑ n ∈ Finset.range N, max (-(a n)) 0) + ∑ n ∈ Finset.range N, a n := by
+      rw [decompsum N]; ring
+    rw [e1]
+    have hca : ∑ n ∈ Finset.range N, a n ≤ C := by
+      rw [← parbridge N]; have := hC N; rw [_root_.abs_le] at this; linarith [this.2]
+    have := hMr N; linarith
+  -- bound the part sum by the sum over the (finite) part set
+  have part_bound : ∀ (p : ℕ → ℝ) (S : Set ℕ) (hS : S.Finite),
+      (∀ n, n ∉ S → p n = 0) → (∀ n, 0 ≤ p n) →
+      ∀ N:ℕ, ∑ n ∈ Finset.range N, p n ≤ ∑ n ∈ hS.toFinset, p n := by
+    intro p S hS hzero hnn N
+    rw [← Finset.sum_filter_add_sum_filter_not (Finset.range N) (· ∈ S) p]
+    have h0 : ∑ n ∈ (Finset.range N).filter (fun n => ¬ n ∈ S), p n = 0 := by
+      apply Finset.sum_eq_zero; intro n hn
+      rw [Finset.mem_filter] at hn; exact hzero n hn.2
+    rw [h0, add_zero]
+    apply Finset.sum_le_sum_of_subset_of_nonneg
+    · intro n hn; rw [Finset.mem_filter] at hn
+      rw [Set.Finite.mem_toFinset]; exact hn.2
+    · intro n _ _; exact hnn n
+  constructor
+  · rw [← Set.not_finite]; intro hfin
+    apply ha'; apply boundp (∑ n ∈ hfin.toFinset, max (a n) 0)
+    apply part_bound (fun n => max (a n) 0) { n | a n ≥ 0 } hfin
+    · intro n hn; simp only [Set.mem_setOf_eq, not_le] at hn; exact max_eq_right (le_of_lt hn)
+    · intro n; positivity
+  · rw [← Set.not_finite]; intro hfin
+    apply ha'; apply boundm (∑ n ∈ hfin.toFinset, max (-(a n)) 0)
+    apply part_bound (fun n => max (-(a n)) 0) { n | a n < 0 } hfin
+    · intro n hn; simp only [Set.mem_setOf_eq, not_lt] at hn; exact max_eq_right (by linarith)
+    · intro n; positivity
+
 /-- Theorem 8.2.8 (Riemann rearrangement theorem) / Exercise 8.2.5 -/
 theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).converges)
   (ha': ¬ (a:Series).absConverges) (L:ℝ) :
@@ -768,8 +873,9 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
     rw [Set.disjoint_iff_inter_eq_empty]; ext; simp [A_plus, A_minus]
   have hunion : A_plus ∪ A_minus = .univ := by
     ext; simp [A_plus, A_minus]; grind
-  have hA_plus_inf : Infinite A_plus := sorry
-  have hA_minus_inf : Infinite A_minus := sorry
+  obtain ⟨hAp_inf, hAm_inf⟩ := divergent_parts_infinite ha ha'
+  have hA_plus_inf : Infinite A_plus := hAp_inf.to_subtype
+  have hA_minus_inf : Infinite A_minus := hAm_inf.to_subtype
   obtain ⟨ a_plus, ha_plus_bij, ha_plus_mono ⟩ := (Nat.monotone_enum_of_infinite A_plus).exists
   obtain ⟨ a_minus, ha_minus_bij, ha_minus_mono ⟩ := (Nat.monotone_enum_of_infinite A_minus).exists
   let F : (n : ℕ) → ((m : ℕ) → m < n → ℕ) → ℕ :=
@@ -783,8 +889,18 @@ theorem permute_convergesTo_of_divergent {a: ℕ → ℝ} (ha: (a:Series).conver
     else
       Nat.min { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i }
     := Nat.strongRec.eq_def _ j
-  have hn'_plus_inf (j:ℕ) : Infinite { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := by sorry
-  have hn'_minus_inf (j:ℕ) : Infinite { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := by sorry
+  have hn'_plus_inf (j:ℕ) : Infinite { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } := by
+    have hsub : { n ∈ A_plus | ∀ i:Fin j, n ≠ n' i } = A_plus \ Set.range (fun i:Fin j => n' i) := by
+      ext n; simp [Set.mem_diff, A_plus]; tauto
+    rw [hsub]
+    apply Set.Infinite.to_subtype
+    apply Set.Infinite.diff hAp_inf (Set.finite_range _)
+  have hn'_minus_inf (j:ℕ) : Infinite { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } := by
+    have hsub : { n ∈ A_minus | ∀ i:Fin j, n ≠ n' i } = A_minus \ Set.range (fun i:Fin j => n' i) := by
+      ext n; simp [Set.mem_diff, A_minus]; tauto
+    rw [hsub]
+    apply Set.Infinite.to_subtype
+    apply Set.Infinite.diff hAm_inf (Set.finite_range _)
   have hn'_inj : Injective n' := by sorry
   have h_case_I : Infinite { j | ∑ i:Fin j, a (n' i) < L } := by sorry
   have h_case_II : Infinite { j | ∑ i:Fin j, a (n' i) ≥ L } := by sorry
