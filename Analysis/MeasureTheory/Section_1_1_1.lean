@@ -677,16 +677,60 @@ theorem IsElementary.box {d:ℕ} (B: Box d) : IsElementary B.toSet := by
 /-- Exercise 1.1.1 (Boolean closure): The union of two elementary sets is elementary. -/
 theorem IsElementary.union {d:ℕ} {E F: Set (EuclideanSpace' d)}
   (hE: IsElementary E) (hF: IsElementary F) : IsElementary (E ∪ F) := by
-  sorry
+  classical
+  obtain ⟨S, rfl⟩ := hE
+  obtain ⟨T, rfl⟩ := hF
+  refine ⟨S ∪ T, ?_⟩
+  ext x
+  simp only [Set.mem_union, Set.mem_iUnion, Finset.mem_union, exists_prop]
+  constructor
+  · rintro (⟨B, hB, hx⟩ | ⟨B, hB, hx⟩)
+    · exact ⟨B, Or.inl hB, hx⟩
+    · exact ⟨B, Or.inr hB, hx⟩
+  · rintro ⟨B, (hB | hB), hx⟩
+    · exact Or.inl ⟨B, hB, hx⟩
+    · exact Or.inr ⟨B, hB, hx⟩
 
 /-- The union of a finset of elementary sets is elementary. -/
 lemma IsElementary.union' {d:ℕ} {S: Finset (Set (EuclideanSpace' d))}
-(hE: ∀ E ∈ S, IsElementary E) : IsElementary (⋃ E ∈ S, E) := by sorry
+(hE: ∀ E ∈ S, IsElementary E) : IsElementary (⋃ E ∈ S, E) := by
+  classical
+  induction S using Finset.induction_on with
+  | empty => exact ⟨∅, by simp⟩
+  | @insert a S' ha ih =>
+    have ha_elem : IsElementary a := hE a (Finset.mem_insert_self _ _)
+    have hrest : IsElementary (⋃ E ∈ S', E) := ih (fun E hE_mem => hE E (Finset.mem_insert_of_mem hE_mem))
+    have : (⋃ E ∈ insert a S', E) = a ∪ (⋃ E ∈ S', E) := by
+      ext x; simp [Set.mem_iUnion, Finset.mem_insert]
+    rw [this]
+    exact ha_elem.union hrest
 
 /-- Exercise 1.1.1 (Boolean closure): The intersection of two elementary sets is elementary. -/
 theorem IsElementary.inter {d:ℕ} {E F: Set (EuclideanSpace' d)}
   (hE: IsElementary E) (hF: IsElementary F) : IsElementary (E ∩ F) := by
-  sorry
+  classical
+  obtain ⟨S, rfl⟩ := hE
+  obtain ⟨T, rfl⟩ := hF
+  let boxInter : Box d → Box d → Box d := fun B C => ⟨fun i => B.side i ∩ C.side i⟩
+  have hboxInter : ∀ B C : Box d, (boxInter B C).toSet = B.toSet ∩ C.toSet := by
+    intro B C
+    ext x; simp only [Box.mem_toSet, Set.mem_inter_iff, boxInter, BoundedInterval.inter_eq]
+    constructor
+    · intro h; exact ⟨fun i => (h i).1, fun i => (h i).2⟩
+    · intro ⟨h1, h2⟩ i; exact ⟨h1 i, h2 i⟩
+  refine ⟨(S ×ˢ T).image (fun p => boxInter p.1 p.2), ?_⟩
+  ext x
+  simp only [Set.mem_inter_iff, Set.mem_iUnion, Finset.mem_image, Finset.mem_product,
+    Box.mem_toSet, exists_prop, Prod.exists]
+  constructor
+  · rintro ⟨⟨B, hB, hxB⟩, ⟨C, hC, hxC⟩⟩
+    refine ⟨boxInter B C, ⟨B, C, ⟨hB, hC⟩, rfl⟩, ?_⟩
+    have : x ∈ (boxInter B C).toSet := by rw [hboxInter]; exact ⟨hxB, hxC⟩
+    exact this
+  · rintro ⟨K, ⟨B, C, ⟨hB, hC⟩, rfl⟩, hxK⟩
+    have : x ∈ (boxInter B C).toSet := hxK
+    rw [hboxInter] at this
+    exact ⟨⟨B, hB, this.1⟩, ⟨C, hC, this.2⟩⟩
 
 /-- The empty set is elementary. -/
 theorem IsElementary.empty (d:ℕ) : IsElementary (∅: Set (EuclideanSpace' d)) := by
@@ -700,14 +744,47 @@ theorem IsElementary.sdiff {d:ℕ} {E F: Set (EuclideanSpace' d)}
 /-- Exercise 1.1.1 (Boolean closure): The symmetric difference of two elementary sets is elementary. -/
 theorem IsElementary.symmDiff {d:ℕ} {E F: Set (EuclideanSpace' d)}
   (hE: IsElementary E) (hF: IsElementary F) : IsElementary (symmDiff E F) := by
-  sorry
+  rw [Set.symmDiff_def]
+  exact (hE.sdiff hF).union (hF.sdiff hE)
 
 open Pointwise
 
 /-- Exercise 1.1.1 (Boolean closure): Translation of an elementary set is elementary. -/
 theorem IsElementary.translate {d:ℕ} {E: Set (EuclideanSpace' d)}
   (hE: IsElementary E) (x: EuclideanSpace' d) : IsElementary (E + {x}) := by
-  sorry
+  classical
+  obtain ⟨S, rfl⟩ := hE
+  let shift : BoundedInterval → ℝ → BoundedInterval := fun I c => match I with
+    | Ioo a b => Ioo (a+c) (b+c)
+    | Icc a b => Icc (a+c) (b+c)
+    | Ioc a b => Ioc (a+c) (b+c)
+    | Ico a b => Ico (a+c) (b+c)
+  have hshift : ∀ (I:BoundedInterval) (c:ℝ) (t:ℝ), t ∈ (shift I c).toSet ↔ t - c ∈ I.toSet := by
+    intro I c t; cases I <;>
+      simp only [shift, BoundedInterval.toSet, Set.mem_Ioo, Set.mem_Icc, Set.mem_Ioc, Set.mem_Ico] <;>
+      constructor <;> intro h <;> exact ⟨by linarith [h.1], by linarith [h.2]⟩
+  let tB : Box d → Box d := fun B => ⟨fun i => shift (B.side i) (x i)⟩
+  refine ⟨S.image tB, ?_⟩
+  ext y
+  simp only [Set.mem_add, Set.mem_iUnion, Finset.mem_image, Box.mem_toSet, exists_prop,
+    Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨z, ⟨B, hB, hzB⟩, w, hw, rfl⟩
+    refine ⟨tB B, ⟨B, hB, rfl⟩, ?_⟩
+    intro i
+    rw [hshift]
+    have hgoal : (z + w) i - x i = z i := by rw [hw]; simp
+    simp only [hgoal]
+    exact hzB i
+  · rintro ⟨K, ⟨B, hB, rfl⟩, hyK⟩
+    refine ⟨y - x, ?_, x, rfl, by simp⟩
+    refine ⟨B, hB, ?_⟩
+    intro i
+    have hi := hyK i
+    rw [hshift] at hi
+    have hgoal : (y - x) i = y i - x i := by simp
+    simp only [hgoal]
+    exact hi
 
 /-- A sublemma for proving Lemma 1.1.2(i): Any finset of intervals admits a common
 refinement into pairwise disjoint sub-intervals. -/
@@ -972,7 +1049,7 @@ theorem Box.measure_uniq' {d:ℕ} {T₁ T₂: Finset (Box d)}
  (hT₂: (T₂ : Set (Box d)).PairwiseDisjoint Box.toSet)
  (heq: ⋃ B ∈ T₁, B.toSet = ⋃ B ∈ T₂, B.toSet) :
  ∑ B ∈ T₁, |B|ᵥ = ∑ B ∈ T₂, |B|ᵥ := by
- sorry
+ exact Box.measure_uniq hT₁ hT₂ heq
 
 /-- Example: the measure of (1,2) ∪ \[3,6\] is 1 + 3 = 4. -/
 example :
@@ -1608,9 +1685,172 @@ abbrev Box.prod {d₁ d₂:ℕ} (B₁: Box d₁) (B₂: Box d₂) : Box (d₁ + 
 
 /-- Exercise 1.1.4: The Cartesian product of two elementary sets is elementary. -/
 theorem IsElementary.prod {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)}
-  (hE₁: IsElementary E₁) (hE₂: IsElementary E₂) : IsElementary (EuclideanSpace'.prod E₁ E₂) := by sorry
+  (hE₁: IsElementary E₁) (hE₂: IsElementary E₂) : IsElementary (EuclideanSpace'.prod E₁ E₂) := by
+  classical
+  obtain ⟨S, rfl⟩ := hE₁
+  obtain ⟨T, rfl⟩ := hE₂
+  -- box-level product set identity
+  have hbox : ∀ (B₁ : Box d₁) (B₂ : Box d₂),
+      (B₁.prod B₂).toSet = (EuclideanSpace'.prod_equiv d₁ d₂).symm '' (B₁.toSet ×ˢ B₂.toSet) := by
+    intro B₁ B₂
+    ext y
+    simp only [Box.mem_toSet, Set.mem_image, Set.mem_prod]
+    constructor
+    · intro hy
+      refine ⟨EuclideanSpace'.prod_equiv d₁ d₂ y, ⟨?_, ?_⟩, by simp⟩
+      · refine Box.mem_toSet.mpr (fun ⟨i, hi⟩ => ?_)
+        have := hy ⟨i, by omega⟩
+        simp only [Box.prod, dif_pos hi] at this
+        simpa [EuclideanSpace'.prod_equiv] using this
+      · refine Box.mem_toSet.mpr (fun ⟨i, hi⟩ => ?_)
+        have := hy ⟨i + d₁, by omega⟩
+        simp only [Box.prod, show ¬ (i + d₁ < d₁) by omega, dif_neg] at this
+        simp only [Nat.add_sub_cancel] at this
+        simpa [EuclideanSpace'.prod_equiv] using this
+    · rintro ⟨z, ⟨hz1, hz2⟩, rfl⟩
+      intro ⟨i, hi⟩
+      simp only [Box.prod, EuclideanSpace'.prod_equiv, Equiv.coe_fn_symm_mk, PiLp.toLp_apply]
+      by_cases h : i < d₁
+      · simp only [dif_pos h]; exact hz1 ⟨i, h⟩
+      · simp only [dif_neg h]; exact hz2 ⟨i - d₁, by omega⟩
+  refine ⟨(S ×ˢ T).image (fun p => p.1.prod p.2), ?_⟩
+  rw [EuclideanSpace'.prod]
+  ext y
+  simp only [Set.mem_image, Set.mem_prod, Finset.mem_image, Finset.mem_product,
+    Set.mem_iUnion, exists_prop, Prod.exists]
+  constructor
+  · rintro ⟨z1, z2, ⟨hz1, hz2⟩, rfl⟩
+    obtain ⟨B₁, hB₁, hzB₁⟩ := hz1
+    obtain ⟨B₂, hB₂, hzB₂⟩ := hz2
+    refine ⟨B₁.prod B₂, ⟨B₁, B₂, ⟨hB₁, hB₂⟩, rfl⟩, ?_⟩
+    have : (EuclideanSpace'.prod_equiv d₁ d₂).symm (z1, z2) ∈ (B₁.prod B₂).toSet := by
+      rw [hbox]; exact ⟨(z1, z2), ⟨hzB₁, hzB₂⟩, rfl⟩
+    exact this
+  · rintro ⟨K, ⟨B₁, B₂, ⟨hB₁, hB₂⟩, rfl⟩, hyK⟩
+    have : y ∈ (B₁.prod B₂).toSet := hyK
+    rw [hbox] at this
+    obtain ⟨z, ⟨hz1, hz2⟩, rfl⟩ := this
+    exact ⟨z.1, z.2, ⟨⟨B₁, hB₁, hz1⟩, ⟨B₂, hB₂, hz2⟩⟩, rfl⟩
+
+/-- The set of a product box is the product of the sets. -/
+lemma Box.prod_toSet {d₁ d₂:ℕ} (B₁: Box d₁) (B₂: Box d₂) :
+    (B₁.prod B₂).toSet = (EuclideanSpace'.prod_equiv d₁ d₂).symm '' (B₁.toSet ×ˢ B₂.toSet) := by
+  ext y
+  simp only [Box.mem_toSet, Set.mem_image, Set.mem_prod]
+  constructor
+  · intro hy
+    refine ⟨EuclideanSpace'.prod_equiv d₁ d₂ y, ⟨?_, ?_⟩, by simp⟩
+    · refine Box.mem_toSet.mpr (fun ⟨i, hi⟩ => ?_)
+      have := hy ⟨i, by omega⟩
+      simp only [Box.prod, dif_pos hi] at this
+      simpa [EuclideanSpace'.prod_equiv] using this
+    · refine Box.mem_toSet.mpr (fun ⟨i, hi⟩ => ?_)
+      have := hy ⟨i + d₁, by omega⟩
+      simp only [Box.prod, show ¬ (i + d₁ < d₁) by omega, dif_neg] at this
+      simp only [Nat.add_sub_cancel] at this
+      simpa [EuclideanSpace'.prod_equiv] using this
+  · rintro ⟨z, ⟨hz1, hz2⟩, rfl⟩
+    intro ⟨i, hi⟩
+    simp only [Box.prod, EuclideanSpace'.prod_equiv, Equiv.coe_fn_symm_mk, PiLp.toLp_apply]
+    by_cases h : i < d₁
+    · simp only [dif_pos h]; exact hz1 ⟨i, h⟩
+    · simp only [dif_neg h]; exact hz2 ⟨i - d₁, by omega⟩
+
+/-- Volume is multiplicative over box products. -/
+lemma Box.volume_prod {d₁ d₂:ℕ} (B₁: Box d₁) (B₂: Box d₂) :
+    |B₁.prod B₂|ᵥ = |B₁|ᵥ * |B₂|ᵥ := by
+  simp only [Box.volume]
+  rw [Fin.prod_univ_add]
+  congr 1
+  · apply Finset.prod_congr rfl
+    intro ⟨i, hi⟩ _
+    simp only [Box.prod, Fin.castAdd, Fin.castLE, dif_pos hi]
+  · apply Finset.prod_congr rfl
+    intro ⟨i, hi⟩ _
+    simp only [Box.prod, Fin.natAdd, show ¬ (d₁ + i < d₁) by omega, dif_neg, not_false_iff,
+      Nat.add_sub_cancel_left]
 
 /-- Measure is multiplicative on products: μ(E₁ × E₂) = μ(E₁) \* μ(E₂). -/
 theorem IsElementary.measure_of_prod {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)}
   (hE₁: IsElementary E₁) (hE₂: IsElementary E₂)
-  : (hE₁.prod hE₂).measure = hE₁.measure * hE₂.measure := by sorry
+  : (hE₁.prod hE₂).measure = hE₁.measure * hE₂.measure := by
+  classical
+  obtain ⟨T₁, hT₁disj, hT₁eq⟩ := hE₁.partition
+  obtain ⟨T₂, hT₂disj, hT₂eq⟩ := hE₂.partition
+  set U₁ := T₁.filter (fun B => B.toSet.Nonempty) with hU₁
+  set U₂ := T₂.filter (fun B => B.toSet.Nonempty) with hU₂
+  have hU₁disj : (U₁ : Set (Box d₁)).PairwiseDisjoint Box.toSet :=
+    hT₁disj.subset (by intro x hx; exact Finset.mem_of_mem_filter x hx)
+  have hU₂disj : (U₂ : Set (Box d₂)).PairwiseDisjoint Box.toSet :=
+    hT₂disj.subset (by intro x hx; exact Finset.mem_of_mem_filter x hx)
+  have hU₁eq : E₁ = ⋃ B ∈ U₁, B.toSet := by
+    rw [hT₁eq]; ext y; simp only [Set.mem_iUnion, hU₁, Finset.mem_filter]
+    constructor
+    · rintro ⟨B, hB, hy⟩; exact ⟨B, ⟨hB, ⟨y, hy⟩⟩, hy⟩
+    · rintro ⟨B, ⟨hB, _⟩, hy⟩; exact ⟨B, hB, hy⟩
+  have hU₂eq : E₂ = ⋃ B ∈ U₂, B.toSet := by
+    rw [hT₂eq]; ext y; simp only [Set.mem_iUnion, hU₂, Finset.mem_filter]
+    constructor
+    · rintro ⟨B, hB, hy⟩; exact ⟨B, ⟨hB, ⟨y, hy⟩⟩, hy⟩
+    · rintro ⟨B, ⟨hB, _⟩, hy⟩; exact ⟨B, hB, hy⟩
+  have hU₁ne : ∀ B ∈ U₁, B.toSet.Nonempty := fun B hB => (Finset.mem_filter.mp hB).2
+  have hU₂ne : ∀ B ∈ U₂, B.toSet.Nonempty := fun B hB => (Finset.mem_filter.mp hB).2
+  set P := (U₁ ×ˢ U₂).image (fun p => p.1.prod p.2) with hP
+  have hprodinj : Set.InjOn (fun p : Box d₁ × Box d₂ => p.1.prod p.2) (U₁ ×ˢ U₂) := by
+    rintro ⟨B₁, B₂⟩ hB ⟨B₁', B₂'⟩ hB' heq
+    simp only [Finset.coe_product, Set.mem_prod, Finset.mem_coe] at hB hB'
+    simp only at heq
+    have hs : (B₁.prod B₂).toSet = (B₁'.prod B₂').toSet := congr_arg Box.toSet heq
+    rw [Box.prod_toSet, Box.prod_toSet] at hs
+    have hs2 : B₁.toSet ×ˢ B₂.toSet = B₁'.toSet ×ˢ B₂'.toSet :=
+      (Set.image_eq_image ((EuclideanSpace'.prod_equiv d₁ d₂).symm.injective)).mp hs
+    rw [Set.prod_eq_prod_iff] at hs2
+    rcases hs2 with ⟨h1, h2⟩ | ⟨h1, h2⟩
+    · simp only [Prod.mk.injEq]
+      exact ⟨Box.toSet_injective_of_nonempty (hU₁ne B₁ hB.1) (hU₁ne B₁' hB'.1) h1,
+             Box.toSet_injective_of_nonempty (hU₂ne B₂ hB.2) (hU₂ne B₂' hB'.2) h2⟩
+    · exfalso
+      rcases h1 with h1 | h1
+      · exact (hU₁ne B₁ hB.1).ne_empty h1
+      · exact (hU₂ne B₂ hB.2).ne_empty h1
+  have hPdisj : (P : Set (Box (d₁+d₂))).PairwiseDisjoint Box.toSet := by
+    rw [Set.pairwiseDisjoint_iff]
+    intro A hA A' hA' hAA'
+    simp only [hP, Finset.coe_image, Set.mem_image, Finset.mem_coe, Finset.mem_product] at hA hA'
+    obtain ⟨⟨B₁, B₂⟩, hB, rfl⟩ := hA
+    obtain ⟨⟨B₁', B₂'⟩, hB', rfl⟩ := hA'
+    obtain ⟨y, hy, hy'⟩ := hAA'
+    rw [Box.prod_toSet] at hy hy'
+    obtain ⟨z, ⟨hz1, hz2⟩, rfl⟩ := hy
+    obtain ⟨z', ⟨hz1', hz2'⟩, hzz⟩ := hy'
+    have hzz' : z = z' := (EuclideanSpace'.prod_equiv d₁ d₂).symm.injective hzz.symm
+    subst hzz'
+    have e1 : B₁ = B₁' := by
+      rw [Set.pairwiseDisjoint_iff] at hU₁disj
+      exact hU₁disj hB.1 hB'.1 ⟨z.1, hz1, hz1'⟩
+    have e2 : B₂ = B₂' := by
+      rw [Set.pairwiseDisjoint_iff] at hU₂disj
+      exact hU₂disj hB.2 hB'.2 ⟨z.2, hz2, hz2'⟩
+    rw [e1, e2]
+  have hPeq : EuclideanSpace'.prod E₁ E₂ = ⋃ B ∈ P, B.toSet := by
+    rw [EuclideanSpace'.prod, hU₁eq, hU₂eq]
+    ext y
+    simp only [Set.mem_image, Set.mem_prod, Set.mem_iUnion, hP, Finset.mem_image,
+      Finset.mem_product, exists_prop, Prod.exists]
+    constructor
+    · rintro ⟨z1, z2, ⟨⟨B₁, hB₁, hzB₁⟩, ⟨B₂, hB₂, hzB₂⟩⟩, rfl⟩
+      refine ⟨B₁.prod B₂, ⟨B₁, B₂, ⟨hB₁, hB₂⟩, rfl⟩, ?_⟩
+      rw [Box.prod_toSet]; exact ⟨(z1, z2), ⟨hzB₁, hzB₂⟩, rfl⟩
+    · rintro ⟨K, ⟨B₁, B₂, ⟨hB₁, hB₂⟩, rfl⟩, hyK⟩
+      rw [Box.prod_toSet] at hyK
+      obtain ⟨z, ⟨hz1, hz2⟩, rfl⟩ := hyK
+      exact ⟨z.1, z.2, ⟨⟨B₁, hB₁, hz1⟩, ⟨B₂, hB₂, hz2⟩⟩, rfl⟩
+  rw [(hE₁.prod hE₂).measure_eq hPdisj hPeq, hE₁.measure_eq hU₁disj hU₁eq,
+      hE₂.measure_eq hU₂disj hU₂eq]
+  rw [hP, Finset.sum_image (by
+    intro a ha b hb hab
+    exact hprodinj (by simpa using ha) (by simpa using hb) hab)]
+  rw [Finset.sum_product, Finset.sum_mul_sum]
+  apply Finset.sum_congr rfl; intro B₁ _
+  apply Finset.sum_congr rfl; intro B₂ _
+  exact Box.volume_prod B₁ B₂

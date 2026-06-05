@@ -11,15 +11,24 @@ A companion to (the introduction to) Section 1.4.2 of the book "An introduction 
 class ConcreteSigmaAlgebra (X:Type*) extends ConcreteBooleanAlgebra X where
   countable_union_mem : ∀ E : ℕ → Set X, (∀ n, measurable (E n)) → measurable (⋃ n, E n)
 
-def ConcreteSigmaAlgebra.toMeasurableSpace {X: Type*} (B: ConcreteSigmaAlgebra X) : MeasurableSpace X :=
-  by sorry
+def ConcreteSigmaAlgebra.toMeasurableSpace {X: Type*} (B: ConcreteSigmaAlgebra X) : MeasurableSpace X := {
+  MeasurableSet' := B.measurable
+  measurableSet_empty := B.empty_mem
+  measurableSet_compl := B.compl_mem
+  measurableSet_iUnion := B.countable_union_mem
+}
 
-def MeasurableSpace.toConcreteSigmaAlgebra {X: Type*} (M: MeasurableSpace X) : ConcreteSigmaAlgebra X :=
-  by sorry
+def MeasurableSpace.toConcreteSigmaAlgebra {X: Type*} (M: MeasurableSpace X) : ConcreteSigmaAlgebra X := {
+  measurable := M.MeasurableSet'
+  empty_mem := M.measurableSet_empty
+  compl_mem := M.measurableSet_compl
+  union_mem := fun E F hE hF => @MeasurableSet.union X M E F hE hF
+  countable_union_mem := M.measurableSet_iUnion
+}
 
 def ConcreteBooleanAlgebra.isSigmaAlgebra {X: Type*} (B: ConcreteBooleanAlgebra X) : Prop := ∀ E : ℕ → Set X, (∀ n, measurable (E n)) → measurable (⋃ n, E n)
 
-theorem ConcreteSigmaAlgebra.isSigmaAlgebra {X: Type*} (B: ConcreteSigmaAlgebra X) : B.isSigmaAlgebra := by sorry
+theorem ConcreteSigmaAlgebra.isSigmaAlgebra {X: Type*} (B: ConcreteSigmaAlgebra X) : B.isSigmaAlgebra := B.countable_union_mem
 
 def ConcreteBooleanAlgebra.isSigmaAlgebra.toSigmaAlgebra {X: Type*} {B: ConcreteBooleanAlgebra X} (h: B.isSigmaAlgebra) : ConcreteSigmaAlgebra X :=
   { countable_union_mem := h }
@@ -54,8 +63,8 @@ instance ConcreteSigmaAlgebra.instLE (X:Type*) : LE (ConcreteSigmaAlgebra X) :=
 
 instance ConcreteSigmaAlgebra.instPartialOrder (X:Type*) : PartialOrder (ConcreteSigmaAlgebra X) :=
   {
-    le_refl := sorry
-    le_trans := sorry
+    le_refl := fun B E h => h
+    le_trans := fun B1 B2 B3 h12 h23 E hE => h23 E (h12 E hE)
     le_antisymm := sorry
   }
 
@@ -68,7 +77,7 @@ instance ConcreteSigmaAlgebra.instOrderTop {X:Type*} : OrderTop (ConcreteSigmaAl
       union_mem := fun _ _ _ _ => trivial
       countable_union_mem := fun _ _ => trivial
     }
-    le_top := sorry
+    le_top := fun B E _ => trivial
   }
 
 instance ConcreteSigmaAlgebra.instOrderBot {X:Type*} : OrderBot (ConcreteSigmaAlgebra X) :=
@@ -78,9 +87,25 @@ instance ConcreteSigmaAlgebra.instOrderBot {X:Type*} : OrderBot (ConcreteSigmaAl
       empty_mem := by grind
       compl_mem := fun E hE => by grind
       union_mem := fun E F hE hF => by grind
-      countable_union_mem := fun E hE => by sorry
+      countable_union_mem := fun E hE => by
+        by_cases h : ∃ n, E n = Set.univ
+        · right
+          obtain ⟨n, hn⟩ := h
+          apply Set.eq_univ_of_univ_subset
+          rw [← hn]
+          exact Set.subset_iUnion E n
+        · left
+          push_neg at h
+          rw [Set.iUnion_eq_empty]
+          intro n
+          rcases hE n with h' | h'
+          · exact h'
+          · exact absurd h' (h n)
     }
-    bot_le := sorry
+    bot_le := fun B E hE => by
+      rcases hE with h | h
+      · rw [h]; exact B.empty_mem
+      · rw [h, ← Set.compl_empty]; exact B.compl_mem _ B.empty_mem
   }
 
 /-- Exercise 1.4.13 (Intersection of sigma-algebras) -/
@@ -89,10 +114,10 @@ instance ConcreteSigmaAlgebra.instInfSet {X:Type*} : InfSet (ConcreteSigmaAlgebr
       sInf S :=
         {
           measurable := fun E => ∀ B ∈ S, B.measurable E
-          empty_mem := by sorry
-          compl_mem := by sorry
-          union_mem := by sorry
-          countable_union_mem := by sorry
+          empty_mem := fun B _ => B.empty_mem
+          compl_mem := fun E hE B hB => B.compl_mem E (hE B hB)
+          union_mem := fun E F hE hF B hB => B.union_mem E F (hE B hB) (hF B hB)
+          countable_union_mem := fun E hE B hB => B.countable_union_mem E (fun n => hE n B hB)
         }
   }
 
@@ -221,7 +246,7 @@ def MeasurableSpace.sigmaAlgebra {X: Type*} (M: MeasurableSpace X) : ConcreteSig
   measurable := M.MeasurableSet'
   empty_mem := M.measurableSet_empty
   compl_mem := M.measurableSet_compl
-  union_mem := sorry
+  union_mem := fun E F hE hF => @MeasurableSet.union X M E F hE hF
   countable_union_mem := M.measurableSet_iUnion
 }
 

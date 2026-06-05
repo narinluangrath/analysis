@@ -21,9 +21,16 @@ instance ConcreteBooleanAlgebra.instLE (X:Type*) : LE (ConcreteBooleanAlgebra X)
 
 instance ConcreteBooleanAlgebra.instPartialOrder (X:Type*) : PartialOrder (ConcreteBooleanAlgebra X) :=
   {
-    le_refl := sorry
-    le_trans := sorry
-    le_antisymm := sorry
+    le_refl := fun B E h => h
+    le_trans := fun B1 B2 B3 h12 h23 E h => h23 E (h12 E h)
+    le_antisymm := by
+      intro B1 B2 h12 h21
+      have hmeas : B1.measurable = B2.measurable := by
+        funext E
+        exact propext ⟨fun h => h12 E h, fun h => h21 E h⟩
+      cases B1; cases B2
+      cases hmeas
+      rfl
   }
 
 def ConcreteBooleanAlgebra.measurableSets {X:Type*} (B: ConcreteBooleanAlgebra X) : Set (Set X) :=
@@ -38,7 +45,7 @@ instance ConcreteBooleanAlgebra.instOrderTop {X:Type*} : OrderTop (ConcreteBoole
       compl_mem := fun _ _ => trivial
       union_mem := fun _ _ _ _ => trivial
     }
-    le_top := sorry
+    le_top := fun B E _ => trivial
   }
 
 /-- Example 1.4.3 -/
@@ -50,25 +57,59 @@ instance ConcreteBooleanAlgebra.instOrderBot {X:Type*} : OrderBot (ConcreteBoole
       compl_mem := fun E hE => by grind
       union_mem := fun E F hE hF => by grind
     }
-    bot_le := sorry
+    bot_le := by
+      intro B E hE
+      rcases hE with h | h
+      · rw [h]; exact B.empty_mem
+      · rw [h, ← Set.compl_empty]; exact B.compl_mem _ B.empty_mem
   }
 
 /-- Exercise 1.4.1 (Elementary algebra) -/
 def EuclideanSpace'.elementary_boolean_algebra (d:ℕ) : ConcreteBooleanAlgebra (EuclideanSpace' d) :=
   {
     measurable := fun E => IsElementary E ∨ IsElementary Eᶜ
-    empty_mem := by sorry
-    compl_mem := by sorry
-    union_mem := by sorry
+    empty_mem := Or.inl (IsElementary.empty d)
+    compl_mem := by
+      intro E hE
+      rcases hE with h | h
+      · exact Or.inr (by rwa [compl_compl])
+      · exact Or.inl h
+    union_mem := by
+      intro E F hE hF
+      have hcompl : (E ∪ F)ᶜ = Eᶜ ∩ Fᶜ := by rw [Set.compl_union]
+      rcases hE with hE | hE <;> rcases hF with hF | hF
+      · exact Or.inl (hE.union hF)
+      · refine Or.inr ?_
+        rw [hcompl, Set.inter_comm, ← Set.diff_eq]
+        exact hF.sdiff hE
+      · refine Or.inr ?_
+        rw [hcompl, ← Set.diff_eq]
+        exact hE.sdiff hF
+      · exact Or.inr (by rw [hcompl]; exact hE.inter hF)
   }
 
 /-- Example 1.4.4 (Jordan algebra) -/
 def JordanMeasurable.boolean_algebra (d:ℕ) : ConcreteBooleanAlgebra (EuclideanSpace' d) :=
   {
     measurable := fun E => JordanMeasurable E ∨ JordanMeasurable Eᶜ
-    empty_mem := by sorry
-    compl_mem := by sorry
-    union_mem := by sorry
+    empty_mem := Or.inl (JordanMeasurable.empty d)
+    compl_mem := by
+      intro E hE
+      rcases hE with h | h
+      · exact Or.inr (by rwa [compl_compl])
+      · exact Or.inl h
+    union_mem := by
+      intro E F hE hF
+      have hcompl : (E ∪ F)ᶜ = Eᶜ ∩ Fᶜ := by rw [Set.compl_union]
+      rcases hE with hE | hE <;> rcases hF with hF | hF
+      · exact Or.inl (hE.union hF)
+      · refine Or.inr ?_
+        rw [hcompl, Set.inter_comm, ← Set.diff_eq]
+        exact hF.sdiff hE
+      · refine Or.inr ?_
+        rw [hcompl, ← Set.diff_eq]
+        exact hE.sdiff hF
+      · exact Or.inr (by rw [hcompl]; exact hE.inter hF)
   }
 
 def JordanMeasurable.gt_elementary_boolean_algebra (d:ℕ) :
@@ -79,9 +120,9 @@ def JordanMeasurable.gt_elementary_boolean_algebra (d:ℕ) :
 def LebesgueMeasurable.boolean_algebra (d:ℕ) : ConcreteBooleanAlgebra (EuclideanSpace' d) :=
   {
     measurable := fun E => LebesgueMeasurable E
-    empty_mem := by sorry
-    compl_mem := by sorry
-    union_mem := by sorry
+    empty_mem := LebesgueMeasurable.empty
+    compl_mem := fun E hE => LebesgueMeasurable.complement hE
+    union_mem := fun E F hE hF => LebesgueMeasurable.union hE hF
   }
 
 def LebesgueMeasurable.gt_jordan_boolean_algebra (d:ℕ) :
@@ -92,9 +133,29 @@ def LebesgueMeasurable.gt_jordan_boolean_algebra (d:ℕ) :
 def IsNull.boolean_algebra (d:ℕ) : ConcreteBooleanAlgebra (EuclideanSpace' d) :=
   {
     measurable := fun E => IsNull E ∨ IsNull Eᶜ
-    empty_mem := by sorry
-    compl_mem := by sorry
-    union_mem := by sorry
+    empty_mem := Or.inl (Lebesgue_outer_measure.of_empty d)
+    compl_mem := by
+      intro E hE
+      rcases hE with h | h
+      · exact Or.inr (by rwa [compl_compl])
+      · exact Or.inl h
+    union_mem := by
+      intro E F hE hF
+      have hnull_union : ∀ {A B : Set (EuclideanSpace' d)}, IsNull A → IsNull B → IsNull (A ∪ B) := by
+        intro A B hA hB
+        have hle := Lebesgue_outer_measure.finite_union_le (![A, B])
+        have hu : (⋃ i, (![A, B]) i) = A ∪ B := by
+          ext x; simp [Fin.exists_fin_two]
+        rw [hu] at hle
+        simp only [Fin.sum_univ_two, Matrix.cons_val_zero, Matrix.cons_val_one,
+          Matrix.head_cons, hA, hB, add_zero] at hle
+        exact le_antisymm hle (Lebesgue_outer_measure.nonneg _)
+      have hcompl : (E ∪ F)ᶜ = Eᶜ ∩ Fᶜ := by rw [Set.compl_union]
+      rcases hE with hE | hE <;> rcases hF with hF | hF
+      · exact Or.inl (hnull_union hE hF)
+      · exact Or.inr (by rw [hcompl]; exact hF.subset (Set.inter_subset_right))
+      · exact Or.inr (by rw [hcompl]; exact hE.subset (Set.inter_subset_left))
+      · exact Or.inr (by rw [hcompl]; exact hE.subset (Set.inter_subset_left))
   }
 
 def IsNull.lt_lebesgue_boolean_algebra (d:ℕ) :
@@ -244,20 +305,12 @@ instance ConcreteBooleanAlgebra.instSupSet {X:Type*} : SupSet (ConcreteBooleanAl
 
 instance ConcreteBooleanAlgebra.instCompleteLattice {X:Type*} : CompleteLattice (ConcreteBooleanAlgebra X) :=
   {
-    sup := sorry
-    le_sup_left := sorry
-    le_sup_right := sorry
-    sup_le := sorry
-    inf := sorry
-    inf_le_left := sorry
-    inf_le_right := sorry
-    le_inf := sorry
-    le_top := sorry
-    bot_le := sorry
-    le_sSup := sorry
-    sSup_le := sorry
-    sInf_le := sorry
-    le_sInf := sorry
+    toLattice := sorry
+    toSupSet := ConcreteBooleanAlgebra.instSupSet
+    toInfSet := ConcreteBooleanAlgebra.instInfSet
+    toBoundedOrder := sorry
+    isLUB_sSup := sorry
+    isGLB_sInf := sorry
   }
 
 /-- Example 1.4.11 -/

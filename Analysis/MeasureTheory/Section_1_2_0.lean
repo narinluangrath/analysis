@@ -1481,7 +1481,102 @@ theorem Lebesgue_outer_measure_le_Jordan {d:ℕ} {E: Set (EuclideanSpace' d)} (h
 /-- Example 1.2.1.  With the junk value conventions of this companion, the Jordan outer measure of the rationals is zero rather than infinite (I think). -/
 -- The Jordan outer measure of the rationals in a bounded interval equals the interval length.
 example {R:ℝ} (hR: 0 < R) : Jordan_outer_measure (Real.equiv_EuclideanSpace' '' (Set.Icc (-R) R ∩ Set.range (fun q:ℚ ↦ (q:ℝ)))) = 2*R := by
-  sorry
+  classical
+  set Q : Set ℝ := Set.Icc (-R) R ∩ Set.range (fun q:ℚ ↦ (q:ℝ)) with hQ_def
+  -- Q is bounded
+  have hQ_bounded : Bornology.IsBounded Q := by
+    apply Bornology.IsBounded.subset (Metric.isBounded_Icc (a := -R) (b := R))
+    intro x hx; exact hx.1
+  -- image of Q is bounded (norm in EuclideanSpace' 1 equals abs)
+  have h_image_bounded : Bornology.IsBounded (Real.equiv_EuclideanSpace' '' Q) := by
+    obtain ⟨c, hc⟩ := Metric.isBounded_iff_subset_ball 0 |>.mp hQ_bounded
+    rw [Metric.isBounded_iff_subset_ball 0]
+    use c
+    intro v hv
+    obtain ⟨x, hx, rfl⟩ := hv
+    have hx_ball : x ∈ Metric.ball 0 c := hc hx
+    rw [Metric.mem_ball, dist_zero_right] at hx_ball
+    rw [Metric.mem_ball, dist_zero_right]
+    have h_norm_eq : ‖Real.equiv_EuclideanSpace' x‖ = |x| := by
+      simp [Real.equiv_EuclideanSpace', EuclideanSpace'.equiv_Real]
+      rw [PiLp.norm_eq_of_L2]
+      simp
+      exact Real.sqrt_sq_eq_abs x
+    rw [h_norm_eq]; exact hx_ball
+  -- closure of Q is [-R, R]
+  have h_closure_Q : closure Q = Set.Icc (-R) R := by
+    have hQ_subset : Q ⊆ Set.Icc (-R) R := fun y hy => hy.1
+    have h_closure_subset : closure Q ⊆ Set.Icc (-R) R :=
+      closure_minimal hQ_subset isClosed_Icc
+    have h_subset_closure : Set.Icc (-R) R ⊆ closure Q := by
+      intro x hx
+      apply Metric.mem_closure_iff.mpr
+      intro ε hε
+      -- find a rational in [-R,R] within ε of x
+      let a := max (-R : ℝ) (x - ε / 2)
+      let b := min (R : ℝ) (x + ε / 2)
+      have hax : a ≤ x := max_le hx.1 (by linarith)
+      have hxb : x ≤ b := le_min hx.2 (by linarith)
+      have haR : -R ≤ a := le_max_left _ _
+      have hbR : b ≤ R := min_le_left _ _
+      have hab : a < b := by
+        simp only [a, b]
+        apply max_lt
+        · exact lt_min (by linarith [hx.1]) (by linarith)
+        · exact lt_min (by linarith [hx.2]) (by linarith)
+      obtain ⟨r, har, hrb⟩ := exists_rat_btwn hab
+      have har' : x - ε/2 < (r:ℝ) := lt_of_le_of_lt (le_max_right _ _) har
+      have hrb' : (r:ℝ) < x + ε/2 := lt_of_lt_of_le hrb (min_le_right _ _)
+      refine ⟨(r:ℝ), ?_, ?_⟩
+      · -- (r:ℝ) ∈ Q
+        refine ⟨⟨by linarith, by linarith⟩, ⟨r, rfl⟩⟩
+      · rw [Real.dist_eq, abs_sub_lt_iff]
+        constructor <;> linarith
+    exact Set.Subset.antisymm h_closure_subset h_subset_closure
+  -- homeomorphism commutes with closure
+  have h_image_closure : Real.equiv_EuclideanSpace' '' closure Q =
+      closure (Real.equiv_EuclideanSpace' '' Q) := by
+    have hf_cont : Continuous (fun x : ℝ => Real.equiv_EuclideanSpace' x) := by
+      show Continuous (fun x : ℝ => WithLp.toLp 2 (fun _ : Fin 1 => x))
+      exact continuous_induced_rng.mpr (continuous_pi (fun _ => continuous_id))
+    have hg_cont : Continuous (fun x : EuclideanSpace' 1 => EuclideanSpace'.equiv_Real x) :=
+      PiLp.continuous_apply 2 (fun _ : Fin 1 => ℝ) ⟨0, by decide⟩
+    let e : ℝ ≃ₜ EuclideanSpace' 1 :=
+      { toEquiv := Real.equiv_EuclideanSpace'
+        continuous_toFun := hf_cont
+        continuous_invFun := hg_cont }
+    simpa using e.image_closure Q
+  -- Use outer_measure_of_closure
+  have h_outer_eq : Jordan_outer_measure (closure (Real.equiv_EuclideanSpace' '' Q)) =
+      Jordan_outer_measure (Real.equiv_EuclideanSpace' '' Q) :=
+    JordanMeasurable.outer_measure_of_closure h_image_bounded
+  rw [← h_image_closure, h_closure_Q] at h_outer_eq
+  -- outer measure of image of [-R,R] is 2R
+  have h_Icc_outer : Jordan_outer_measure (Real.equiv_EuclideanSpace' '' Set.Icc (-R) R) = 2*R := by
+    have h_eq_box : Real.equiv_EuclideanSpace' '' Set.Icc (-R) R = (BoundedInterval.Icc (-R) R : Box 1).toSet := by
+      rw [BoundedInterval.coe_of_box]
+      simp [BoundedInterval.set_Icc]
+    rw [h_eq_box]
+    let B := (BoundedInterval.Icc (-R) R : Box 1)
+    have hB_elem : IsElementary B.toSet := IsElementary.box B
+    have h_outer_eq_measure : Jordan_outer_measure B.toSet = hB_elem.measure := by
+      apply le_antisymm
+      · exact Jordan_outer_le hB_elem (Set.Subset.refl B.toSet)
+      · unfold Jordan_outer_measure
+        apply le_csInf
+        · use hB_elem.measure, B.toSet, hB_elem, Set.Subset.refl B.toSet
+        · intro m hm
+          obtain ⟨A, hA, hB_subset_A, rfl⟩ := hm
+          exact IsElementary.measure_mono hB_elem hA hB_subset_A
+    rw [h_outer_eq_measure]
+    have h_measure_eq_volume : hB_elem.measure = |B|ᵥ := IsElementary.measure_of_box B
+    rw [h_measure_eq_volume]
+    simp only [Box.volume, B, Finset.univ_unique, Fin.default_eq_zero, Finset.prod_singleton,
+      BoundedInterval.length, BoundedInterval.b, BoundedInterval.a]
+    rw [max_eq_left (by linarith : (0:ℝ) ≤ R - -R)]
+    ring
+  rw [h_Icc_outer] at h_outer_eq
+  exact h_outer_eq.symm
 
 -- Any countable set (in positive dimension) has Lebesgue outer measure zero.
 theorem Countable.Lebesgue_measure {d:ℕ} (hd : 0 < d) {E: Set (EuclideanSpace' d)} (hE: E.Countable) : Lebesgue_outer_measure E = 0 := by

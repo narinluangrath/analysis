@@ -124,12 +124,31 @@ theorem LowerUnsignedLebesgueIntegral.eq {d:ℕ} {f: EuclideanSpace' d → EReal
 
 /-- Exercise 1.3.10(i) (Compatibility with the simple integral) -/
 theorem LowerUnsignedLebesgueIntegral.eq_simpleIntegral {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) :
-    LowerUnsignedLebesgueIntegral f = hf.integ := by sorry
+    LowerUnsignedLebesgueIntegral f = hf.integ := by
+  unfold LowerUnsignedLebesgueIntegral
+  apply le_antisymm
+  · apply sSup_le
+    rintro R ⟨g, hg, hcond⟩
+    haveI : Nonempty (EuclideanSpace' d) := inferInstance
+    have hReq : R = hg.integ := (hcond (Classical.arbitrary _)).2
+    rw [hReq]
+    exact UnsignedSimpleFunction.integral_le_integral_of_aeLe hg hf
+      (AlmostAlways.ofAlways (fun x ↦ (hcond x).1))
+  · apply le_sSup
+    exact ⟨f, hf, fun x ↦ ⟨le_refl _, rfl⟩⟩
 
 /-- Exercise 1.3.10(ii) (Monotonicity) -/
 theorem LowerUnsignedLebesgueIntegral.mono {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g)
     (hfg: AlmostAlways (fun x ↦ f x ≤ g x)) :
-    LowerUnsignedLebesgueIntegral f ≤ LowerUnsignedLebesgueIntegral g := by sorry
+    LowerUnsignedLebesgueIntegral f ≤ LowerUnsignedLebesgueIntegral g := by
+  rw [LowerUnsignedLebesgueIntegral.eq hf.1, LowerUnsignedLebesgueIntegral.eq hg.1]
+  apply sSup_le
+  rintro R ⟨h, hh, hae, hReq⟩
+  apply le_sSup
+  refine ⟨h, hh, ?_, hReq⟩
+  have hboth : AlmostAlways (fun x ↦ ∀ i : Fin 2, (if i = 0 then h x ≤ f x else f x ≤ g x)) :=
+    AlmostAlways.countable (fun i => by fin_cases i <;> simpa using (by assumption : AlmostAlways _))
+  exact hboth.mp (fun x hx => le_trans (by simpa using hx 0) (by simpa using hx 1))
 
 /-- Exercise 1.3.10(iii) (Homogeneity) -/
 theorem LowerUnsignedLebesgueIntegral.hom {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {c: ℝ} (hc: 0 ≤ c) :
@@ -138,7 +157,10 @@ theorem LowerUnsignedLebesgueIntegral.hom {d:ℕ} {f: EuclideanSpace' d → ERea
 /-- Exercise 1.3.10(iv) (Equivalence) -/
 theorem LowerUnsignedLebesgueIntegral.integral_eq_integral_of_aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g)
     (heq: AlmostEverywhereEqual f g) :
-    LowerUnsignedLebesgueIntegral f = LowerUnsignedLebesgueIntegral g := by sorry
+    LowerUnsignedLebesgueIntegral f = LowerUnsignedLebesgueIntegral g := by
+  apply le_antisymm
+  · exact LowerUnsignedLebesgueIntegral.mono hf hg (heq.mp (fun x hx => le_of_eq hx))
+  · exact LowerUnsignedLebesgueIntegral.mono hg hf (heq.mp (fun x hx => le_of_eq hx.symm))
 
 /-- Exercise 1.3.10(v) (Superadditivity) -/
 theorem LowerUnsignedLebesgueIntegral.superadditive {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) :
@@ -212,12 +234,27 @@ lemma UnsignedMeasurable.mul_indicator_ball {d : ℕ} {f : EuclideanSpace' d →
 /-- Helper: horizontal truncation produces functions with finite measure support. -/
 lemma FiniteMeasureSupport.mul_indicator_ball {d : ℕ} {f : EuclideanSpace' d → EReal}
     (n : ℕ) : FiniteMeasureSupport (f * Real.toEReal ∘ (Metric.ball (0 : EuclideanSpace' d) n).indicator') := by
-  -- Support of f * ind is contained in ball 0 n, which has finite Lebesgue measure
-  -- The key facts are:
-  -- 1. If x ∉ ball 0 n, then ind x = 0, so f x * ind x = 0
-  -- 2. So support ⊆ ball 0 n
-  -- 3. Balls have finite Lebesgue measure
-  sorry
+  unfold FiniteMeasureSupport
+  have h_support_sub : Support (f * Real.toEReal ∘ (Metric.ball (0 : EuclideanSpace' d) n).indicator')
+      ⊆ {x | ‖x‖ ≤ (n:ℝ)} := by
+    intro x hx
+    simp only [Support, Set.mem_setOf_eq, Pi.mul_apply, Function.comp_apply] at hx
+    by_contra h
+    simp only [Set.mem_setOf_eq, not_le] at h
+    have hnotin : x ∉ Metric.ball (0 : EuclideanSpace' d) n := by
+      simp only [Metric.mem_ball, dist_zero_right, not_lt]; exact le_of_lt h
+    rw [Set.indicator'_of_notMem hnotin] at hx
+    simp at hx
+  have h_ball_eq : {x : EuclideanSpace' d | ‖x‖ ≤ (n:ℝ)} = Metric.closedBall 0 n := by
+    ext x; simp [Metric.closedBall, dist_zero_right]
+  have h_compact : IsCompact (Metric.closedBall (0 : EuclideanSpace' d) n) :=
+    isCompact_closedBall 0 n
+  have h_finite : Lebesgue_outer_measure (Metric.closedBall (0 : EuclideanSpace' d) n) ≠ ⊤ :=
+    Lebesgue_outer_measure.finite_of_compact h_compact
+  calc Lebesgue_measure (Support (f * Real.toEReal ∘ (Metric.ball (0 : EuclideanSpace' d) n).indicator'))
+      ≤ Lebesgue_measure {x | ‖x‖ ≤ (n:ℝ)} := Lebesgue_outer_measure.mono h_support_sub
+    _ = Lebesgue_measure (Metric.closedBall 0 n) := by rw [h_ball_eq]
+    _ < ⊤ := lt_top_iff_ne_top.mpr h_finite
 
 /-- Additivity of lower integral for finite-support functions.
     This is the key step where we can apply {name}`eq_upperIntegral` and use the sandwich argument. -/
