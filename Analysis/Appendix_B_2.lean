@@ -484,7 +484,425 @@ theorem RealDecimal.inj_nonterminating {x:ℝ} (hx: ¬TerminatingDecimal x) : �
   have : e = e' := inj_of_nonterminating hntabs hee'
   rw [hde, hd'e, this]
 
-theorem RealDecimal.not_inj_terminating {x:ℝ} (hx: TerminatingDecimal x) : ∃ d₁ d₂:RealDecimal, d₁ ≠ d₂ ∧ ∀ d: RealDecimal, d = x ↔ d = d₁ ∨ d = d₂ := by sorry
+/-- If the truncations of `e` bracket `y * 10^n` for every `n`, then `e.toNNReal = y`. -/
+theorem NNRealDecimal.toNNReal_eq_of_bounds (e:NNRealDecimal) {y:NNReal}
+    (h : ∀ n:ℕ, (e.trunc n : ℝ) ≤ (y:ℝ) * 10^n ∧ (y:ℝ) * 10^n ≤ (e.trunc n : ℝ) + 1) :
+    e.toNNReal = y := by
+  rw [← NNReal.coe_inj]
+  -- compare via the truncation bounds for e.toNNReal
+  by_contra hne
+  -- |e.toNNReal - y| > 0; derive contradiction by choosing n large
+  set z : ℝ := (e.toNNReal:ℝ) with hz
+  set w : ℝ := (y:ℝ) with hw
+  have hd : (0:ℝ) < |z - w| := by
+    have : z - w ≠ 0 := sub_ne_zero.mpr hne
+    positivity
+  -- Use 10^n growth: there is n with (10:ℝ)^n > 1/|z-w|
+  obtain ⟨n, hn⟩ := pow_unbounded_of_one_lt (1 / |z - w|) (by norm_num : (1:ℝ) < 10)
+  -- bounds for e.toNNReal from trunc_bounds_real
+  obtain ⟨hz1, hz2⟩ := trunc_bounds_real e (rfl : e.toNNReal = e.toNNReal) n
+  obtain ⟨hy1, hy2⟩ := h n
+  -- both z*10^n and w*10^n lie in [trunc n, trunc n + 1]
+  have hpos : (0:ℝ) < (10:ℝ)^n := by positivity
+  have habs : |z - w| * (10:ℝ)^n ≤ 1 := by
+    have e1 : |z * 10^n - w * 10^n| ≤ 1 := by
+      rw [abs_sub_le_iff]
+      constructor
+      · nlinarith [hz1, hz2, hy1, hy2]
+      · nlinarith [hz1, hz2, hy1, hy2]
+    calc |z - w| * (10:ℝ)^n = |(z - w) * 10^n| := by rw [abs_mul, abs_of_pos hpos]
+      _ = |z * 10^n - w * 10^n| := by ring_nf
+      _ ≤ 1 := e1
+  -- but |z-w| * 10^n > 1
+  have : 1 < |z - w| * (10:ℝ)^n := by
+    rw [div_lt_iff₀ hd] at hn
+    nlinarith [hn]
+  linarith
+
+/-- The only decimal with value `0` is the all-zero decimal. -/
+theorem NNRealDecimal.toNNReal_eq_zero_iff (e:NNRealDecimal) :
+    e.toNNReal = 0 ↔ e = mk 0 (fun _ ↦ 0) := by
+  constructor
+  · intro hx
+    -- all truncations are 0
+    have htr : ∀ n, e.trunc n = 0 := by
+      intro n
+      obtain ⟨h1, _⟩ := trunc_bounds_real e hx n
+      simp only [NNReal.coe_zero, zero_mul] at h1
+      have : (e.trunc n : ℝ) ≤ 0 := h1
+      have : (e.trunc n : ℝ) = 0 := le_antisymm this (by positivity)
+      exact_mod_cast this
+    have hz : ∀ n, (mk 0 (fun _ ↦ 0)).trunc n = 0 := by
+      intro n
+      induction n with
+      | zero => simp [trunc_zero]
+      | succ k ih =>
+        have hfp : ((NNRealDecimal.mk 0 (fun _ ↦ 0)).fracPart k : ℕ) = 0 := rfl
+        rw [trunc_succ, ih, hfp]
+    apply eq_of_trunc_eq
+    intro n
+    rw [htr n, hz n]
+  · rintro rfl
+    simp [toNNReal]
+
+theorem floor_rec (v:ℝ) (hv: 0 ≤ v) :
+    10 * ⌊v⌋₊ ≤ ⌊10*v⌋₊ ∧ ⌊10*v⌋₊ < 10 * ⌊v⌋₊ + 10 := by
+  have hf : (⌊v⌋₊:ℝ) ≤ v := Nat.floor_le hv
+  have hf2 : v < ⌊v⌋₊ + 1 := Nat.lt_floor_add_one v
+  refine ⟨Nat.le_floor (by push_cast; nlinarith [hf]), ?_⟩
+  have hle : (⌊10*v⌋₊:ℝ) ≤ 10*v := Nat.floor_le (by linarith)
+  have : (⌊10*v⌋₊:ℝ) < 10*⌊v⌋₊ + 10 := by nlinarith [hf2, hle]
+  exact_mod_cast this
+
+theorem NNRealDecimal.ofSeq (t : ℕ → ℕ)
+    (h : ∀ n, 10 * t n ≤ t (n+1) ∧ t (n+1) < 10 * t n + 10) :
+    ∃ e : NNRealDecimal, ∀ n, e.trunc n = t n := by
+  set dig : ℕ → Digit := fun n => Digit.mk (show t (n+1) - 10 * t n < 10 by have := (h n).2; omega) with hdig
+  refine ⟨mk (t 0) dig, ?_⟩
+  intro n
+  induction n with
+  | zero => simp [trunc_zero]
+  | succ k ih =>
+    rw [trunc_succ, ih]
+    have : ((dig k : Digit) : ℕ) = t (k+1) - 10 * t k := by simp [hdig]
+    rw [this]; have := (h k).1; omega
+
+theorem NNRealDecimal.two_reps {y:NNReal} (hy : 0 < y)
+    (N M:ℕ) (hval : (y:ℝ) = N/(10:ℝ)^M) (hN1 : 1 ≤ N) (hND : M = 0 ∨ ¬ 10 ∣ N) :
+    ∃ e₁ e₂ : NNRealDecimal, e₁ ≠ e₂ ∧ ∀ e, e.toNNReal = y ↔ e = e₁ ∨ e = e₂ := by
+  -- numeric facts
+  have hyR : (0:ℝ) < (y:ℝ) := hy
+  -- P2: for n ≥ M, y*10^n = N*10^(n-M)
+  have P2 : ∀ n, M ≤ n → (y:ℝ) * 10^n = (N * 10^(n-M) : ℕ) := by
+    intro n hn; rw [hval]
+    have : (10:ℝ)^n = 10^M * 10^(n-M) := by rw [← pow_add]; congr 1; omega
+    rw [this]; field_simp; push_cast; ring
+  -- P1: for n < M, y*10^n not integer
+  have P1 : ∀ n, n < M → ¬ ∃ k:ℕ, (y:ℝ)*10^n = k := by
+    intro n hn
+    rcases hND with hM0 | hND'
+    · omega
+    rintro ⟨k, hk⟩
+    rw [hval] at hk
+    have h10M : (0:ℝ) < (10:ℝ)^M := by positivity
+    have key : (N:ℝ) * 10^n = (k:ℝ) * 10^M := by field_simp at hk; linarith [hk]
+    have hpow : (10:ℝ)^M = 10^n * 10^(M-n) := by rw [← pow_add]; congr 1; omega
+    rw [hpow] at key
+    have h10n : (0:ℝ) < (10:ℝ)^n := by positivity
+    have key2 : (N:ℝ) = (k:ℝ) * 10^(M-n) := by
+      have : (N:ℝ) * 10^n = (k * 10^(M-n)) * 10^n := by rw [key]; ring
+      exact mul_right_cancel₀ (ne_of_gt h10n) this
+    have hNk : N = k * 10^(M-n) := by exact_mod_cast key2
+    apply hND'; rw [hNk]
+    exact Dvd.dvd.mul_left (dvd_pow_self 10 (by omega)) k
+  -- K n for n ≥ M
+  set K : ℕ → ℕ := fun n => N * 10^(n-M) with hK
+  have hKpos : ∀ n, M ≤ n → 1 ≤ K n := by
+    intro n hn; simp only [hK]
+    have : 1 ≤ 10^(n-M) := Nat.one_le_pow _ _ (by norm_num)
+    calc 1 ≤ N := hN1
+      _ ≤ N * 10^(n-M) := Nat.le_mul_of_pos_right _ (by positivity)
+  -- tA = floor sequence
+  set tA : ℕ → ℕ := fun n => ⌊(y:ℝ)*10^n⌋₊ with htA
+  have htA_ge : ∀ n, M ≤ n → tA n = K n := by
+    intro n hn; simp only [htA]; rw [P2 n hn]; exact Nat.floor_natCast _
+  -- value bounds for tA
+  have hval_le : ∀ (t : ℕ → ℕ) n, (t n ≤ (y:ℝ)*10^n ∧ (y:ℝ)*10^n ≤ t n + 1) → True := fun _ _ _ => trivial
+  -- recursion bound for tA via floor_rec (note v_{n+1} = 10 v_n)
+  have hvn : ∀ n, (y:ℝ)*10^(n+1) = 10 * ((y:ℝ)*10^n) := by intro n; rw [pow_succ]; ring
+  have htA_rec : ∀ n, 10 * tA n ≤ tA (n+1) ∧ tA (n+1) < 10 * tA n + 10 := by
+    intro n; simp only [htA, hvn n]
+    exact floor_rec ((y:ℝ)*10^n) (by positivity)
+  have htA_val : ∀ n, (tA n : ℝ) ≤ (y:ℝ)*10^n ∧ (y:ℝ)*10^n ≤ tA n + 1 := by
+    intro n; simp only [htA]
+    exact ⟨Nat.floor_le (by positivity), le_of_lt (Nat.lt_floor_add_one _)⟩
+  -- tB sequence
+  set tB : ℕ → ℕ := fun n => if n < M then tA n else K n - 1 with htB
+  have htB_lt : ∀ n, n < M → tB n = tA n := by intro n hn; simp [htB, hn]
+  have htB_ge : ∀ n, M ≤ n → tB n = K n - 1 := by intro n hn; simp [htB, Nat.not_lt.mpr hn]
+  -- junction fact: at n = M, tA M = N = K M
+  have hKM : K M = N := by simp [hK]
+  -- value bounds for tB
+  have htB_val : ∀ n, (tB n : ℝ) ≤ (y:ℝ)*10^n ∧ (y:ℝ)*10^n ≤ tB n + 1 := by
+    intro n
+    rcases lt_or_ge n M with hn | hn
+    · rw [htB_lt n hn]; exact htA_val n
+    · rw [htB_ge n hn, P2 n hn]
+      have h1 : 1 ≤ K n := hKpos n hn
+      have h1R : (1:ℝ) ≤ K n := by exact_mod_cast h1
+      have hKn : ((N * 10^(n-M) : ℕ):ℝ) = (K n:ℝ) := by simp [hK]
+      rw [hKn]
+      push_cast [Nat.cast_sub h1]
+      refine ⟨by linarith, by linarith⟩
+  -- recursion bounds for tB
+  have htB_rec : ∀ n, 10 * tB n ≤ tB (n+1) ∧ tB (n+1) < 10 * tB n + 10 := by
+    intro n
+    rcases lt_or_ge (n+1) M with hn1 | hn1
+    · -- both n, n+1 < M
+      have hn : n < M := by omega
+      rw [htB_lt n hn, htB_lt (n+1) hn1]; exact htA_rec n
+    · rcases lt_or_ge n M with hn | hn
+      · -- junction: n = M-1, n+1 = M
+        have hnM : n + 1 = M := by omega
+        rw [htB_lt n hn, htB_ge (n+1) hn1, hnM, hKM]
+        -- 10 * tA(M-1) ≤ N-1 < 10 tA(M-1) + 10
+        have hrec := htA_rec n
+        rw [hnM, htA_ge M (le_refl M), hKM] at hrec
+        -- hrec : 10 * tA n ≤ N ∧ N < 10 * tA n + 10
+        have hND' : ¬ 10 ∣ N := by
+          rcases hND with h | h
+          · exact absurd hn (by omega)
+          · exact h
+        -- 10 * tA n ≠ N since 10 ∣ 10*tA n
+        have hne : 10 * tA n ≠ N := by intro h; apply hND'; rw [← h]; exact dvd_mul_right 10 (tA n)
+        omega
+      · -- both ≥ M
+        rw [htB_ge n hn, htB_ge (n+1) hn1]
+        have hKrec : K (n+1) = 10 * K n := by
+          simp only [hK]; rw [show n+1-M = (n-M)+1 by omega, pow_succ]; ring
+        have h1 : 1 ≤ K n := hKpos n hn
+        rw [hKrec]; omega
+  -- build the two decimals
+  obtain ⟨eA, heA⟩ := ofSeq tA (fun n => htA_rec n)
+  obtain ⟨eB, heB⟩ := ofSeq tB (fun n => htB_rec n)
+  -- values
+  have hvalA : eA.toNNReal = y := by
+    apply NNRealDecimal.toNNReal_eq_of_bounds; intro n; rw [heA]; exact htA_val n
+  have hvalB : eB.toNNReal = y := by
+    apply NNRealDecimal.toNNReal_eq_of_bounds; intro n; rw [heB]; exact htB_val n
+  -- distinctness: differ at n = M
+  have hdist : eA ≠ eB := by
+    intro h
+    have := congrArg (fun e => NNRealDecimal.trunc e M) h
+    simp only [heA, heB] at this
+    rw [htA_ge M (le_refl M), htB_ge M (le_refl M), hKM] at this
+    -- N = N - 1, but N ≥ 1
+    omega
+  refine ⟨eA, eB, hdist, ?_⟩
+  intro e
+  constructor
+  · intro he
+    -- t = e.trunc; show equals tA or tB
+    set t : ℕ → ℕ := fun n => e.trunc n with ht
+    -- below M : forced
+    have hbelow : ∀ n, n < M → t n = tA n := by
+      intro n hn
+      have := trunc_forced e he n (P1 n hn)
+      simp only [ht, htA]; exact this
+    -- value bounds for e (real)
+    have heval : ∀ n, (t n : ℝ) ≤ (y:ℝ)*10^n ∧ (y:ℝ)*10^n ≤ t n + 1 :=
+      fun n => trunc_bounds_real e he n
+    -- recursion for t
+    have htrec : ∀ n, t (n+1) = 10 * t n + (e.fracPart n : ℕ) := fun n => trunc_succ e n
+    -- choice at M
+    have hM_choice : t M = N ∨ t M = N - 1 := by
+      have hb := heval M
+      rw [P2 M (le_refl M)] at hb
+      have hKM' : ((N * 10^(M-M) : ℕ):ℝ) = (N:ℝ) := by simp
+      rw [hKM'] at hb
+      have h1 : (t M : ℝ) ≤ N := hb.1
+      have h2 : (N:ℝ) ≤ t M + 1 := hb.2
+      have : t M ≤ N ∧ N ≤ t M + 1 := ⟨by exact_mod_cast h1, by exact_mod_cast h2⟩
+      omega
+    -- from M onward, t determined by choice
+    have hfromM : ∀ n, M ≤ n → t n = (if t M = N then tA n else tB n) := by
+      intro n hn
+      induction n with
+      | zero =>
+        -- M = 0
+        have hM0 : M = 0 := by omega
+        have hKM0 : K 0 = N := by rw [← hM0]; exact hKM
+        have htA0 : tA 0 = N := by rw [htA_ge 0 (by omega), hKM0]
+        have htB0 : tB 0 = N - 1 := by rw [htB_ge 0 (by omega), hKM0]
+        rw [hM0]
+        rcases hM_choice with hc | hc <;> rw [hM0] at hc
+        · rw [if_pos hc, htA0, hc]
+        · rw [if_neg (by omega), htB0, hc]
+      | succ k ih =>
+        rcases Nat.lt_or_ge k M with hk | hk
+        · -- k < M so k+1 = M (since M ≤ k+1)
+          have hkM : k + 1 = M := by omega
+          rw [hkM]
+          rcases hM_choice with hc | hc
+          · rw [if_pos hc, hc, htA_ge M (le_refl M), hKM]
+          · rw [if_neg (by omega), htB_ge M (le_refl M), hKM, hc]
+        · -- k ≥ M
+          have ihk := ih hk
+          have hKk1 : K (k+1) = 10 * K k := by
+            simp only [hK]; rw [show k+1-M = (k-M)+1 by omega, pow_succ]; ring
+          have hKkpos : 1 ≤ K k := hKpos k hk
+          -- value bound at k+1 forces t(k+1) ∈ {K(k+1)-1, K(k+1)}
+          have hb := heval (k+1)
+          rw [P2 (k+1) (by omega)] at hb
+          have hKn1 : ((N * 10^(k+1-M) : ℕ):ℝ) = (K (k+1):ℝ) := by simp [hK]
+          rw [hKn1] at hb
+          have hK1pos : 1 ≤ K (k+1) := hKpos (k+1) (by omega)
+          have hbnd : t (k+1) = K (k+1) ∨ t (k+1) = K (k+1) - 1 := by
+            have h1 : (t (k+1):ℝ) ≤ K (k+1) := hb.1
+            have h2 : (K (k+1):ℝ) ≤ t (k+1) + 1 := hb.2
+            have : t (k+1) ≤ K (k+1) ∧ K (k+1) ≤ t (k+1) + 1 := ⟨by exact_mod_cast h1, by exact_mod_cast h2⟩
+            omega
+          -- recursion link
+          have hrec := htrec k
+          have hd : (e.fracPart k : ℕ) < 10 := (e.fracPart k).lt
+          rcases hM_choice with hc | hc
+          · -- track tA = K
+            rw [if_pos hc] at ihk ⊢
+            rw [htA_ge (k+1) (by omega), hKk1]
+            rw [htA_ge k hk] at ihk
+            -- t k = K k, t(k+1) = 10 K k + d, bounded ⟹ = 10 K k
+            rw [ihk] at hrec
+            rw [hKk1] at hbnd
+            omega
+          · rw [if_neg (by omega)] at ihk ⊢
+            rw [htB_ge (k+1) (by omega), hKk1]
+            rw [htB_ge k hk] at ihk
+            -- tB k = K k - 1
+            rw [ihk] at hrec
+            rw [hKk1] at hbnd
+            omega
+    -- now t = tA everywhere or t = tB everywhere
+    rcases hM_choice with hc | hc
+    · left
+      apply eq_of_trunc_eq
+      intro n
+      simp only [← ht]
+      rcases Nat.lt_or_ge n M with hn | hn
+      · rw [heA, hbelow n hn]
+      · rw [heA, hfromM n hn, if_pos hc]
+    · right
+      apply eq_of_trunc_eq
+      intro n
+      simp only [← ht]
+      rcases Nat.lt_or_ge n M with hn | hn
+      · rw [heB, hbelow n hn, htB_lt n hn]
+      · rw [heB, hfromM n hn, if_neg (by omega)]
+  · rintro (rfl | rfl)
+    · exact hvalA
+    · exact hvalB
+
+
+/-- A positive nonneg value can be written in reduced terminating form. -/
+theorem NNRealDecimal.reduced_form {y:NNReal} (hy: 0 < y) (h: TerminatingDecimal (y:ℝ)) :
+    ∃ (N M:ℕ), (y:ℝ) = N/(10:ℝ)^M ∧ 1 ≤ N ∧ (M = 0 ∨ ¬ (10 ∣ N)) := by
+  obtain ⟨n,m,hnm⟩ := h
+  have hyR : (0:ℝ) < y := hy
+  have hpow : (0:ℝ) < (10:ℝ)^m := by positivity
+  have hn0 : 0 ≤ n := by
+    by_contra hc; push_neg at hc
+    have : (y:ℝ) < 0 := by rw [hnm]; apply div_neg_of_neg_of_pos; exact_mod_cast hc; exact hpow
+    linarith
+  lift n to ℕ using hn0 with N hN
+  have hN1 : 1 ≤ N := by
+    rcases Nat.eq_zero_or_pos N with h0|h0
+    · exfalso; rw [h0] at hnm; simp at hnm; linarith [hnm.symm ▸ hyR]
+    · exact h0
+  clear hN
+  induction m generalizing N with
+  | zero => exact ⟨N, 0, hnm, hN1, Or.inl rfl⟩
+  | succ k ih =>
+    by_cases hdvd : 10 ∣ N
+    · obtain ⟨N', rfl⟩ := hdvd
+      have hN'1 : 1 ≤ N' := by omega
+      have hnew : (y:ℝ) = N' / (10:ℝ)^k := by
+        rw [hnm]; push_cast; rw [pow_succ]; field_simp
+      exact ih (by positivity) N' hnew hN'1
+    · exact ⟨N, k+1, hnm, hN1, Or.inr hdvd⟩
+
+/-- Two decimal representations for any positive terminating value. -/
+theorem NNRealDecimal.two_reps_term {y:NNReal} (hy : 0 < y) (h : TerminatingDecimal (y:ℝ)) :
+    ∃ e₁ e₂ : NNRealDecimal, e₁ ≠ e₂ ∧ ∀ e, e.toNNReal = y ↔ e = e₁ ∨ e = e₂ := by
+  obtain ⟨N, M, hval, hN1, hND⟩ := reduced_form hy h
+  exact two_reps hy N M hval hN1 hND
+
+theorem RealDecimal.not_inj_terminating {x:ℝ} (hx: TerminatingDecimal x) : ∃ d₁ d₂:RealDecimal, d₁ ≠ d₂ ∧ ∀ d: RealDecimal, d = x ↔ d = d₁ ∨ d = d₂ := by
+  rcases lt_trichotomy x 0 with hneg | hzero | hpos
+  · -- x < 0: use -x > 0
+    have hy : (0:NNReal) < (-x).toNNReal := by
+      rw [Real.toNNReal_pos]; linarith
+    have hterm : TerminatingDecimal (((-x).toNNReal:ℝ)) := by
+      rw [Real.coe_toNNReal _ (by linarith)]
+      obtain ⟨n,m,h⟩ := hx; exact ⟨-n, m, by rw [h]; push_cast; ring⟩
+    obtain ⟨e₁, e₂, hne, hiff⟩ := NNRealDecimal.two_reps_term hy hterm
+    have hcoe : (((-x).toNNReal:ℝ)) = -x := Real.coe_toNNReal _ (by linarith)
+    refine ⟨RealDecimal.neg e₁, RealDecimal.neg e₂, by simp [hne], ?_⟩
+    intro d
+    cases d with
+    | pos e =>
+      simp only [RealDecimal.instCoeReal]
+      constructor
+      · intro h; exfalso
+        have : (0:ℝ) ≤ (e.toNNReal:ℝ) := (e.toNNReal).coe_nonneg
+        change (e.toNNReal:ℝ) = x at h; linarith
+      · rintro (h|h) <;> simp at h
+    | neg e =>
+      constructor
+      · intro h
+        change -(e.toNNReal:ℝ) = x at h
+        have hev : e.toNNReal = (-x).toNNReal := by
+          have : (e.toNNReal:ℝ) = -x := by linarith
+          rw [← hcoe] at this; exact_mod_cast this
+        rcases (hiff e).1 hev with h1|h1 <;> simp [h1]
+      · rintro (h|h) <;> rw [h]
+        · change -(e₁.toNNReal:ℝ) = x
+          rw [show (e₁.toNNReal:ℝ) = -x from by rw [← hcoe]; congr 1; exact ((hiff e₁).2 (Or.inl rfl))]; ring
+        · change -(e₂.toNNReal:ℝ) = x
+          rw [show (e₂.toNNReal:ℝ) = -x from by rw [← hcoe]; congr 1; exact ((hiff e₂).2 (Or.inr rfl))]; ring
+  · -- x = 0
+    subst hzero
+    refine ⟨RealDecimal.pos (mk 0 (fun _ ↦ 0)), RealDecimal.neg (mk 0 (fun _ ↦ 0)), by simp, ?_⟩
+    intro d
+    have hz : (mk 0 (fun _ ↦ 0)).toNNReal = 0 :=
+      (NNRealDecimal.toNNReal_eq_zero_iff _).2 rfl
+    cases d with
+    | pos e =>
+      constructor
+      · intro h
+        change (e.toNNReal:ℝ) = 0 at h
+        have : e.toNNReal = 0 := by exact_mod_cast h
+        left; rw [(NNRealDecimal.toNNReal_eq_zero_iff e).1 this]
+      · rintro (h|h)
+        · rw [h]; show ((mk 0 (fun _ ↦ 0)).toNNReal:ℝ) = 0; rw [hz]; simp
+        · simp at h
+    | neg e =>
+      constructor
+      · intro h
+        change -(e.toNNReal:ℝ) = 0 at h
+        have : e.toNNReal = 0 := by
+          have : (e.toNNReal:ℝ) = 0 := by linarith
+          exact_mod_cast this
+        right; rw [(NNRealDecimal.toNNReal_eq_zero_iff e).1 this]
+      · rintro (h|h)
+        · simp at h
+        · rw [h]; show -((mk 0 (fun _ ↦ 0)).toNNReal:ℝ) = 0; rw [hz]; simp
+  · -- x > 0
+    have hy : (0:NNReal) < x.toNNReal := by rw [Real.toNNReal_pos]; exact hpos
+    have hterm : TerminatingDecimal ((x.toNNReal:ℝ)) := by
+      rw [Real.coe_toNNReal _ (by linarith)]; exact hx
+    obtain ⟨e₁, e₂, hne, hiff⟩ := NNRealDecimal.two_reps_term hy hterm
+    have hcoe : ((x.toNNReal:ℝ)) = x := Real.coe_toNNReal _ (by linarith)
+    refine ⟨RealDecimal.pos e₁, RealDecimal.pos e₂, by simp [hne], ?_⟩
+    intro d
+    cases d with
+    | neg e =>
+      constructor
+      · intro h; exfalso
+        change -(e.toNNReal:ℝ) = x at h
+        have : (0:ℝ) ≤ (e.toNNReal:ℝ) := (e.toNNReal).coe_nonneg
+        linarith
+      · rintro (h|h) <;> simp at h
+    | pos e =>
+      constructor
+      · intro h
+        change (e.toNNReal:ℝ) = x at h
+        have hev : e.toNNReal = x.toNNReal := by
+          rw [← hcoe] at h; exact_mod_cast h
+        rcases (hiff e).1 hev with h1|h1 <;> simp [h1]
+      · rintro (h|h) <;> rw [h]
+        · show (e₁.toNNReal:ℝ) = x
+          rw [← hcoe]; congr 1; exact ((hiff e₁).2 (Or.inl rfl))
+        · show (e₂.toNNReal:ℝ) = x
+          rw [← hcoe]; congr 1; exact ((hiff e₂).2 (Or.inr rfl))
 
 /-- Exercise B.2.4.  This is Corollary 8.3.4, but the intent is to rewrite the proof using the decimal system. -/
 example : Uncountable ℝ := by infer_instance
