@@ -4,7 +4,7 @@ A fork of **[teorth/analysis](https://github.com/teorth/analysis)** (Terence Tao
 
 The upstream repository deliberately leaves exercises as `sorry` and does not host solutions; this fork is an independent solving effort. `lake build` is green at every commit.
 
-**Progress: 1570 / 2083 exercises solved (75%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
+**Progress: 1576 / 2083 exercises solved (76%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
 
 ## Chapter 2 — Natural numbers
 
@@ -74,10 +74,10 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | Section | Title | Solved | Remaining | Status |
 |---|---|---:|---:|:--:|
 | 8.1 | Countability | 32/32 | 0 | ✅ |
-| 8.2 | Summation on infinite sets | 21/27 | 6 | 🟡 |
+| 8.2 | Summation on infinite sets | 25/27 | 2 | 🟡 |
 | 8.3 | Uncountable sets | 9/9 | 0 | ✅ |
 | 8.4 | The axiom of choice | 6/6 | 0 | ✅ |
-| 8.5 | Ordered sets | 72/75 | 3 | 🟡 |
+| 8.5 | Ordered sets | 73/75 | 2 | 🟡 |
 
 ## Chapter 9 — Continuous functions on ℝ
 
@@ -127,7 +127,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | A.6 | Some examples of proofs and quantifiers | 1/1 | 0 | ✅ |
 | A.7 | Equality | 1/1 | 0 | ✅ |
 | B.1 | The decimal representation of natural numbers | 8/8 | 0 | ✅ |
-| B.2 | The decimal representation of real numbers | 4/5 | 1 | 🟡 |
+| B.2 | The decimal representation of real numbers | 5/5 | 0 | ✅ |
 
 ## Measure Theory (Chapter 1, draft)
 
