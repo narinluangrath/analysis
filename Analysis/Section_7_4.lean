@@ -459,9 +459,211 @@ theorem Series.f_7_4_4_bij : Function.Bijective f_7_4_4 := by
       · refine ⟨3*j+1, ?_⟩; simp only [f_7_4_4]; rw [if_neg (by omega)]; omega
       · refine ⟨3*j+2, ?_⟩; simp only [f_7_4_4]; rw [if_neg (by omega)]; omega
 
-theorem Series.ex_7_4_4'_conv : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).converges := by sorry
+open Filter
 
-theorem Series.ex_7_4_4'_sum : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).sum < 0 := by sorry
+private noncomputable abbrev G : Series := (fun n ↦ Series.a_7_4_4 (Series.f_7_4_4 n) : Series)
+private noncomputable abbrev g : ℕ → ℝ := fun n ↦ Series.a_7_4_4 (Series.f_7_4_4 n)
+private theorem gm : G.m = 0 := rfl
+private theorem gseq (N:ℤ) (hN : N ≥ 0) : G.seq N = g N.toNat := by simp [G, Series.eval_coe, hN]
+private theorem Psucc (N:ℕ) : G.partial (N+1) = G.partial N + g (N+1) := by
+  have h := Series.partial_succ G (N := (N:ℤ)) (by rw [gm]; omega)
+  rw [h, gseq ((N:ℤ)+1) (by omega), show ((N:ℤ)+1).toNat = N+1 by omega]
+private theorem Psucc3 (M:ℕ) : G.partial (M+3) = G.partial M + (g (M+1) + g (M+2) + g (M+3)) := by
+  have r0 := Psucc M
+  have e1 : G.partial (M+2) = G.partial (M+1) + g (M+2) := by have := Psucc (M+1); rwa [show M+1+1 = M+2 by ring] at this
+  have e2 : G.partial (M+3) = G.partial (M+2) + g (M+3) := by have := Psucc (M+2); rwa [show M+2+1 = M+3 by ring] at this
+  rw [e2, e1, r0]; ring
+private theorem PZsucc (M:ℤ) (hM : M ≥ 0) : G.partial (M+1) = G.partial M + g (M+1).toNat := by
+  have h := Series.partial_succ G (N := M) (by rw [gm]; omega)
+  rw [h, gseq (M+1) (by omega)]
+private noncomputable abbrev T : ℕ → ℝ := fun k => G.partial (3*k+2)
+private noncomputable abbrev c : ℕ → ℝ := fun k => 1/(2*k+2) - 1/(4*k+3) - 1/(4*k+5)
+private theorem gval0 (k:ℕ) : g (3*k) = 1/(2*k+2) := by
+  simp only [g, Series.f_7_4_4, Series.a_7_4_4]
+  rw [if_pos (by omega), show (3*k)/3 = k by omega, (show Even (2*k) from ⟨k, by ring⟩).neg_one_pow]; push_cast; ring
+private theorem gval1 (k:ℕ) : g (3*k+1) = -(1/(4*k+3)) := by
+  simp only [g, Series.f_7_4_4, Series.a_7_4_4]
+  rw [if_neg (by omega), show (3*k+1)/3 = k by omega, show (3*k+1)%3 = 1 by omega,
+    show 4*k+2*1-1 = 4*k+1 by omega, (show Odd (4*k+1) from ⟨2*k, by ring⟩).neg_one_pow]; push_cast; ring
+private theorem gval2 (k:ℕ) : g (3*k+2) = -(1/(4*k+5)) := by
+  simp only [g, Series.f_7_4_4, Series.a_7_4_4]
+  rw [if_neg (by omega), show (3*k+2)/3 = k by omega, show (3*k+2)%3 = 2 by omega,
+    show 4*k+2*2-1 = 4*k+3 by omega, (show Odd (4*k+3) from ⟨2*k+1, by ring⟩).neg_one_pow]; push_cast; ring
+private theorem cval (k:ℕ) : c k = g (3*k) + g (3*k+1) + g (3*k+2) := by rw [gval0, gval1, gval2]; ring
+private theorem Tsucc (k:ℕ) : T (k+1) = T k + c (k+1) := by
+  have h := Psucc3 (3*k+2)
+  rw [show g ((3*k+2)+1) = g (3*(k+1)) from rfl,
+      show g ((3*k+2)+2) = g (3*(k+1)+1) from rfl,
+      show g ((3*k+2)+3) = g (3*(k+1)+2) from rfl] at h
+  have hc := cval (k+1)
+  have hT1 : T (k+1) = G.partial (((3*k+2:ℕ):ℤ)+3) := by simp only [T]; norm_cast
+  have hTk : T k = G.partial (((3*k+2 : ℕ):ℤ)) := by simp only [T]; norm_cast
+  rw [hT1, hTk, h, hc]
+private theorem cclosed (k:ℕ) : c k = -(1/((2*(k:ℝ)+2)*(4*(k:ℝ)+3)*(4*(k:ℝ)+5))) := by
+  have h1 : (2*(k:ℝ)+2) ≠ 0 := by positivity
+  have h2 : (4*(k:ℝ)+3) ≠ 0 := by positivity
+  have h3 : (4*(k:ℝ)+5) ≠ 0 := by positivity
+  simp only [c]; field_simp; ring
+private theorem cneg (k:ℕ) : c k < 0 := by
+  rw [cclosed]
+  rw [neg_lt, neg_zero]; positivity
+private theorem cbound (k:ℕ) : c k ≥ -(1/((k:ℝ)+1)^2) := by
+  rw [cclosed]
+  have hd : (0:ℝ) < (2*(k:ℝ)+2)*(4*(k:ℝ)+3)*(4*(k:ℝ)+5) := by positivity
+  have hk : (0:ℝ) < ((k:ℝ)+1)^2 := by positivity
+  rw [ge_iff_le, neg_le_neg_iff]
+  have hle : ((k:ℝ)+1)^2 ≤ (2*(k:ℝ)+2)*(4*(k:ℝ)+3)*(4*(k:ℝ)+5) := by
+    nlinarith [sq_nonneg ((k:ℝ)), (Nat.cast_nonneg k : (0:ℝ) ≤ (k:ℝ))]
+  calc (1:ℝ)/((2*(k:ℝ)+2)*(4*(k:ℝ)+3)*(4*(k:ℝ)+5)) ≤ 1/((k:ℝ)+1)^2 := one_div_le_one_div_of_le hk hle
+private theorem T0eq : T 0 = c 0 := by
+  show G.partial (3*(0:ℕ)+2) = c 0
+  have hp0 : G.partial 0 = g 0 := by
+    show ∑ n ∈ Finset.Icc G.m 0, G.seq n = _
+    rw [gm, Finset.Icc_self, Finset.sum_singleton, gseq 0 (le_refl 0)]; norm_num
+  have h1 : G.partial 1 = G.partial 0 + g 1 := by have := Psucc 0; simpa using this
+  have h2 : G.partial 2 = G.partial 1 + g 2 := by have := Psucc 1; norm_num at this ⊢; rw [this]
+  rw [cval]
+  have e2 : G.partial (3*(0:ℕ)+2) = G.partial 2 := by norm_num
+  rw [e2, h2, h1, hp0]
+private theorem Tanti : Antitone T := by
+  apply antitone_nat_of_succ_le
+  intro k
+  rw [Tsucc]
+  have := cneg (k+1); linarith
+-- harmonic-square partial bound
+private theorem sqsum_strong (k:ℕ) (hk : 1 ≤ k) : ∑ j ∈ Finset.range k, (1/((j:ℝ)+1)^2) ≤ 2 - 1/(k:ℝ) := by
+  induction k with
+  | zero => omega
+  | succ k ih =>
+    rcases Nat.eq_zero_or_pos k with hk0 | hk0
+    · subst hk0; norm_num
+    · rw [Finset.sum_range_succ]
+      have hkr : (0:ℝ) < (k:ℝ) := by exact_mod_cast hk0
+      have hterm : (1:ℝ)/((k:ℝ)+1)^2 ≤ 1/(k:ℝ) - 1/((k:ℝ)+1) := by
+        rw [div_sub_div _ _ (ne_of_gt hkr) (by positivity), div_le_div_iff₀ (by positivity) (by positivity)]
+        ring_nf; nlinarith [hkr]
+      have ihh := ih hk0
+      have : (1:ℝ)/((k:ℝ)+1) = 1/((k+1:ℕ):ℝ) := by push_cast; ring
+      push_cast
+      push_cast at ihh
+      linarith [ihh, hterm]
+private theorem sqsum_bound (k:ℕ) : ∑ j ∈ Finset.range k, (1/((j:ℝ)+1)^2) ≤ 2 := by
+  rcases Nat.eq_zero_or_pos k with hk | hk
+  · subst hk; simp
+  · have := sqsum_strong k hk
+    have : (0:ℝ) < 1/(k:ℝ) := by positivity
+    linarith [sqsum_strong k hk]
+private theorem Tlow (k:ℕ) : T k ≥ T 0 - ∑ j ∈ Finset.range k, (1/((j:ℝ)+2)^2) := by
+  induction k with
+  | zero => simp
+  | succ k ih =>
+    rw [Tsucc, Finset.sum_range_succ]
+    have hcb := cbound (k+1)
+    have : -(1/(((k:ℝ)+1)+1)^2) = -(1/((k:ℝ)+2)^2) := by ring_nf
+    rw [show ((k+1:ℕ):ℝ) = (k:ℝ)+1 by push_cast; ring] at hcb
+    rw [this] at hcb
+    linarith [ih, hcb]
+private theorem Tbdd : BddBelow (Set.range T) := by
+  refine ⟨T 0 - 2, ?_⟩
+  rintro x ⟨k, rfl⟩
+  have h1 := Tlow k
+  have h2 : ∑ j ∈ Finset.range k, (1/((j:ℝ)+2)^2) ≤ 2 := by
+    have hmono : ∑ j ∈ Finset.range k, (1/((j:ℝ)+2)^2) ≤ ∑ j ∈ Finset.range (k+1), (1/((j:ℝ)+1)^2) := by
+      rw [Finset.sum_range_succ']
+      simp only [Nat.cast_add, Nat.cast_one]
+      have : ∀ j ∈ Finset.range k, (1/(((j:ℝ)+1)+1)^2) = (1/((j:ℝ)+2)^2) := by intro j _; ring_nf
+      rw [Finset.sum_congr rfl this]
+      have : (0:ℝ) ≤ 1/((0:ℝ)+1)^2 := by positivity
+      linarith
+    linarith [sqsum_bound (k+1)]
+  linarith
+private noncomputable def L : ℝ := ⨅ i, T i
+private theorem Ttend : Tendsto T atTop (nhds L) := tendsto_atTop_ciInf Tanti Tbdd
+private theorem gap1 (k:ℕ) : |G.partial (3*(k:ℤ)+3) - T k| ≤ 1/((k:ℝ)+1) := by
+  have e : G.partial (3*(k:ℤ)+3) = G.partial (3*(k:ℤ)+2) + g (3*(k:ℤ)+3).toNat := by
+    have := PZsucc (3*(k:ℤ)+2) (by positivity)
+    rw [show 3*(k:ℤ)+2+1 = 3*(k:ℤ)+3 by ring] at this; rw [this]
+  rw [show T k = G.partial (3*(k:ℤ)+2) from rfl, e]; simp only [add_sub_cancel_left]
+  rw [show (3*(k:ℤ)+3).toNat = 3*(k+1) by omega, gval0, abs_of_pos (by positivity)]
+  apply one_div_le_one_div_of_le (by positivity)
+  push_cast; nlinarith [(Nat.cast_nonneg k : (0:ℝ) ≤ (k:ℝ))]
+private theorem gap2 (k:ℕ) : |G.partial (3*(k:ℤ)+4) - T k| ≤ 1/((k:ℝ)+1) := by
+  have e1 : G.partial (3*(k:ℤ)+3) = G.partial (3*(k:ℤ)+2) + g (3*(k:ℤ)+3).toNat := by
+    have := PZsucc (3*(k:ℤ)+2) (by positivity)
+    rw [show 3*(k:ℤ)+2+1 = 3*(k:ℤ)+3 by ring] at this; rw [this]
+  have e2 : G.partial (3*(k:ℤ)+4) = G.partial (3*(k:ℤ)+3) + g (3*(k:ℤ)+4).toNat := by
+    have := PZsucc (3*(k:ℤ)+3) (by positivity)
+    rw [show 3*(k:ℤ)+3+1 = 3*(k:ℤ)+4 by ring] at this; rw [this]
+  rw [show T k = G.partial (3*(k:ℤ)+2) from rfl, e2, e1]
+  rw [show (3*(k:ℤ)+3).toNat = 3*(k+1) by omega, show (3*(k:ℤ)+4).toNat = 3*(k+1)+1 by omega, gval0, gval1]
+  set x : ℝ := ((k+1:ℕ):ℝ) with hx
+  have hxpos : (0:ℝ) < x := by rw [hx]; positivity
+  rw [show G.partial (3*(k:ℤ)+2) + 1/(2*x+2) + -(1/(4*x+3)) - G.partial (3*(k:ℤ)+2)
+        = 1/(2*x+2) - 1/(4*x+3) by ring]
+  have hp : (0:ℝ) ≤ 1/(2*x+2) - 1/(4*x+3) := by
+    have : (1:ℝ)/(4*x+3) ≤ 1/(2*x+2) := by apply one_div_le_one_div_of_le (by positivity); linarith
+    linarith
+  rw [abs_of_nonneg hp]
+  have hle : 1/(2*x+2) - 1/(4*x+3) ≤ 1/(2*x+2) := by
+    have : (0:ℝ) ≤ 1/(4*x+3) := by positivity
+    linarith
+  refine le_trans hle ?_
+  apply one_div_le_one_div_of_le (by positivity)
+  rw [hx]; push_cast; nlinarith [(Nat.cast_nonneg k : (0:ℝ) ≤ (k:ℝ))]
+-- every nonneg integer is 3k+2, 3k+3, or 3k+4 for some k (covering N≥2)
+private theorem Gconv : G.convergesTo L := by
+  show Tendsto G.partial atTop (nhds L)
+  rw [Metric.tendsto_atTop]
+  intro ε hε
+  have hT := Ttend
+  rw [Metric.tendsto_atTop] at hT
+  obtain ⟨K1, hK1⟩ := hT (ε/2) (by linarith)
+  obtain ⟨K2, hK2⟩ : ∃ K2:ℕ, ∀ k ≥ K2, 1/((k:ℝ)+1) < ε/2 := by
+    obtain ⟨K2, hK2⟩ := exists_nat_gt (2/ε)
+    refine ⟨K2, fun k hk => ?_⟩
+    have hkr : (K2:ℝ) ≤ (k:ℝ) := by exact_mod_cast hk
+    have h2e : 2/ε < (k:ℝ)+1 := by linarith
+    rw [div_lt_iff₀ (by positivity)]
+    rw [div_lt_iff₀ hε] at h2e
+    nlinarith [h2e, hε]
+  set K := max K1 K2 with hKdef
+  refine ⟨3*(K:ℤ)+2, fun N hN => ?_⟩
+  set k : ℕ := ((N-2)/3).toNat with hk
+  have hNk : ∃ r:ℤ, (r = 2 ∨ r = 3 ∨ r = 4) ∧ N = 3*(k:ℤ)+r ∧ k ≥ K := by
+    have hkge : (k:ℤ) = (N-2)/3 := by rw [hk]; omega
+    refine ⟨N - 3*(k:ℤ), ?_, by ring, ?_⟩
+    · rw [hkge]; omega
+    · have : (k:ℤ) ≥ (K:ℤ) := by rw [hkge]; omega
+      exact_mod_cast this
+  obtain ⟨r, hr, hNeq, hkK⟩ := hNk
+  have hkK1 : k ≥ K1 := le_trans (le_max_left _ _) hkK
+  have hkK2 : k ≥ K2 := le_trans (le_max_right _ _) hkK
+  have hTL : |T k - L| ≤ ε/2 := le_of_lt (by have := hK1 k hkK1; rwa [Real.dist_eq] at this)
+  have hgap : |G.partial N - T k| ≤ 1/((k:ℝ)+1) := by
+    rcases hr with h | h | h
+    · rw [hNeq, h, show T k = G.partial (3*(k:ℤ)+2) from rfl, sub_self, abs_zero]
+      positivity
+    · rw [hNeq, h]; exact gap1 k
+    · rw [hNeq, h]; exact gap2 k
+  have hsmall : 1/((k:ℝ)+1) < ε/2 := hK2 k hkK2
+  rw [Real.dist_eq]
+  calc |G.partial N - L| = |(G.partial N - T k) + (T k - L)| := by ring_nf
+    _ ≤ |G.partial N - T k| + |T k - L| := abs_add_le _ _
+    _ ≤ 1/((k:ℝ)+1) + ε/2 := by linarith [hgap, hTL]
+    _ < ε/2 + ε/2 := by linarith [hsmall]
+    _ = ε := by ring
+private theorem Lneg : L < 0 := by
+  have h1 : L ≤ T 0 := by
+    rw [L]
+    exact ciInf_le Tbdd 0
+  rw [T0eq] at h1
+  linarith [cneg 0]
+
+theorem Series.ex_7_4_4'_conv : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).converges := ⟨L, Gconv⟩
+
+theorem Series.ex_7_4_4'_sum : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).sum < 0 := by
+  have heq : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).sum = L := Series.sum_of_converges Gconv
+  rw [heq]; exact Lneg
 
 /-- Exercise 7.4.1 -/
 theorem Series.absConverges_of_subseries {a:ℕ → ℝ} (ha: (a:Series).absConverges) {f: ℕ → ℕ} (hf: StrictMono f) :
