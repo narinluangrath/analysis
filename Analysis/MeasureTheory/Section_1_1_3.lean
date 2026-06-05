@@ -765,7 +765,21 @@ theorem PiecewiseConstantOn.integral_eq (f: ℝ → ℝ) {I: BoundedInterval} (h
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- A scalar multiple of a piecewise constant function is piecewise constant.
-theorem PiecewiseConstantOn.smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) : PiecewiseConstantOn (c • f) I := by sorry
+theorem PiecewiseConstantOn.smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) : PiecewiseConstantOn (c • f) I := by
+  obtain ⟨F, hF⟩ := h
+  refine ⟨{
+    f := fun x => c * F.f x
+    T := F.T
+    c := fun J => c * F.c J
+    disjoint := F.disjoint
+    cover := F.cover
+    const := by
+      intro J x hx
+      simp only [F.const J x hx]
+  }, ?_⟩
+  intro x hx
+  simp only [Pi.smul_apply, smul_eq_mul]
+  rw [hF hx]
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The integral is linear: integral(c * f) = c * integral(f).
@@ -773,7 +787,83 @@ theorem PiecewiseConstantFunction.integral_smul {I:BoundedInterval} (c:ℝ) {f: 
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The sum of two piecewise constant functions is piecewise constant.
-theorem PiecewiseConstantOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (f + g) I := by sorry
+theorem PiecewiseConstantOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : PiecewiseConstantOn (f + g) I := by
+  obtain ⟨F, hF⟩ := hf
+  obtain ⟨G, hG⟩ := hg
+  classical
+  -- common refinement: all pairwise intersections
+  set T'' : Finset BoundedInterval := (F.T ×ˢ G.T).image (fun p => p.1 ∩ p.2) with hT''
+  -- For each refinement interval, choose a representing pair
+  have hsel : ∀ J : T'', ∃ p : F.T × G.T, (p.1.val ∩ p.2.val) = J.val := by
+    intro J
+    have hJ := J.property
+    simp only [hT'', Finset.mem_image, Finset.mem_product] at hJ
+    obtain ⟨p, ⟨hp1, hp2⟩, hpeq⟩ := hJ
+    exact ⟨(⟨p.1, hp1⟩, ⟨p.2, hp2⟩), hpeq⟩
+  let sel : T'' → F.T × G.T := fun J => (hsel J).choose
+  have hsel_eq : ∀ J : T'', ((sel J).1.val ∩ (sel J).2.val) = J.val := fun J => (hsel J).choose_spec
+  have hinter : ∀ J K : BoundedInterval, (J ∩ K).toSet = J.toSet ∩ K.toSet := by
+    intro J K
+    have := BoundedInterval.inter_eq J K
+    exact this
+  refine ⟨{
+    f := fun x => F.f x + G.f x
+    T := T''
+    c := fun J => F.c (sel J).1 + G.c (sel J).2
+    disjoint := by
+      intro A hA B hB hAB
+      rw [Finset.mem_coe, hT'', Finset.mem_image] at hA hB
+      simp only [Finset.mem_product] at hA hB
+      obtain ⟨⟨J₁, K₁⟩, ⟨hJ₁, hK₁⟩, rfl⟩ := hA
+      obtain ⟨⟨J₂, K₂⟩, ⟨hJ₂, hK₂⟩, rfl⟩ := hB
+      rw [Function.onFun, Set.disjoint_left]
+      intro x hxA hxB
+      rw [hinter, Set.mem_inter_iff] at hxA hxB
+      obtain ⟨hxJ₁, hxK₁⟩ := hxA
+      obtain ⟨hxJ₂, hxK₂⟩ := hxB
+      -- if J₁ ≠ J₂ then F.disjoint forces empty; similarly K
+      by_cases hJ : J₁ = J₂
+      · subst hJ
+        by_cases hK : K₁ = K₂
+        · subst hK; exact hAB rfl
+        · have hd := G.disjoint hK₁ hK₂ hK
+          rw [Function.onFun, Set.disjoint_left] at hd
+          exact hd hxK₁ hxK₂
+      · have hd := F.disjoint hJ₁ hJ₂ hJ
+        rw [Function.onFun, Set.disjoint_left] at hd
+        exact hd hxJ₁ hxJ₂
+    cover := by
+      have hcovF := F.cover
+      have hcovG := G.cover
+      have hcov : I.toSet = (⋃ J ∈ F.T, J.toSet) ∩ (⋃ K ∈ G.T, K.toSet) := by
+        apply Set.eq_of_subset_of_subset
+        · intro x hx; exact ⟨hcovF ▸ hx, hcovG ▸ hx⟩
+        · intro x hx; exact hcovF ▸ hx.1
+      rw [hcov]
+      ext x
+      simp only [hT'', Finset.mem_image, Set.mem_iUnion, Set.mem_inter_iff,
+        Finset.mem_product, exists_prop]
+      constructor
+      · rintro ⟨⟨J, hJ, hxJ⟩, ⟨K, hK, hxK⟩⟩
+        refine ⟨J ∩ K, ⟨(J, K), ⟨hJ, hK⟩, rfl⟩, ?_⟩
+        rw [hinter, Set.mem_inter_iff]
+        exact ⟨hxJ, hxK⟩
+      · rintro ⟨B, ⟨⟨J, K⟩, ⟨hJ, hK⟩, rfl⟩, hxB⟩
+        rw [hinter, Set.mem_inter_iff] at hxB
+        exact ⟨⟨J, hJ, hxB.1⟩, ⟨K, hK, hxB.2⟩⟩
+    const := by
+      intro J x hx
+      have hxmem : x ∈ J.val := hx
+      rw [← hsel_eq J] at hxmem
+      rw [BoundedInterval.mem_iff, hinter, Set.mem_inter_iff] at hxmem
+      obtain ⟨hxJ, hxK⟩ := hxmem
+      have e1 : F.f x = F.c (sel J).1 := F.const (sel J).1 x (by rw [BoundedInterval.mem_iff]; exact hxJ)
+      have e2 : G.f x = G.c (sel J).2 := G.const (sel J).2 x (by rw [BoundedInterval.mem_iff]; exact hxK)
+      simp only [e1, e2]
+  }, ?_⟩
+  intro x hx
+  simp only [Pi.add_apply]
+  rw [hF hx, hG hx]
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The integral is linear: integral(f + g) = integral(f) + integral(g).

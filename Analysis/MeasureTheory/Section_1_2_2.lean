@@ -1646,7 +1646,58 @@ example : ∃ (d:ℕ) (E: ℕ → Set (EuclideanSpace' d)) (hE: ∀ n, LebesgueM
 /-- Exercise 1.2.12 -/
 example {d:ℕ} (m: Set (EuclideanSpace' d) → EReal) (h_empty: m ∅ = 0) (h_pos: ∀ E, 0 ≤ m E) (hadd: ∀ E: ℕ → Set (EuclideanSpace' d), (Set.univ.PairwiseDisjoint E) → (∀ n, LebesgueMeasurable (E n)) → m (⋃ n, E n) = ∑' n, m (E n)) {E F: Set (EuclideanSpace' d)}
 (hsub: E ⊆ F) (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) : m E ≤ m F := by
-  sorry
+  -- Disjoint family G 0 = E, G 1 = F \ E, rest = ∅, whose union is F.
+  let G : ℕ → Set (EuclideanSpace' d) := fun n => if n = 0 then E else if n = 1 then F \ E else ∅
+  have hG_meas : ∀ n, LebesgueMeasurable (G n) := fun n => by
+    simp only [G]
+    split_ifs
+    · exact hE
+    · rw [Set.diff_eq]; exact hF.inter hE.complement
+    · exact LebesgueMeasurable.empty
+  have hG_disj : Set.univ.PairwiseDisjoint G := by
+    intro i _ j _ hij
+    simp only [Function.onFun, G]
+    -- Casework on i, j
+    rcases Nat.lt_or_ge i 2 with hi | hi <;> rcases Nat.lt_or_ge j 2 with hj | hj
+    · interval_cases i <;> interval_cases j <;> simp_all [Set.disjoint_left] <;>
+        intro x hx <;> simp_all [Set.mem_diff]
+    · interval_cases i <;>
+        simp only [show ¬ j = 0 by omega, show ¬ j = 1 by omega, if_false, if_neg] <;>
+        simp [Set.disjoint_left]
+    · interval_cases j <;>
+        simp only [show ¬ i = 0 by omega, show ¬ i = 1 by omega, if_false, if_neg] <;>
+        simp [Set.disjoint_right]
+    · simp only [show ¬ i = 0 by omega, show ¬ i = 1 by omega, show ¬ j = 0 by omega,
+        show ¬ j = 1 by omega, if_false, if_neg]
+      simp
+  have hG_union : (⋃ n, G n) = F := by
+    apply Set.Subset.antisymm
+    · apply Set.iUnion_subset
+      intro n
+      simp only [G]
+      split_ifs
+      · exact hsub
+      · exact Set.diff_subset
+      · exact Set.empty_subset _
+    · intro x hx
+      by_cases hxE : x ∈ E
+      · exact Set.mem_iUnion.mpr ⟨0, by simp [G, hxE]⟩
+      · exact Set.mem_iUnion.mpr ⟨1, by simp [G, hx, hxE]⟩
+  have hmF : m F = ∑' n, m (G n) := by rw [← hG_union]; exact hadd G hG_disj hG_meas
+  rw [hmF]
+  have h_tsum_eq : ∑' n, m (G n) = ∑ n ∈ ({0, 1} : Finset ℕ), m (G n) := by
+    apply tsum_eq_sum
+    intro n hn
+    have hn0 : n ≠ 0 := by simp only [Finset.mem_insert, Finset.mem_singleton] at hn; tauto
+    have hn1 : n ≠ 1 := by simp only [Finset.mem_insert, Finset.mem_singleton] at hn; tauto
+    simp only [G, if_neg hn0, if_neg hn1, h_empty]
+  rw [h_tsum_eq]
+  have hsum : ∑ n ∈ ({0, 1} : Finset ℕ), m (G n) = m E + m (F \ E) := by
+    rw [Finset.sum_insert (by simp), Finset.sum_singleton]
+    simp [G]
+  rw [hsum]
+  calc m E = m E + 0 := by rw [add_zero]
+    _ ≤ m E + m (F \ E) := by gcongr; exact h_pos _
 
 /-- Exercise 1.2.12 -/
 example {d:ℕ} (m: Set (EuclideanSpace' d) → EReal) (h_empty: m ∅ = 0) (h_pos: ∀ E, 0 ≤ m E) (hadd: ∀ E: ℕ → Set (EuclideanSpace' d), (Set.univ.PairwiseDisjoint E) → (∀ n, LebesgueMeasurable (E n)) → m (⋃ n, E n) = ∑' n, m (E n)) {E: ℕ → Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)):  m (⋃ n, E n) ≤ ∑' n, m (E n) := by
@@ -1770,11 +1821,54 @@ theorem Lebesgue_measure.unique {d:ℕ} (m: Set (EuclideanSpace' d) → EReal)
   (hnorm: m (Box.unit_cube d) = 1)
   : ∀ E, LebesgueMeasurable E → m E = Lebesgue_measure E := by sorry
 
+/-- The union of two null sets is null. -/
+private lemma IsNull.union2 {d:ℕ} {E F : Set (EuclideanSpace' d)} (hE : IsNull E) (hF : IsNull F) :
+    IsNull (E ∪ F) := by
+  let S : Fin 2 → Set (EuclideanSpace' d) := ![E, F]
+  have h_eq : E ∪ F = ⋃ i : Fin 2, S i := by
+    ext x
+    simp only [Set.mem_union, Set.mem_iUnion, S]
+    constructor
+    · intro h; cases h with
+      | inl hE => exact ⟨0, by simp [hE]⟩
+      | inr hF => exact ⟨1, by simp [hF]⟩
+    · intro ⟨i, hi⟩; fin_cases i
+      · left; exact hi
+      · right; exact hi
+  apply le_antisymm _ (Lebesgue_outer_measure.nonneg _)
+  rw [h_eq]
+  calc Lebesgue_outer_measure (⋃ i : Fin 2, S i)
+      ≤ ∑ i : Fin 2, Lebesgue_outer_measure (S i) := Lebesgue_outer_measure.finite_union_le S
+    _ = Lebesgue_outer_measure (S 0) + Lebesgue_outer_measure (S 1) := Fin.sum_univ_two _
+    _ = 0 := by simp only [S, Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons]
+                rw [hE, hF, add_zero]
+
 /-- Exercise 1.2.24(i) (Lebesgue measure as the completion of elementary measure)-/
 instance IsElementary.ae_equiv {d:ℕ} {A: Set (EuclideanSpace' d)} (hA: IsElementary A):
 Setoid (Set A) := {
    r E F := IsNull (Subtype.val '' (_root_.symmDiff E F))
-   iseqv := by sorry
+   iseqv := by
+     constructor
+     · -- reflexivity
+       intro E
+       show IsNull (Subtype.val '' (_root_.symmDiff E E))
+       rw [symmDiff_self, Set.bot_eq_empty, Set.image_empty]
+       exact Lebesgue_outer_measure.of_empty d
+     · -- symmetry
+       intro E F h
+       show IsNull (Subtype.val '' (_root_.symmDiff F E))
+       rw [symmDiff_comm]; exact h
+     · -- transitivity
+       intro E F G hEF hFG
+       show IsNull (Subtype.val '' (_root_.symmDiff E G))
+       have hsub : (Subtype.val '' (_root_.symmDiff E G) : Set (EuclideanSpace' d))
+           ⊆ (Subtype.val '' (_root_.symmDiff E F)) ∪ (Subtype.val '' (_root_.symmDiff F G)) := by
+         rw [← Set.image_union]
+         apply Set.image_mono
+         have := symmDiff_triangle E F G
+         intro x hx
+         exact this hx
+       exact IsNull.subset (IsNull.union2 hEF hFG) hsub
 }
 
 def IsElementary.ae_subsets {d:ℕ} {A: Set (EuclideanSpace' d)} (hA: IsElementary A) := Quotient hA.ae_equiv
@@ -1787,9 +1881,23 @@ noncomputable def IsElementary.dist {d:ℕ} {A: Set (EuclideanSpace' d)} (hA: Is
 /-- Exercise 1.2.24(ii) (Lebesgue measure as the completion of elementary measure)-/
 noncomputable instance IsElementary.metric {d:ℕ} {A: Set (EuclideanSpace' d)} (hA: IsElementary A) : MetricSpace hA.ae_subsets := {
     dist := hA.dist
-    dist_self := by sorry
+    dist_self := by
+      intro E
+      induction E using Quotient.inductionOn with
+      | _ E =>
+        show (Lebesgue_outer_measure (Subtype.val '' (_root_.symmDiff E E))).toReal = 0
+        rw [symmDiff_self, Set.bot_eq_empty, Set.image_empty, Lebesgue_outer_measure.of_empty]
+        rfl
     eq_of_dist_eq_zero := by sorry
-    dist_comm := by sorry
+    dist_comm := by
+      intro E F
+      induction E using Quotient.inductionOn with
+      | _ E =>
+        induction F using Quotient.inductionOn with
+        | _ F =>
+          show (Lebesgue_outer_measure (Subtype.val '' (_root_.symmDiff E F))).toReal
+             = (Lebesgue_outer_measure (Subtype.val '' (_root_.symmDiff F E))).toReal
+          rw [symmDiff_comm]
     dist_triangle := by sorry
   }
 

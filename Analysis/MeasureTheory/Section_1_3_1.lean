@@ -819,6 +819,14 @@ lemma UnsignedSimpleFunction.integral_eq {d:ℕ} {f: EuclideanSpace' d → EReal
   simp only [UnsignedSimpleFunction.IntegralWellDef.weightedMeasureSum] at h
   exact h.symm
 
+/-- The integral of an unsigned simple function depends only on the function, not the proof. -/
+lemma UnsignedSimpleFunction.integ_congr {d:ℕ} {f g: EuclideanSpace' d → EReal}
+    (hf: UnsignedSimpleFunction f) (hg: UnsignedSimpleFunction g) (h: f = g) :
+    hf.integ = hg.integ := by
+  obtain ⟨k, c, E, hmn, heq⟩ := id hg
+  rw [hf.integral_eq (fun i => (hmn i).1) (fun i => (hmn i).2) (h.trans heq),
+      hg.integral_eq (fun i => (hmn i).1) (fun i => (hmn i).2) heq]
+
 /-- Definition 1.3.5 -/
 def AlmostAlways {d:ℕ} (P: EuclideanSpace' d → Prop) : Prop :=
   IsNull { x | ¬ P x }
@@ -1030,12 +1038,62 @@ theorem AlmostEverywhereEqual.equivalence {d:ℕ} {X: Type*} :
 /-- Exercise 1.3.1 (i) (Unsigned linearity) -/
 lemma UnsignedSimpleFunction.integral_add {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) (hg: UnsignedSimpleFunction g) :
   (hf.add hg).integ = hf.integ + hg.integ := by
-  sorry
+  obtain ⟨k₁, c₁, E₁, hmn₁, heq₁⟩ := id hf
+  obtain ⟨k₂, c₂, E₂, hmn₂, heq₂⟩ := id hg
+  -- representation of hf
+  have hf_eq : hf.integ = ∑ i, (c₁ i) * Lebesgue_measure (E₁ i) :=
+    hf.integral_eq (fun i => (hmn₁ i).1) (fun i => (hmn₁ i).2) heq₁
+  have hg_eq : hg.integ = ∑ i, (c₂ i) * Lebesgue_measure (E₂ i) :=
+    hg.integral_eq (fun i => (hmn₂ i).1) (fun i => (hmn₂ i).2) heq₂
+  -- concatenated representation of f + g
+  set c : Fin (k₁ + k₂) → EReal :=
+    fun i => if h : i < k₁ then c₁ ⟨i, h⟩ else c₂ ⟨i - k₁, by omega⟩ with hc
+  set E : Fin (k₁ + k₂) → Set (EuclideanSpace' d) :=
+    fun i => if h : i < k₁ then E₁ ⟨i, h⟩ else E₂ ⟨i - k₁, by omega⟩ with hE
+  have hmesE : ∀ i, LebesgueMeasurable (E i) := by
+    intro i; simp only [hE]; split_ifs with h
+    · exact (hmn₁ ⟨i, h⟩).1
+    · exact (hmn₂ ⟨i - k₁, by omega⟩).1
+  have hnonnegE : ∀ i, c i ≥ 0 := by
+    intro i; simp only [hc]; split_ifs with h
+    · exact (hmn₁ ⟨i, h⟩).2
+    · exact (hmn₂ ⟨i - k₁, by omega⟩).2
+  have hsum_eq : f + g = ∑ i, (c i) • (EReal.indicator (E i)) := by
+    ext x
+    rw [heq₁, heq₂]
+    simp only [hc, hE, Pi.add_apply, Finset.sum_apply, Pi.smul_apply, smul_eq_mul,
+      Fin.sum_univ_add]
+    congr 1 <;> { apply Finset.sum_congr rfl; intro i _; simp [Fin.is_lt] }
+  have hadd_eq : (hf.add hg).integ = ∑ i, (c i) * Lebesgue_measure (E i) :=
+    (hf.add hg).integral_eq hmesE hnonnegE hsum_eq
+  rw [hadd_eq, hf_eq, hg_eq, Fin.sum_univ_add]
+  congr 1
+  · apply Finset.sum_congr rfl; intro i _; simp only [hc, hE, Fin.coe_castAdd, Fin.is_lt,
+      dif_pos, Fin.eta]
+  · apply Finset.sum_congr rfl; intro i _; simp only [hc, hE, Fin.coe_natAdd]
+    rw [dif_neg (by omega : ¬ (k₁ + i.val < k₁))]
+    congr 2 <;> simp
 
 /-- Exercise 1.3.1 (i) (Unsigned linearity) -/
 lemma UnsignedSimpleFunction.integral_smul {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) {c:EReal} (hc: c ≥ 0) :
   (hf.smul hc).integ = c * hf.integ := by
-  sorry
+  obtain ⟨k, c₀, E, hmn, heq⟩ := id hf
+  have hf_eq : hf.integ = ∑ i, (c₀ i) * Lebesgue_measure (E i) :=
+    hf.integral_eq (fun i => (hmn i).1) (fun i => (hmn i).2) heq
+  have hsmul_eq : c • f = ∑ i, (c * c₀ i) • (EReal.indicator (E i)) := by
+    rw [heq]; ext x
+    simp only [Pi.smul_apply, Finset.sum_apply, smul_eq_mul]
+    rw [EReal.mul_finset_sum_of_nonneg k c (fun i => (c₀ i) * EReal.indicator (E i) x)
+        (fun i => mul_nonneg (hmn i).2 (EReal.indicator_nonneg' (E i) x))]
+    apply Finset.sum_congr rfl; intro i _; rw [mul_assoc]
+  have hmesE : ∀ i, LebesgueMeasurable (E i) := fun i => (hmn i).1
+  have hnonnegE : ∀ i, c * c₀ i ≥ 0 := fun i => mul_nonneg hc (hmn i).2
+  have hsmul_integ : (hf.smul hc).integ = ∑ i, (c * c₀ i) * Lebesgue_measure (E i) :=
+    (hf.smul hc).integral_eq hmesE hnonnegE hsmul_eq
+  rw [hsmul_integ, hf_eq,
+    EReal.mul_finset_sum_of_nonneg k c (fun i => (c₀ i) * Lebesgue_measure (E i))
+      (fun i => mul_nonneg (hmn i).2 (Lebesgue_outer_measure.nonneg _))]
+  apply Finset.sum_congr rfl; intro i _; rw [mul_assoc]
 
 /-- Exercise 1.3.1 (ii) (Finiteness) -/
 lemma UnsignedSimpleFunction.integral_finite_iff {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) :
@@ -1062,15 +1120,111 @@ lemma UnsignedSimpleFunction.integral_le_integral_of_aeLe {d:ℕ} {f g: Euclidea
 /-- Exercise 1.3.1(vi) (Compatibility with Lebesgue measure) -/
 lemma UnsignedSimpleFunction.indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) :
   UnsignedSimpleFunction (Real.toEReal ∘ E.indicator') := by
-  sorry
+  refine ⟨1, fun _ => 1, fun _ => E, fun i => ⟨hE, by norm_num⟩, ?_⟩
+  ext x
+  simp only [Function.comp_apply, Finset.univ_unique, Finset.sum_singleton, one_smul,
+    Pi.smul_apply, Finset.sum_const, Finset.card_singleton]
+  rfl
 
 /-- Exercise 1.3.1(vi) (Compatibility with Lebesgue measure) -/
 lemma UnsignedSimpleFunction.integral_indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) :
   (UnsignedSimpleFunction.indicator hE).integ = Lebesgue_measure E := by
-  sorry
+  have heq : (Real.toEReal ∘ E.indicator') = ∑ _i : Fin 1, (1 : EReal) • (EReal.indicator E) := by
+    ext x
+    simp only [Function.comp_apply, Finset.univ_unique, Finset.sum_singleton, one_smul]
+    rfl
+  rw [(UnsignedSimpleFunction.indicator hE).integral_eq (fun _ => hE) (fun _ => by norm_num) heq]
+  simp
 
 lemma RealSimpleFunction.abs {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f) : UnsignedSimpleFunction (EReal.abs_fun f) := by
-  sorry
+  obtain ⟨n, v, A, hA_meas, hA_disj, heq⟩ :
+      ∃ (n:ℕ) (v: Fin n → ℝ) (A: Fin n → Set (EuclideanSpace' d)),
+        (∀ i, LebesgueMeasurable (A i)) ∧ Set.univ.PairwiseDisjoint A ∧
+        f = ∑ i, (v i) • (A i).indicator' := by
+    classical
+    open UnsignedSimpleFunction.IntegralWellDef in
+    obtain ⟨k, c, E, hmes, heq⟩ := hf
+    refine ⟨2^k, UnsignedSimpleFunction.IntegralWellDef.atomValue c,
+      UnsignedSimpleFunction.IntegralWellDef.singleAtom E, ?_,
+      UnsignedSimpleFunction.IntegralWellDef.singleAtom_pairwiseDisjoint E, ?_⟩
+    · intro n
+      simp only [UnsignedSimpleFunction.IntegralWellDef.singleAtom]
+      exact UnsignedSimpleFunction.IntegralWellDef.atom_measurable hmes (fun i => Fin.elim0 i)
+        ⟨n.val, by simp only [add_zero]; exact n.isLt⟩
+    · rw [heq]
+      ext x
+      simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+      have ⟨n, hn_mem, hn_unique⟩ :=
+        UnsignedSimpleFunction.IntegralWellDef.exists_unique_singleAtom E x
+      have hrhs : (∑ m : Fin (2^k), UnsignedSimpleFunction.IntegralWellDef.atomValue c m *
+          (UnsignedSimpleFunction.IntegralWellDef.singleAtom E m).indicator' x) =
+          UnsignedSimpleFunction.IntegralWellDef.atomValue c n := by
+        rw [Finset.sum_eq_single n]
+        · simp only [Set.indicator'_of_mem hn_mem, mul_one]
+        · intro m _ hm_ne
+          have hx_notin : x ∉ UnsignedSimpleFunction.IntegralWellDef.singleAtom E m :=
+            fun h => hm_ne (hn_unique m h)
+          simp only [Set.indicator'_of_notMem hx_notin, mul_zero]
+        · intro h; exact absurd (Finset.mem_univ n) h
+      rw [hrhs]
+      have hn_mem' := (UnsignedSimpleFunction.IntegralWellDef.mem_singleAtom_iff E n x).mp hn_mem
+      simp only [UnsignedSimpleFunction.IntegralWellDef.atomValue]
+      apply Finset.sum_congr rfl
+      intro i _
+      by_cases hbit : (n.val.testBit i.val) = true
+      · simp only [hbit, ↓reduceIte]
+        have hx_in : x ∈ E i := (hn_mem' i).mp hbit
+        simp only [Set.indicator'_of_mem hx_in, mul_one]
+      · have hbit_false : (n.val.testBit i.val) = false := Bool.eq_false_iff.mpr hbit
+        have hx_out : x ∉ E i := fun h => hbit ((hn_mem' i).mpr h)
+        simp only [Set.indicator'_of_notMem hx_out, mul_zero, hbit_false, Bool.false_eq_true,
+          ↓reduceIte]
+  use n, fun i => (|v i|).toEReal, A
+  constructor
+  · intro i
+    exact ⟨hA_meas i, EReal.coe_nonneg.mpr (abs_nonneg (v i))⟩
+  · ext x
+    simp only [EReal.abs_fun, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    by_cases hx_in : ∃ j, x ∈ A j
+    · obtain ⟨j, hj⟩ := hx_in
+      have hlhs : f x = v j := by
+        rw [heq]
+        simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+        rw [Finset.sum_eq_single j]
+        · simp only [Set.indicator'_of_mem hj, mul_one]
+        · intro i _ hi_ne
+          have hx_notin : x ∉ A i := fun hx_in_i => by
+            have := hA_disj (Set.mem_univ i) (Set.mem_univ j) hi_ne
+            simp only [Function.onFun, Set.disjoint_left] at this
+            exact this hx_in_i hj
+          simp only [Set.indicator'_of_notMem hx_notin, mul_zero]
+        · intro h; exact absurd (Finset.mem_univ j) h
+      have hrhs : (∑ i : Fin n, (|v i|).toEReal * EReal.indicator (A i) x) =
+                  (|v j|).toEReal := by
+        rw [Finset.sum_eq_single j]
+        · simp only [EReal.indicator, Real.EReal_fun, Set.indicator'_of_mem hj, EReal.coe_one, mul_one]
+        · intro i _ hi_ne
+          have hx_notin : x ∉ A i := fun hx_in_i => by
+            have := hA_disj (Set.mem_univ i) (Set.mem_univ j) hi_ne
+            simp only [Function.onFun, Set.disjoint_left] at this
+            exact this hx_in_i hj
+          simp only [EReal.indicator, Real.EReal_fun, Set.indicator'_of_notMem hx_notin, EReal.coe_zero, mul_zero]
+        · intro h; exact absurd (Finset.mem_univ j) h
+      rw [hrhs, hlhs]
+      simp only [Real.norm_eq_abs]
+    · push_neg at hx_in
+      have hlhs : f x = 0 := by
+        rw [heq]
+        simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+        apply Finset.sum_eq_zero
+        intro i _
+        simp only [Set.indicator'_of_notMem (hx_in i), mul_zero]
+      have hrhs : (∑ i : Fin n, (|v i|).toEReal * EReal.indicator (A i) x) = 0 := by
+        apply Finset.sum_eq_zero
+        intro i _
+        simp only [EReal.indicator, Real.EReal_fun, Set.indicator'_of_notMem (hx_in i), EReal.coe_zero, mul_zero]
+      rw [hrhs, hlhs]
+      simp
 
 lemma ComplexSimpleFunction.abs {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexSimpleFunction f) : UnsignedSimpleFunction (EReal.abs_fun f) := by
   sorry
@@ -1264,13 +1418,47 @@ lemma ComplexSimpleFunction.AbsolutelyIntegrable.add {d:ℕ} {f g: EuclideanSpac
   (hf.add hg).AbsolutelyIntegrable := by sorry
 
 lemma RealSimpleFunction.AbsolutelyIntegrable.smul {d:ℕ} {f: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) (a: ℝ) :
-  (hf.smul a).AbsolutelyIntegrable := by sorry
+  (hf.smul a).AbsolutelyIntegrable := by
+  unfold RealSimpleFunction.AbsolutelyIntegrable at *
+  have hfun : EReal.abs_fun (a • f) = ((|a| : ℝ) : EReal) • EReal.abs_fun f := by
+    ext x
+    simp only [EReal.abs_fun, Pi.smul_apply, smul_eq_mul, Real.norm_eq_abs, abs_mul]
+    rw [EReal.coe_mul]
+  have habs_smul : UnsignedSimpleFunction (((|a| : ℝ) : EReal) • EReal.abs_fun f) :=
+    hf.abs.smul (EReal.coe_nonneg.mpr (abs_nonneg a))
+  have hcong : (hf.smul a).abs.integ = habs_smul.integ :=
+    UnsignedSimpleFunction.integ_congr _ _ hfun
+  rw [hcong, UnsignedSimpleFunction.integral_smul hf.abs (EReal.coe_nonneg.mpr (abs_nonneg a))]
+  have hne : ((|a| : ℝ) : EReal) * hf.abs.integ ≠ ⊤ := by
+    rw [EReal.mul_ne_top]
+    refine ⟨Or.inl (EReal.coe_ne_bot _), Or.inl (EReal.coe_nonneg.mpr (abs_nonneg a)),
+      Or.inl (EReal.coe_ne_top _), Or.inr hf_integ.ne⟩
+  exact lt_of_le_of_ne le_top hne
 
 lemma ComplexSimpleFunction.AbsolutelyIntegrable.smul {d:ℕ} {f: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) (a: ℂ) :
-  (hf.smul a).AbsolutelyIntegrable := by sorry
+  (hf.smul a).AbsolutelyIntegrable := by
+  unfold ComplexSimpleFunction.AbsolutelyIntegrable at *
+  have hfun : EReal.abs_fun (a • f) = ((‖a‖ : ℝ) : EReal) • EReal.abs_fun f := by
+    ext x
+    simp only [EReal.abs_fun, Pi.smul_apply, smul_eq_mul, norm_mul]
+    rw [EReal.coe_mul]
+  have hcong : (hf.smul a).abs.integ = (hf.abs.smul (EReal.coe_nonneg.mpr (norm_nonneg a))).integ :=
+    UnsignedSimpleFunction.integ_congr _ _ hfun
+  rw [hcong, UnsignedSimpleFunction.integral_smul hf.abs (EReal.coe_nonneg.mpr (norm_nonneg a))]
+  have hne : ((‖a‖ : ℝ) : EReal) * hf.abs.integ ≠ ⊤ := by
+    rw [EReal.mul_ne_top]
+    refine ⟨Or.inl (EReal.coe_ne_bot _), Or.inl (EReal.coe_nonneg.mpr (norm_nonneg a)),
+      Or.inl (EReal.coe_ne_top _), Or.inr hf_integ.ne⟩
+  exact lt_of_le_of_ne le_top hne
 
 lemma ComplexSimpleFunction.AbsolutelyIntegrable.conj {d:ℕ} {f: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) :
-  (hf.conj).AbsolutelyIntegrable := by sorry
+  (hf.conj).AbsolutelyIntegrable := by
+  unfold ComplexSimpleFunction.AbsolutelyIntegrable at *
+  have hfun : EReal.abs_fun (Complex.conj_fun f) = EReal.abs_fun f := by
+    ext x
+    simp only [EReal.abs_fun, Complex.conj_fun, RCLike.norm_conj]
+  rw [UnsignedSimpleFunction.integ_congr (hf.conj).abs hf.abs hfun]
+  exact hf_integ
 
 /-- Exercise 1.3.2 (i) ({lit}`*`-linearity) -/
 lemma RealSimpleFunction.integ_add {d:ℕ} {f g: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} {hg: RealSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) : (hf.add hg).integ = hf.integ + hg.integ := by sorry
@@ -1299,11 +1487,15 @@ lemma ComplexSimpleFunction.integral_eq_integral_of_aeEqual {d:ℕ} {f g: Euclid
 /-- Exercise 1.3.2(iii) (Compatibility with Lebesgue measure) -/
 lemma RealSimpleFunction.indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) :
   RealSimpleFunction (E.indicator') := by
-  sorry
+  refine ⟨1, fun _ => 1, fun _ => E, fun _ => hE, ?_⟩
+  ext x
+  simp only [Finset.univ_unique, Finset.sum_singleton, one_smul]
 
 lemma ComplexSimpleFunction.indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) :
   ComplexSimpleFunction (Complex.indicator E) := by
-  sorry
+  refine ⟨1, fun _ => 1, fun _ => E, fun _ => hE, ?_⟩
+  ext x
+  simp only [Finset.univ_unique, Finset.sum_singleton, one_smul]
 
 /-- Exercise 1.3.2(iii) (Compatibility with Lebesgue measure) -/
 lemma RealSimpleFunction.integral_indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) (hfin: Lebesgue_measure E < ⊤): (RealSimpleFunction.indicator hE).integ = (Lebesgue_measure E).toReal := by
