@@ -109,7 +109,71 @@ theorem MonotoneOn.exist_inverse {a b:ℝ} (h: a < b) (f: ℝ → ℝ) (hcont: C
   (∀ x ∈ Set.Icc a b, finv (f x) = x) ∧
   ∀ y ∈ Set.Icc (f a) (f b), f (finv y) = y
    := by
-  sorry
+  have ha : a ∈ Set.Icc a b := ⟨le_refl a, h.le⟩
+  have hb : b ∈ Set.Icc a b := ⟨h.le, le_refl b⟩
+  have hfab : f a < f b := hmono ha hb h
+  have hinj : Set.InjOn f (Set.Icc a b) := hmono.injOn
+  have himg : f '' (Set.Icc a b) = Set.Icc (f a) (f b) := by
+    apply le_antisymm
+    · rintro _ ⟨x, hx, rfl⟩
+      exact ⟨hmono.monotoneOn ha hx hx.1, hmono.monotoneOn hx hb hx.2⟩
+    · exact hcont.surjOn_Icc ha hb
+  set finv := Function.invFunOn f (Set.Icc a b) with hfinv_def
+  have hsurj : Set.SurjOn f (Set.Icc a b) (Set.Icc (f a) (f b)) := by
+    rw [← himg]; exact Set.surjOn_image f _
+  have hright : ∀ y ∈ Set.Icc (f a) (f b), f (finv y) = y := by
+    intro y hy
+    obtain ⟨x, hx, hxy⟩ := hsurj hy
+    exact Function.invFunOn_eq (f := f) (s := Set.Icc a b) ⟨x, hx, hxy⟩
+  have hmem : ∀ y ∈ Set.Icc (f a) (f b), finv y ∈ Set.Icc a b := by
+    intro y hy
+    obtain ⟨x, hx, hxy⟩ := hsurj hy
+    exact Function.invFunOn_mem (f := f) ⟨x, hx, hxy⟩
+  have hleft : ∀ x ∈ Set.Icc a b, finv (f x) = x := by
+    intro x hx
+    have hfx : f x ∈ Set.Icc (f a) (f b) := by rw [← himg]; exact ⟨x, hx, rfl⟩
+    apply hinj (hmem (f x) hfx) hx
+    exact hright (f x) hfx
+  have hfinv_mono : StrictMonoOn finv (Set.Icc (f a) (f b)) := by
+    intro u hu v hv huv
+    by_contra hcon
+    push_neg at hcon
+    rcases eq_or_lt_of_le hcon with heq | hlt
+    · have : f (finv u) = f (finv v) := by rw [heq]
+      rw [hright u hu, hright v hv] at this; linarith
+    · have := hmono (hmem v hv) (hmem u hu) hlt
+      rw [hright u hu, hright v hv] at this; linarith
+  have hfinv_img : finv '' (Set.Icc (f a) (f b)) = Set.Icc a b := by
+    apply le_antisymm
+    · rintro _ ⟨y, hy, rfl⟩; exact hmem y hy
+    · rintro x hx
+      refine ⟨f x, ?_, hleft x hx⟩
+      rw [← himg]; exact ⟨x, hx, rfl⟩
+  have hfinv_cont : ContinuousOn finv (Set.Icc (f a) (f b)) := by
+    set s := Set.Icc a b
+    set t := Set.Icc (f a) (f b)
+    have hmaps : Set.MapsTo f s t := by rw [← himg]; exact Set.mapsTo_image f s
+    have hcont' : Continuous (fun x : s => (⟨f x, hmaps x.2⟩ : t)) :=
+      Continuous.subtype_mk hcont.restrict _
+    have hbij : Function.Bijective (fun x : s => (⟨f x, hmaps x.2⟩ : t)) := by
+      constructor
+      · intro x y hxy
+        have : f x = f y := congrArg Subtype.val hxy
+        exact Subtype.ext (hmono.injOn x.2 y.2 this)
+      · intro y
+        have hy : (y:ℝ) ∈ f '' s := by rw [himg]; exact y.2
+        obtain ⟨x, hx, hxy⟩ := hy
+        exact ⟨⟨x, hx⟩, Subtype.ext hxy⟩
+    let e : s ≃ t := Equiv.ofBijective _ hbij
+    let homeo : s ≃ₜ t := Continuous.homeoOfEquivCompactToT2 (f := e) hcont'
+    rw [continuousOn_iff_continuous_restrict]
+    have heq : (t.restrict finv) = fun y : t => ((homeo.symm y : s) : ℝ) := by
+      funext y
+      have hval : f (homeo.symm y : s) = (y:ℝ) := congrArg Subtype.val (homeo.apply_symm_apply y)
+      show finv (y:ℝ) = ((homeo.symm y : s):ℝ)
+      rw [← hval, hleft _ (homeo.symm y).2]
+    rw [heq]; fun_prop
+  exact ⟨himg, finv, hfinv_cont, hfinv_mono, hfinv_img, hleft, hright⟩
 
 /-- Example 9.8.4-/
 example {R :ℝ} (hR: R > 0) {n:ℕ} (hn: n > 0) : ∃ g : ℝ → ℝ, ∀ x ∈ Set.Icc 0 (R^n), (g x)^n = x := by
