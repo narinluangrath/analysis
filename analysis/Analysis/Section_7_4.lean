@@ -247,7 +247,45 @@ theorem Series.absConverges_of_permute {a:ℕ → ℝ} (ha : (a:Series).absConve
 /-- Example 7.4.4 -/
 noncomputable abbrev Series.a_7_4_4 : ℕ → ℝ := fun n ↦ (-1:ℝ)^n / (n+2)
 
-theorem Series.ex_7_4_4_conv : (a_7_4_4 : Series).converges := by sorry
+theorem Series.ex_7_4_4_conv : (a_7_4_4 : Series).converges := by
+  set a : {k:ℤ // k ≥ 0} → ℝ := fun n => 1/(((n:ℤ):ℝ) + 2) with ha_def
+  have ha : ∀ n, a n ≥ 0 := by
+    intro n; simp only [ha_def]
+    have h0 : (0:ℝ) ≤ ((n:ℤ):ℝ) := by exact_mod_cast n.2
+    apply div_nonneg one_pos.le; linarith
+  have ha' : Antitone a := by
+    intro x y hxy
+    have hxy0 : (x:ℤ) ≤ (y:ℤ) := hxy
+    have hx0 : (0:ℝ) ≤ ((x:ℤ):ℝ) := by exact_mod_cast x.2
+    have hxy' : ((x:ℤ):ℝ) ≤ ((y:ℤ):ℝ) := by exact_mod_cast hxy0
+    simp only [ha_def]; apply one_div_le_one_div_of_le (by linarith) (by linarith)
+  have hadecay : Filter.Tendsto a Filter.atTop (nhds 0) := by
+    have hval : Filter.Tendsto (fun n:{k:ℤ//k≥0} => (n:ℤ)) Filter.atTop Filter.atTop :=
+      (Filter.tendsto_comp_val_Ici_atTop (a:=(0:ℤ)) (f := id)).mpr Filter.tendsto_id
+    have h2z : Filter.Tendsto (fun z:ℤ => (1:ℝ)/((z:ℝ)+2)) Filter.atTop (nhds 0) := by
+      have : Filter.Tendsto (fun z:ℤ => ((z:ℝ)+2)) Filter.atTop Filter.atTop :=
+        Filter.tendsto_atTop_add_const_right _ 2 tendsto_intCast_atTop_atTop
+      simpa using this.inv_tendsto_atTop
+    exact h2z.comp hval
+  have heq : (Series.a_7_4_4 : Series) = mk' (m := 0) (fun n => (-1:ℝ)^(n:ℤ) * a n) := by
+    apply Series.ext
+    · rfl
+    funext n
+    by_cases hn : n ≥ (0:ℤ)
+    · rw [Series.eval_mk' _ hn]
+      simp only [Series.eval_coe, ha_def] at *
+      show (Series.a_7_4_4 : Series).seq n = _
+      rw [show (Series.a_7_4_4 : Series).seq n = if n ≥ 0 then Series.a_7_4_4 n.toNat else 0 from rfl, if_pos hn]
+      simp only [Series.a_7_4_4]
+      rw [div_eq_mul_one_div]
+      congr 1
+      · rw [show ((-1:ℝ)^(n.toNat)) = (-1:ℝ)^(n:ℤ) from by rw [← zpow_natCast]; congr 1; omega]
+      · have : (n.toNat:ℝ) = (n:ℝ) := by exact_mod_cast Int.toNat_of_nonneg hn
+        rw [this]
+    · rw [(mk' (m := 0) (fun n => (-1:ℝ)^(n:ℤ) * a n)).vanish n (by simp; omega)]
+      rw [(Series.a_7_4_4 : Series).vanish n (by simp; omega)]
+  rw [heq]
+  exact (converges_of_alternating ha ha').mpr hadecay
 
 theorem Series.ex_7_4_4_sum : (a_7_4_4 : Series).sum > 0 := by sorry
 
@@ -261,12 +299,66 @@ theorem Series.ex_7_4_4'_sum : (fun n ↦ a_7_4_4 (f_7_4_4 n) :Series).sum < 0 :
 
 /-- Exercise 7.4.1 -/
 theorem Series.absConverges_of_subseries {a:ℕ → ℝ} (ha: (a:Series).absConverges) {f: ℕ → ℕ} (hf: StrictMono f) :
-  (fun n ↦ a (f n):Series).absConverges := by sorry
+  (fun n ↦ a (f n):Series).absConverges := by
+  set af : ℕ → ℝ := fun n ↦ a (f n) with hafdef
+  -- The abs of (a:Series) is nonneg
+  have hAnn : (a:Series).abs.nonneg := by
+    intro n; by_cases h : n ≥ (0:ℤ)
+    · rw [show (a:Series).abs.seq n = |(a:Series).seq n| from Series.eval_mk' _ h]; positivity
+    · rw [(a:Series).abs.vanish n (by simp [Series.abs] at h ⊢; omega)]
+  have hAFnn : (af:Series).abs.nonneg := by
+    intro n; by_cases h : n ≥ (0:ℤ)
+    · rw [show (af:Series).abs.seq n = |(af:Series).seq n| from Series.eval_mk' _ h]; positivity
+    · rw [(af:Series).abs.vanish n (by simp [Series.abs] at h ⊢; omega)]
+  obtain ⟨Q, hQ⟩ := (converges_of_nonneg_iff hAnn).mp ha
+  rw [show (af:Series).absConverges = (af:Series).abs.converges from rfl]
+  rw [converges_of_nonneg_iff hAFnn]
+  use Q
+  intro N
+  by_cases hN : N ≥ (0:ℤ)
+  · have hAFm : (af:Series).abs.m = 0 := rfl
+    have e1 : (af:Series).abs.partial N = ∑ m ∈ Finset.Iic N.toNat, |a (f m)| := by
+      unfold Series.partial; rw [hAFm]
+      rw [← Series.sum_eq_sum (fun m => |a (f m)|) hN]
+      apply Finset.sum_congr rfl
+      intro x hx; simp only [Finset.mem_Icc] at hx
+      by_cases hx0 : (0:ℤ) ≤ x
+      · rw [show (af:Series).abs.seq x = |(af:Series).seq x| from Series.eval_mk' _ hx0]
+        simp [Series.eval_coe, af, hx0]
+      · omega
+    rw [e1]
+    have e2 : ∑ m ∈ Finset.Iic N.toNat, |a (f m)| = ∑ n ∈ (Finset.Iic N.toNat).image f, |a n| := by
+      rw [Finset.sum_image]; intro x _ y _ h; exact hf.injective h
+    rw [e2]
+    have hsub : (Finset.Iic N.toNat).image f ⊆ Finset.Iic (f N.toNat) := by
+      intro n hn; simp only [Finset.mem_image, Finset.mem_Iic] at hn ⊢
+      obtain ⟨x, hx, rfl⟩ := hn; exact hf.monotone hx
+    calc ∑ n ∈ (Finset.Iic N.toNat).image f, |a n|
+        ≤ ∑ n ∈ Finset.Iic (f N.toNat), |a n| := by
+          apply Finset.sum_le_sum_of_subset_of_nonneg hsub; intro i _ _; positivity
+      _ = (a:Series).abs.partial (f N.toNat) := by
+          have hAm : (a:Series).abs.m = 0 := rfl
+          unfold Series.partial; rw [hAm]
+          have hcongr : ∀ n ∈ Finset.Icc (0:ℤ) (f N.toNat : ℤ), (a:Series).abs.seq n = (if 0 ≤ n then |a n.toNat| else 0) := by
+            intro x hx; simp only [Finset.mem_Icc] at hx
+            by_cases hx0 : (0:ℤ) ≤ x
+            · rw [show (a:Series).abs.seq x = |(a:Series).seq x| from Series.eval_mk' _ hx0]
+              simp [Series.eval_coe, hx0]
+            · omega
+          rw [Finset.sum_congr rfl hcongr]
+          rw [Series.sum_eq_sum (fun m => |a m|) (by positivity : ((f N.toNat:ℤ)) ≥ 0)]
+          rw [show ((f N.toNat : ℤ)).toNat = f N.toNat from by simp]
+      _ ≤ Q := hQ _
+  · rw [Series.partial_of_lt (by simp [Series.abs] at *; omega)]
+    have := hQ (-1); have hp : (a:Series).abs.partial (-1) = 0 := by
+      rw [Series.partial_of_lt (by simp [Series.abs])]
+    linarith [hp ▸ this]
 
 /-- Exercise 7.4.2 : reprove Proposition 7.4.3 using Proposition 7.41, Proposition 7.2.14,
     and expressing `a n` as the difference of `a n + |a n|` and `|a n|`. -/
 theorem Series.absConverges_of_permute' {a:ℕ → ℝ} (ha : (a:Series).absConverges)
   {f: ℕ → ℕ} (hf: Function.Bijective f) :
-    (fun n ↦ a (f n):Series).absConverges  ∧ (a:Series).sum = (fun n ↦ a (f n):Series).sum := by sorry
+    (fun n ↦ a (f n):Series).absConverges  ∧ (a:Series).sum = (fun n ↦ a (f n):Series).sum :=
+  Series.absConverges_of_permute ha hf
 
 end Chapter7
