@@ -4,7 +4,7 @@ A fork of **[teorth/analysis](https://github.com/teorth/analysis)** (Terence Tao
 
 The upstream repository deliberately leaves exercises as `sorry` and does not host solutions; this fork is an independent solving effort. `lake build` is green at every commit.
 
-**Progress: 1576 / 2083 exercises solved (76%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
+**Progress: 1580 / 2083 exercises solved (76%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
 
 ## Chapter 2 — Natural numbers
 
@@ -74,7 +74,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | Section | Title | Solved | Remaining | Status |
 |---|---|---:|---:|:--:|
 | 8.1 | Countability | 32/32 | 0 | ✅ |
-| 8.2 | Summation on infinite sets | 25/27 | 2 | 🟡 |
+| 8.2 | Summation on infinite sets | 27/27 | 0 | ✅ |
 | 8.3 | Uncountable sets | 9/9 | 0 | ✅ |
 | 8.4 | The axiom of choice | 6/6 | 0 | ✅ |
 | 8.5 | Ordered sets | 73/75 | 2 | 🟡 |
@@ -85,7 +85,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 |---|---|---:|---:|:--:|
 | 9.1 | Subsets of the real line | 72/72 | 0 | ✅ |
 | 9.2 | The algebra of real-valued functions | 4/4 | 0 | ✅ |
-| 9.3 | Limiting values of functions | 28/32 | 4 | 🟡 |
+| 9.3 | Limiting values of functions | 30/32 | 2 | 🟡 |
 | 9.4 | Continuous functions | 22/22 | 0 | ✅ |
 | 9.5 | Left and right limits | 10/10 | 0 | ✅ |
 | 9.6 | The maximum principle | 22/22 | 0 | ✅ |
