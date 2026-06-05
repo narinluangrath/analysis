@@ -51,7 +51,24 @@ theorem _root_.HasDerivWithinAt.of_inverse_of_zero_deriv {X Y: Set ℝ} {f: ℝ 
   by_contra this; rw [DifferentiableWithinAt.iff] at this; choose _ hg using this
   apply hf.of_inverse at hg <;> grind
 
-example : ¬ DifferentiableWithinAt ℝ (fun x:ℝ ↦ x^(1/3:ℝ)) (.Ici 0) 0 := by sorry
+example : ¬ DifferentiableWithinAt ℝ (fun x:ℝ ↦ x^(1/3:ℝ)) (.Ici 0) 0 := by
+  apply HasDerivWithinAt.of_inverse_of_zero_deriv
+    (f := fun x:ℝ ↦ x^3) (X := .Ici 0) (Y := .Ici 0) (x₀ := 0) (y₀ := 0)
+  · intro x hx; simp only [Set.mem_Ici] at *; positivity
+  · intro x hx; simp only [Set.mem_Ici] at hx
+    rw [show (1/3:ℝ) = ((3:ℕ):ℝ)⁻¹ by norm_num, Real.pow_rpow_inv_natCast hx (by norm_num)]
+  · simp
+  · simp
+  · rw [show (Set.Ici (0:ℝ)) \ {0} = Set.Ioi 0 by ext x; simp [Set.mem_Ici, Set.mem_Ioi]]
+    rw [clusterPt_principal_iff]
+    intro U hU
+    rw [Metric.mem_nhds_iff] at hU
+    obtain ⟨ε, hε, hball⟩ := hU
+    refine ⟨ε/2, hball ?_, by simp; positivity⟩
+    simp only [Metric.mem_ball, Real.dist_eq, sub_zero, abs_of_pos (by positivity : (0:ℝ) < ε/2)]
+    linarith
+  · have := (hasDerivAt_pow 3 (0:ℝ)).hasDerivWithinAt (s := Set.Ici 0)
+    convert this using 1; norm_num
 
 /-- Theorem 10.4.2 (Inverse function theorem) -/
 theorem inverse_function_theorem {X Y: Set ℝ} {f: ℝ → ℝ} {g:ℝ → ℝ}
@@ -67,7 +84,16 @@ theorem inverse_function_theorem {X Y: Set ℝ} {f: ℝ → ℝ} {g:ℝ → ℝ}
     have hy' : ∀ n, y n ∈ Y := by aesop
     have hy₀: y₀ ∈ Y := by aesop
     have hx : ∀ n, x n ∈ X \ {x₀}:= by
-      sorry
+      intro n
+      have hyn : y n ∈ Y := hy' n
+      have hyne : y n ≠ y₀ := by have := hy n; simp only [Set.mem_diff, Set.mem_singleton_iff] at this; exact this.2
+      refine ⟨hgYX _ hyn, ?_⟩
+      simp only [Set.mem_singleton_iff]
+      intro hcon
+      apply hyne
+      have : f (g (y n)) = f x₀ := by rw [show g (y n) = x₀ from hcon]
+      rw [hfg _ hyn, hfx₀] at this
+      exact this
     replace hconv := hconv.comp_of_continuous hg hy'
     have hgy₀ : g y₀ = x₀ := by aesop
     rw [HasDerivWithinAt.iff, ←Convergesto.iff, Convergesto.iff_conv _ _] at hf
