@@ -198,17 +198,105 @@ theorem Chapter6.Sequence.limit_point_iff (a:ℕ → ℝ) (L:ℝ) :
   refine ⟨ n, by rwa [ge_iff_le, ←Int.toNat_le], ?_ ⟩
   simp [Real.dist_eq, hn] at *; linarith
 
+private theorem Chapter6.upperseq_eq_aux (a:ℕ → ℝ) (N:ℤ) (hN : N ≥ 0) :
+    (a:Sequence).upperseq N = sSup {y : EReal | ∃ n:ℕ, n ≥ N.toNat ∧ y = (a n:EReal)} := by
+  have hval : ∀ n:ℤ, n ≥ N → ((a:Sequence).from N) n = a n.toNat := by
+    intro n hn
+    rw [Chapter6.Sequence.from_eval _ (by omega : n ≥ N)]
+    show (if n ≥ 0 then a n.toNat else 0) = a n.toNat
+    rw [if_pos (by omega)]
+  unfold Chapter6.Sequence.upperseq Chapter6.Sequence.sup
+  have hm : ((a:Sequence).from N).m = N := by
+    show max ((a:Sequence)).m N = N
+    have : ((a:Sequence)).m = 0 := rfl
+    rw [this]; omega
+  congr 1
+  ext y
+  constructor
+  · rintro ⟨n, hn, rfl⟩
+    rw [hm] at hn
+    rw [hval n hn]
+    exact ⟨n.toNat, by omega, by norm_cast⟩
+  · rintro ⟨n, hn, rfl⟩
+    refine ⟨(n:ℤ), by rw [hm]; omega, ?_⟩
+    rw [hval (n:ℤ) (by rw [hm] at *; omega)]
+    norm_cast
+
+private theorem Chapter6.lowerseq_eq_aux (a:ℕ → ℝ) (N:ℤ) (hN : N ≥ 0) :
+    (a:Sequence).lowerseq N = sInf {y : EReal | ∃ n:ℕ, n ≥ N.toNat ∧ y = (a n:EReal)} := by
+  have hval : ∀ n:ℤ, n ≥ N → ((a:Sequence).from N) n = a n.toNat := by
+    intro n hn
+    rw [Chapter6.Sequence.from_eval _ (by omega : n ≥ N)]
+    show (if n ≥ 0 then a n.toNat else 0) = a n.toNat
+    rw [if_pos (by omega)]
+  unfold Chapter6.Sequence.lowerseq Chapter6.Sequence.inf
+  have hm : ((a:Sequence).from N).m = N := by
+    show max ((a:Sequence)).m N = N
+    have : ((a:Sequence)).m = 0 := rfl
+    rw [this]; omega
+  congr 1
+  ext y
+  constructor
+  · rintro ⟨n, hn, rfl⟩
+    rw [hm] at hn
+    rw [hval n hn]
+    exact ⟨n.toNat, by omega, by norm_cast⟩
+  · rintro ⟨n, hn, rfl⟩
+    refine ⟨(n:ℤ), by rw [hm]; omega, ?_⟩
+    rw [hval (n:ℤ) (by rw [hm] at *; omega)]
+    norm_cast
+
 /-- Identification with `Filter.limsup` -/
 theorem Chapter6.Sequence.limsup_eq (a:ℕ → ℝ) :
     (a:Sequence).limsup = atTop.limsup (fun n ↦ (a n:EReal)) := by
-  simp_rw [Filter.limsup_eq, eventually_atTop]
-  sorry
+  rw [Filter.limsup_eq]
+  simp_rw [eventually_atTop]
+  unfold Chapter6.Sequence.limsup
+  apply le_antisymm
+  · apply le_sInf
+    rintro t ⟨N, hNt⟩
+    have hM0 : (N:ℤ) ≥ 0 := by positivity
+    refine sInf_le_of_le ⟨(N:ℤ), hM0, rfl⟩ ?_
+    rw [Chapter6.upperseq_eq_aux a (N:ℤ) hM0]
+    apply sSup_le
+    rintro y ⟨n, hn, rfl⟩
+    apply hNt
+    simp at hn; omega
+  · apply le_sInf
+    rintro x ⟨N, hNm, rfl⟩
+    have hN0 : N ≥ 0 := hNm
+    apply sInf_le
+    refine ⟨N.toNat, ?_⟩
+    intro n hn
+    rw [Chapter6.upperseq_eq_aux a N hN0]
+    apply le_sSup
+    exact ⟨n, hn, rfl⟩
 
 /-- Identification with `Filter.liminf` -/
 theorem Chapter6.Sequence.liminf_eq (a:ℕ → ℝ) :
     (a:Sequence).liminf = atTop.liminf (fun n ↦ (a n:EReal)) := by
-  simp_rw [Filter.liminf_eq, eventually_atTop]
-  sorry
+  rw [Filter.liminf_eq]
+  simp_rw [eventually_atTop]
+  unfold Chapter6.Sequence.liminf
+  apply le_antisymm
+  · apply sSup_le
+    rintro x ⟨N, hNm, rfl⟩
+    have hN0 : N ≥ 0 := hNm
+    apply le_sSup
+    refine ⟨N.toNat, ?_⟩
+    intro n hn
+    rw [Chapter6.lowerseq_eq_aux a N hN0]
+    apply sInf_le
+    exact ⟨n, hn, rfl⟩
+  · apply sSup_le
+    rintro t ⟨N, hNt⟩
+    have hM0 : (N:ℤ) ≥ 0 := by positivity
+    refine le_sSup_of_le ⟨(N:ℤ), hM0, rfl⟩ ?_
+    rw [Chapter6.lowerseq_eq_aux a (N:ℤ) hM0]
+    apply le_sInf
+    rintro y ⟨n, hn, rfl⟩
+    apply hNt
+    simp at hn; omega
 
 /-- Identification of `rpow` and Mathlib exponentiation -/
 theorem Chapter6.Real.rpow_eq_rpow {x:ℝ} (hx: x > 0) (α:ℝ) : rpow x α = x^α := by
