@@ -240,6 +240,27 @@ theorem NNRealDecimal.trunc_bounds (e:NNRealDecimal) (n:ℕ) :
         ≤ (e.intPart:NNReal) + ((∑ i ∈ Finset.range n, (e.fracPart i:NNReal)*(10:NNReal)^(-i-1:ℝ)) + (10:NNReal)^(-n:ℝ)) := by gcongr; exact tail_from_le e n
       _ = _ := by ring
 
+/-- The truncation bounds expressed in `ℝ`, comparing `trunc n` with `y * 10^n`. -/
+theorem NNRealDecimal.trunc_bounds_real (e:NNRealDecimal) {y:NNReal} (hx : e.toNNReal = y) (n:ℕ) :
+    (e.trunc n : ℝ) ≤ (y:ℝ) * 10^n ∧ (y:ℝ) * 10^n ≤ (e.trunc n : ℝ) + 1 := by
+  obtain ⟨h1, h2⟩ := trunc_bounds e n
+  rw [hx] at h1 h2
+  -- push down to ℝ
+  rw [← NNReal.coe_le_coe] at h1 h2
+  push_cast [NNReal.coe_rpow] at h1 h2
+  have hpos : (0:ℝ) < (10:ℝ)^(-(n:ℝ)) := by positivity
+  have hpown : (10:ℝ)^(-(n:ℝ)) * (10:ℝ)^(n:ℝ) = 1 := by
+    rw [← Real.rpow_add (by norm_num)]; simp
+  have hpn : (10:ℝ)^(n:ℝ) = (10:ℝ)^n := by rw [Real.rpow_natCast]
+  have hpos' : (0:ℝ) < (10:ℝ)^(n:ℝ) := by positivity
+  constructor
+  · have h := mul_le_mul_of_nonneg_right h1 hpos'.le
+    rw [mul_assoc, hpown, mul_one, hpn] at h
+    convert h using 2
+  · have h := mul_le_mul_of_nonneg_right h2 hpos'.le
+    rw [add_mul, mul_assoc, hpown, mul_one, hpn] at h
+    convert h using 2
+
 theorem NNRealDecimal.trunc_one (e:NNRealDecimal) (hx : e.toNNReal = 1) (n:ℕ) :
     e.trunc n ≤ 10^n ∧ 10^n ≤ e.trunc n + 1 := by
   obtain ⟨h1, h2⟩ := trunc_bounds e n
@@ -331,6 +352,54 @@ theorem NNRealDecimal.toNNReal_eq_one_iff (e:NNRealDecimal) :
     · rw [← NNRealDecimal.not_inj.1]
     · rw [← NNRealDecimal.not_inj.2]
 
+/-- A `NNRealDecimal` is determined by its sequence of truncations. -/
+theorem NNRealDecimal.eq_of_trunc_eq {e f : NNRealDecimal}
+    (h : ∀ n, e.trunc n = f.trunc n) : e = f := by
+  obtain ⟨ip, fp⟩ := e
+  obtain ⟨ip', fp'⟩ := f
+  have hip : ip = ip' := by
+    have := h 0; simp only [trunc_zero] at this; exact this
+  subst hip
+  congr 1
+  funext n
+  have hn := h (n+1)
+  have hn0 := h n
+  rw [trunc_succ, trunc_succ, hn0] at hn
+  simp only at hn
+  rw [Digit.inj]
+  omega
+
+/-- For a value `y`, the truncation `e.trunc n` lies within `1` of the floor of `y * 10^n`. -/
+theorem NNRealDecimal.trunc_floor_bounds (e:NNRealDecimal) {y:NNReal} (hx : e.toNNReal = y) (n:ℕ) :
+    e.trunc n ≤ ⌊(y:ℝ) * 10^n⌋₊ ∧ ⌊(y:ℝ) * 10^n⌋₊ ≤ e.trunc n + 1 := by
+  obtain ⟨h1, h2⟩ := trunc_bounds_real e hx n
+  have hyge : (0:ℝ) ≤ (y:ℝ) * 10^n := by positivity
+  constructor
+  · exact Nat.le_floor (by exact_mod_cast h1)
+  · have : (⌊(y:ℝ) * 10^n⌋₊ : ℝ) ≤ (y:ℝ) * 10^n := Nat.floor_le hyge
+    have h3 : (⌊(y:ℝ) * 10^n⌋₊ : ℝ) ≤ (e.trunc n : ℝ) + 1 := le_trans this h2
+    exact_mod_cast h3
+
+/-- If `y * 10^n` is never an integer, the truncation is forced to be the floor. -/
+theorem NNRealDecimal.trunc_forced (e:NNRealDecimal) {y:NNReal} (hx : e.toNNReal = y) (n:ℕ)
+    (hni : ¬ ∃ k:ℕ, (y:ℝ) * 10^n = k) : e.trunc n = ⌊(y:ℝ) * 10^n⌋₊ := by
+  obtain ⟨h1, h2⟩ := trunc_bounds_real e hx n
+  have hyge : (0:ℝ) ≤ (y:ℝ) * 10^n := by positivity
+  have hfl : (⌊(y:ℝ) * 10^n⌋₊ : ℝ) ≤ (y:ℝ) * 10^n := Nat.floor_le hyge
+  -- strict: floor < value, since value is not an integer
+  have hstrict : (⌊(y:ℝ) * 10^n⌋₊ : ℝ) < (y:ℝ) * 10^n := by
+    rcases lt_or_eq_of_le hfl with h | h
+    · exact h
+    · exact absurd ⟨_, h.symm⟩ hni
+  have hlt : (y:ℝ) * 10^n < ⌊(y:ℝ) * 10^n⌋₊ + 1 := Nat.lt_floor_add_one _
+  have hle1 : e.trunc n ≤ ⌊(y:ℝ) * 10^n⌋₊ := Nat.le_floor (by exact_mod_cast h1)
+  -- ⌊⌋ < trunc + 1 from hstrict and h2
+  have : (⌊(y:ℝ) * 10^n⌋₊ : ℝ) < (e.trunc n : ℝ) + 1 := lt_of_lt_of_le hstrict h2
+  have hge1 : ⌊(y:ℝ) * 10^n⌋₊ ≤ e.trunc n := by
+    have : (⌊(y:ℝ) * 10^n⌋₊ : ℝ) < (e.trunc n : ℝ) + 1 := this
+    exact_mod_cast Nat.lt_succ_iff.mp (by exact_mod_cast this)
+  omega
+
 /-- Exercise B.2.2 -/
 theorem RealDecimal.not_inj_one (d: RealDecimal) : (d:ℝ) = 1 ↔ (d = pos (mk 1 fun _ ↦ 0) ∨ d = pos (mk 0 fun _ ↦ 9)) := by
   constructor
@@ -357,9 +426,65 @@ theorem RealDecimal.not_inj_one (d: RealDecimal) : (d:ℝ) = 1 ↔ (d = pos (mk 
 /-- Exercise B.2.3 -/
 abbrev TerminatingDecimal (x:ℝ) : Prop := ∃ (n:ℤ) (m:ℕ), x = n / (10:ℝ)^m
 
-theorem RealDecimal.not_inj_terminating {x:ℝ} (hx: TerminatingDecimal x) : ∃ d₁ d₂:RealDecimal, d₁ ≠ d₂ ∧ ∀ d: RealDecimal, d = x ↔ d = d₁ ∨ d = d₂ := by sorry
+/-- If `(y:ℝ)` is not a terminating decimal, then `y * 10^n` is never a natural number. -/
+theorem NNRealDecimal.not_int_of_nonterminating {y:NNReal} (hy : ¬ TerminatingDecimal (y:ℝ))
+    (n:ℕ) : ¬ ∃ k:ℕ, (y:ℝ) * 10^n = k := by
+  rintro ⟨k, hk⟩
+  apply hy
+  refine ⟨(k:ℤ), n, ?_⟩
+  have hpow : (0:ℝ) < (10:ℝ)^n := by positivity
+  rw [eq_div_iff (ne_of_gt hpow)]; push_cast [hk]; ring
 
-theorem RealDecimal.inj_nonterminating {x:ℝ} (hx: ¬TerminatingDecimal x) : ∃! d:RealDecimal, d = x := by sorry
+/-- Uniqueness of the decimal representation of a non-terminating nonnegative value. -/
+theorem NNRealDecimal.inj_of_nonterminating {e f : NNRealDecimal}
+    (hy : ¬ TerminatingDecimal (e.toNNReal:ℝ)) (hef : e.toNNReal = f.toNNReal) : e = f := by
+  apply eq_of_trunc_eq
+  intro n
+  have h1 := trunc_forced e (rfl : e.toNNReal = e.toNNReal) n (not_int_of_nonterminating hy n)
+  have hyf : ¬ TerminatingDecimal (f.toNNReal:ℝ) := by rw [← hef]; exact hy
+  have h2 := trunc_forced f (rfl : f.toNNReal = f.toNNReal) n (not_int_of_nonterminating hyf n)
+  rw [h1, h2, hef]
+
+theorem RealDecimal.inj_nonterminating {x:ℝ} (hx: ¬TerminatingDecimal x) : ∃! d:RealDecimal, d = x := by
+  obtain ⟨d, hd⟩ := RealDecimal.surj x
+  refine ⟨d, hd.symm, ?_⟩
+  intro d' hd'
+  -- x ≠ 0 since 0 is terminating
+  have hx0 : x ≠ 0 := by rintro rfl; exact hx ⟨0, 0, by norm_num⟩
+  -- both d and d' have the same sign as x
+  have key : ∀ a : RealDecimal, (a:ℝ) = x → ∃ e:NNRealDecimal,
+      a = (if 0 < x then RealDecimal.pos e else RealDecimal.neg e) ∧ (e.toNNReal : ℝ) = |x| := by
+    intro a ha
+    cases a with
+    | pos e =>
+      have hval : (e.toNNReal : ℝ) = x := ha
+      have hxnn : 0 ≤ x := by rw [← hval]; exact (e.toNNReal).coe_nonneg
+      rcases lt_or_eq_of_le hxnn with hlt | heq
+      · exact ⟨e, by simp [hlt], by rw [hval, abs_of_pos hlt]⟩
+      · exact absurd heq.symm hx0
+    | neg e =>
+      have hval : -(e.toNNReal : ℝ) = x := ha
+      have hxnp : x ≤ 0 := by rw [← hval]; simp [(e.toNNReal).coe_nonneg]
+      have hxlt : x < 0 := lt_of_le_of_ne hxnp hx0
+      refine ⟨e, by simp [not_lt.mpr hxnp], ?_⟩
+      rw [abs_of_neg hxlt, ← hval]; ring
+  obtain ⟨e, hde, hev⟩ := key d hd.symm
+  obtain ⟨e', hd'e, he'v⟩ := key d' hd'
+  -- e and e' represent the same nonneg value |x|, which is non-terminating
+  have hntabs : ¬ TerminatingDecimal (e.toNNReal:ℝ) := by
+    rw [hev]
+    rintro ⟨n, m, h⟩
+    apply hx
+    rcases abs_cases x with ⟨ha, _⟩ | ⟨ha, _⟩
+    · exact ⟨n, m, by rw [← ha, h]⟩
+    · exact ⟨-n, m, by rw [show x = -|x| by rw [ha]; ring, h]; push_cast; ring⟩
+  have hee' : e.toNNReal = e'.toNNReal := by
+    have : (e.toNNReal:ℝ) = (e'.toNNReal:ℝ) := by rw [hev, he'v]
+    exact_mod_cast this
+  have : e = e' := inj_of_nonterminating hntabs hee'
+  rw [hde, hd'e, this]
+
+theorem RealDecimal.not_inj_terminating {x:ℝ} (hx: TerminatingDecimal x) : ∃ d₁ d₂:RealDecimal, d₁ ≠ d₂ ∧ ∀ d: RealDecimal, d = x ↔ d = d₁ ∨ d = d₂ := by sorry
 
 /-- Exercise B.2.4.  This is Corollary 8.3.4, but the intent is to rewrite the proof using the decimal system. -/
 example : Uncountable ℝ := by infer_instance
