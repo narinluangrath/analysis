@@ -188,15 +188,15 @@ theorem Convergesto.id (E:Set ℝ) (x₀:ℝ)
 
 theorem Convergesto.sq (E:Set ℝ) (x₀:ℝ)
   : Convergesto E (fun x ↦ x^2) (x₀^2) x₀ := by
-  sorry
+  rw [Convergesto.iff]; exact (continuous_pow 2).continuousWithinAt
 
 theorem Convergesto.linear (E:Set ℝ) (x₀:ℝ) (c:ℝ)
   : Convergesto E (fun x ↦ c * x) (c * x₀) x₀ := by
-  sorry
+  rw [Convergesto.iff]; exact (continuous_const.mul continuous_id).continuousWithinAt
 
 theorem Convergesto.quadratic (E:Set ℝ) (x₀:ℝ) (c d:ℝ)
   : Convergesto E (fun x ↦ x^2 + c * x + d) (x₀^2 + c * x₀ + d) x₀ := by
-  sorry
+  rw [Convergesto.iff]; exact Continuous.continuousWithinAt (by fun_prop)
 
 theorem Convergesto.restrict {X Y:Set ℝ} {f: ℝ → ℝ} {L:ℝ} {x₀:ℝ} (hf: Convergesto X f L x₀) (hY: Y ⊆ X) : Convergesto Y f L x₀ := by
   rw [Convergesto.iff] at hf ⊢
