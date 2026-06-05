@@ -63,7 +63,10 @@ open Classical in
 
 @[implicit_reducible] noncomputable def LinearOrder.subtype {X:Type} [LinearOrder X] (A: Set X) : LinearOrder A :=
 LinearOrder.mk (by
-  sorry
+  intro ⟨x,hx⟩ ⟨y,hy⟩
+  rcases le_total x y with h|h
+  · left; exact h
+  · right; exact h
   )
 
 theorem IsTotal.subtype {X:Type} [PartialOrder X] {A: Set X} (hA: IsTotal X) : IsTotal A := by
@@ -245,7 +248,64 @@ theorem IsMin.iff_lowerbound' {X:Type} [PartialOrder X] {Y: Set X} (hY: IsTotal 
   intro ⟨ x₀, hx₀, hmin ⟩; choose hx₀ _ using (iff_lowerbound hY x₀).mpr ⟨ hx₀, hmin ⟩; use ⟨ _, hx₀ ⟩
 
 /-- Exercise 8.5.11 -/
-example {X:Type} [PartialOrder X] {Y Y':Set X} (hY: IsTotal Y) (hY': IsTotal Y') (hY_well: WellFoundedLT Y) (hY'_well: WellFoundedLT Y') (hYY': IsTotal (Y ∪ Y': Set X)) : WellFoundedLT (Y ∪ Y': Set X) := by sorry
+example {X:Type} [PartialOrder X] {Y Y':Set X} (hY: IsTotal Y) (hY': IsTotal Y') (hY_well: WellFoundedLT Y) (hY'_well: WellFoundedLT Y') (hYY': IsTotal (Y ∪ Y': Set X)) : WellFoundedLT (Y ∪ Y': Set X) := by
+  have keyY : ∀ S : Set Y, S.Nonempty → ∃ y:Y, y ∈ S ∧ ∀ z ∈ S, y ≤ z := by
+    rw [WellFoundedLT.iff' hY] at hY_well
+    intro S hS; obtain ⟨⟨m, hmS⟩, hmin⟩ := hY_well S hS
+    exact ⟨m, hmS, fun z hz => (hY m z).elim id (fun h => hmin (b := ⟨z,hz⟩) h)⟩
+  have keyY' : ∀ S : Set Y', S.Nonempty → ∃ y:Y', y ∈ S ∧ ∀ z ∈ S, y ≤ z := by
+    rw [WellFoundedLT.iff' hY'] at hY'_well
+    intro S hS; obtain ⟨⟨m, hmS⟩, hmin⟩ := hY'_well S hS
+    exact ⟨m, hmS, fun z hz => (hY' m z).elim id (fun h => hmin (b := ⟨z,hz⟩) h)⟩
+  rw [WellFoundedLT.iff' hYY']
+  intro A hA
+  rw [IsMin.iff_lowerbound' (hYY'.subtype)]
+  set B : Set X := { x | ∃ hx : x ∈ (Y ∪ Y':Set X), (⟨x,hx⟩ : (Y∪Y':Set X)) ∈ A } with hB
+  obtain ⟨⟨a, ha⟩, haA⟩ := hA
+  set BY : Set Y := { y | (y:X) ∈ B } with hBY
+  set BY' : Set Y' := { y | (y:X) ∈ B } with hBY'
+  by_cases hcaseY : BY.Nonempty <;> by_cases hcaseY' : BY'.Nonempty
+  · obtain ⟨m, hmBY, hmmin⟩ := keyY BY hcaseY
+    obtain ⟨m', hmBY', hmmin'⟩ := keyY' BY' hcaseY'
+    have hmU : (m:X) ∈ (Y∪Y':Set X) := Or.inl m.2
+    have hm'U : (m':X) ∈ (Y∪Y':Set X) := Or.inr m'.2
+    obtain ⟨hmx, hmA⟩ := hmBY
+    obtain ⟨hm'x, hm'A⟩ := hmBY'
+    rcases hYY' ⟨_, hmU⟩ ⟨_, hm'U⟩ with hcmp|hcmp
+    · refine ⟨⟨m, hmU⟩, hmA, ?_⟩
+      rintro ⟨x, hx⟩ hxA
+      have hxB : x ∈ B := ⟨hx, hxA⟩
+      rcases hx with hxY|hxY'
+      · exact hmmin ⟨x, hxY⟩ hxB
+      · exact le_trans hcmp (hmmin' ⟨x, hxY'⟩ hxB)
+    · refine ⟨⟨m', hm'U⟩, hm'A, ?_⟩
+      rintro ⟨x, hx⟩ hxA
+      have hxB : x ∈ B := ⟨hx, hxA⟩
+      rcases hx with hxY|hxY'
+      · exact le_trans hcmp (hmmin ⟨x, hxY⟩ hxB)
+      · exact hmmin' ⟨x, hxY'⟩ hxB
+  · obtain ⟨m, hmBY, hmmin⟩ := keyY BY hcaseY
+    have hmU : (m:X) ∈ (Y∪Y':Set X) := Or.inl m.2
+    obtain ⟨hmx, hmA⟩ := hmBY
+    refine ⟨⟨m, hmU⟩, hmA, ?_⟩
+    rintro ⟨x, hx⟩ hxA
+    have hxB : x ∈ B := ⟨hx, hxA⟩
+    rcases hx with hxY|hxY'
+    · exact hmmin ⟨x, hxY⟩ hxB
+    · exact absurd ⟨⟨x,hxY'⟩, hxB⟩ hcaseY'
+  · obtain ⟨m', hmBY', hmmin'⟩ := keyY' BY' hcaseY'
+    have hm'U : (m':X) ∈ (Y∪Y':Set X) := Or.inr m'.2
+    obtain ⟨hm'x, hm'A⟩ := hmBY'
+    refine ⟨⟨m', hm'U⟩, hm'A, ?_⟩
+    rintro ⟨x, hx⟩ hxA
+    have hxB : x ∈ B := ⟨hx, hxA⟩
+    rcases hx with hxY|hxY'
+    · exact absurd ⟨⟨x,hxY⟩, hxB⟩ hcaseY
+    · exact hmmin' ⟨x, hxY'⟩ hxB
+  · have haB : a ∈ B := ⟨ha, haA⟩
+    rcases ha with haY|haY'
+    · exact absurd ⟨⟨a,haY⟩, haB⟩ hcaseY
+    · exact absurd ⟨⟨a,haY'⟩, haB⟩ hcaseY'
 
 /-- Lemma 8.5.14-/
 theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y : Set X, IsTotal Y ∧ WellFoundedLT Y ∧ (∃ hx₀ : x₀ ∈ Y, IsMin (⟨ x₀, hx₀ ⟩: Y)) ∧ ¬ ∃ x, IsStrictUpperBound Y x := by
@@ -286,7 +346,10 @@ theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y 
   -- The set `Ω` captures the notion of a `good set`.
   set Ω := { Y : Ω₀ | ∀ x ∈ (Y:Set X) \ {x₀}, x = s (F Y x) }
   have hΩ : pt ∈ Ω := by
-    sorry
+    simp only [Ω, Set.mem_setOf_eq]
+    intro x hx
+    simp only [pt, Set.mem_diff, Set.mem_singleton_iff] at hx
+    exact absurd hx.1 hx.2
 
   -- Exercise 8.5.13
   have ex_8_5_13 {Y Y':Ω} (x:X) (h: x ∈ (Y':Set X) \ Y) : IsStrictUpperBound Y x := by
@@ -303,7 +366,9 @@ theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y 
   set Y_infty : Set X := ⋃ Y:Ω, Y
   have hmem : x₀ ∈ Y_infty := by simp [Y_infty]; use pt; grind
   have hmin {x:X} (hx: x ∈ Y_infty) : x₀ ≤ x := by
-    sorry
+    simp only [Y_infty, Set.mem_iUnion] at hx
+    obtain ⟨Y, hxY⟩ := hx
+    exact (Y.1.2).2.2.2 x hxY
   have htotal : IsTotal Y_infty := by
     intro ⟨ x, hx ⟩ ⟨ x', hx'⟩; simp [Y_infty] at hx hx'
     obtain ⟨ Y, ⟨ hYΩ₀, hYΩ ⟩, hxY ⟩ := hx; obtain ⟨ Y', ⟨ hY'Ω₀, hY'Ω ⟩, hxY' ⟩ := hx'
@@ -322,14 +387,63 @@ theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y 
     simp [Y_infty] at hx ⊢; obtain ⟨ Y', ⟨ hY'Ω₀, hY'Ω ⟩, hxY' ⟩ := hx
     sorry
   have hY_inftyΩ₀ : Y_infty ∈ Ω₀ := by
-    sorry
+    exact ⟨htotal, hwell, hmem, fun x hx => hmin hx⟩
   set sY_infty : X := s ⟨ _, hY_inftyΩ₀ ⟩
   have hYs_total : IsTotal (Y_infty ∪ {sY_infty} : Set X) := by
-    sorry
+    have hsub := hs ⟨ _, hY_inftyΩ₀ ⟩
+    rw [IsStrictUpperBound.iff] at hsub
+    rintro ⟨x, (hx|hx)⟩ ⟨y, (hy|hy)⟩
+    · exact htotal ⟨x, hx⟩ ⟨y, hy⟩
+    · simp only [Set.mem_singleton_iff] at hy; subst hy
+      left; exact (hsub x hx).le
+    · simp only [Set.mem_singleton_iff] at hx; subst hx
+      right; exact (hsub y hy).le
+    · simp only [Set.mem_singleton_iff] at hx hy; subst hx; subst hy
+      left; exact le_refl _
   have hYs_well : WellFoundedLT (Y_infty ∪ {sY_infty} : Set X) := by
-    sorry
-  have hYs_mem : x₀ ∈ Y_infty ∪ {sY_infty} := by sorry
-  have hYs_min : ∀ x ∈ Y_infty ∪ {sY_infty}, x₀ ≤ x := by sorry
+    have hsub := hs ⟨ _, hY_inftyΩ₀ ⟩
+    rw [IsStrictUpperBound.iff] at hsub
+    have keyInf : ∀ S : Set Y_infty, S.Nonempty → ∃ y:Y_infty, y ∈ S ∧ ∀ z ∈ S, y ≤ z := by
+      have hwell' := hwell
+      rw [WellFoundedLT.iff' htotal] at hwell'
+      intro S hS; obtain ⟨⟨m, hmS⟩, hmm⟩ := hwell' S hS
+      exact ⟨m, hmS, fun z hz => (htotal m z).elim id (fun h => hmm (b := ⟨z,hz⟩) h)⟩
+    rw [WellFoundedLT.iff' hYs_total]
+    intro A hA
+    rw [IsMin.iff_lowerbound' (hYs_total.subtype)]
+    -- project A to Y_infty
+    set SInf : Set Y_infty := { y | ∃ hy : (y:X) ∈ (Y_infty ∪ {sY_infty}:Set X), (⟨(y:X), hy⟩ : (Y_infty ∪ {sY_infty}:Set X)) ∈ A } with hSInf
+    by_cases hcase : SInf.Nonempty
+    · obtain ⟨m, ⟨hmU, hmA⟩, hmmin⟩ := keyInf SInf hcase
+      have hmU2 : (m:X) ∈ (Y_infty ∪ {sY_infty}:Set X) := Or.inl m.2
+      refine ⟨⟨m, hmU2⟩, hmA, ?_⟩
+      rintro ⟨x, hx⟩ hxA
+      rcases hx with hxInf|hxS
+      · exact hmmin ⟨x, hxInf⟩ ⟨Or.inl hxInf, hxA⟩
+      · simp only [Set.mem_singleton_iff] at hxS; subst hxS
+        exact (hsub m m.2).le
+    · -- A must be {sY_infty}
+      obtain ⟨⟨a, ha⟩, haA⟩ := hA
+      have hasY : a = sY_infty := by
+        rcases ha with haInf|haS
+        · exact absurd ⟨⟨a,haInf⟩, Or.inl haInf, haA⟩ hcase
+        · simpa using haS
+      have hmU2 : a ∈ (Y_infty ∪ {sY_infty}:Set X) := ha
+      refine ⟨⟨a, hmU2⟩, haA, ?_⟩
+      rintro ⟨x, hx⟩ hxA
+      rcases hx with hxInf|hxS
+      · exact absurd ⟨⟨x,hxInf⟩, Or.inl hxInf, hxA⟩ hcase
+      · simp only [Set.mem_singleton_iff] at hxS; subst hxS
+        rw [Subtype.mk_le_mk, hasY]
+  have hYs_mem : x₀ ∈ Y_infty ∪ {sY_infty} := Or.inl hmem
+  have hYs_min : ∀ x ∈ Y_infty ∪ {sY_infty}, x₀ ≤ x := by
+    rintro x (hx | hx)
+    · exact hmin hx
+    · simp only [Set.mem_singleton_iff] at hx
+      subst hx
+      have hsub := hs ⟨ _, hY_inftyΩ₀ ⟩
+      rw [IsStrictUpperBound.iff] at hsub
+      exact (hsub x₀ hmem).le
   have hYs_Ω₀ : (Y_infty ∪ {sY_infty}) ∈ Ω₀ := by
     simpa [-Set.union_singleton, Ω₀, hYs_total, hYs_well, hYs_mem]
   specialize hs ⟨ _, hY_inftyΩ₀ ⟩
@@ -367,17 +481,32 @@ theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y 
 /-- Lemma 8.5.15 (Zorn's lemma) / Exercise 8.5.14 -/
 theorem Zorns_lemma {X:Type} [PartialOrder X] [Nonempty X]
   (hchain: ∀ Y:Set X, IsTotal Y ∧ Y.Nonempty → ∃ x, IsUpperBound Y x) : ∃ x:X, IsMax x := by
-  sorry
+  obtain ⟨x₀⟩ := (inferInstance : Nonempty X)
+  obtain ⟨Y, hYtot, hYwell, ⟨hx₀mem, hx₀min⟩, hnostrict⟩ := WellFoundedLT.partialOrder x₀
+  have hYne : Y.Nonempty := ⟨x₀, hx₀mem⟩
+  obtain ⟨x, hxub⟩ := hchain Y ⟨hYtot, hYne⟩
+  refine ⟨x, ?_⟩
+  rw [IsMax.iff]
+  rintro ⟨y, hxy⟩
+  apply hnostrict
+  refine ⟨y, ?_, ?_⟩
+  · intro z hz; exact le_trans (hxub z hz) hxy.le
+  · intro hyY
+    have hyx := hxub y hyY
+    exact absurd (le_antisymm hyx hxy.le).symm (ne_of_lt hxy)
 
 /-- Exercise 8.5.1 -/
 def empty_set_partial_order [h₀: LE Empty] : Decidable (∃ h : PartialOrder Empty, h.le = h₀.le) := by
-  sorry
+  apply isTrue
+  refine ⟨{ le := h₀.le, lt := fun x => x.elim, le_refl := fun x => x.elim, le_antisymm := fun x => x.elim, le_trans := fun x => x.elim, lt_iff_le_not_ge := fun x => x.elim }, rfl⟩
 
 def empty_set_linear_order [h₀: LE Empty] : Decidable (∃ h : LinearOrder Empty, h.le = h₀.le) := by
-  sorry
+  apply isTrue
+  refine ⟨{ le := h₀.le, lt := fun x => x.elim, le_refl := fun x => x.elim, le_antisymm := fun x => x.elim, le_trans := fun x => x.elim, lt_iff_le_not_ge := fun x => x.elim, le_total := fun x => x.elim, toDecidableLE := fun x => x.elim, min := fun x => x.elim, max := fun x => x.elim, min_def := fun x => x.elim, max_def := fun x => x.elim }, rfl⟩
 
 def empty_set_well_order [h₀: LT Empty]: Decidable (Nonempty (WellFoundedLT Empty)) := by
-  sorry
+  apply isTrue
+  exact ⟨⟨⟨fun x => x.elim⟩⟩⟩
 
 /-- Exercise 8.5.2 -/
 example : ∃ (X:Type) (h₀: LE X), (∀ x:X, x ≤ x) ∧ (∀ x y:X, x ≤ y → y ≤ x → x = y) ∧ ¬ (∀ x y z:X, x ≤ y → y ≤ z → x ≤ z) :=
@@ -402,9 +531,36 @@ example : ∃ (X:Type) (h₀: LE X), (∀ x y:X, x ≤ y → y ≤ x → x = y) 
     fun h => (h 0).elim⟩
 
 /-- Exercise 8.5.3 -/
-example : ∃ (h₀: PartialOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by sorry
+example : ∃ (h₀: PartialOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by
+  refine ⟨{ le := fun x y ↦ ∃ n, y = n * x
+            lt := fun x y ↦ (∃ n, y = n * x) ∧ ¬ (∃ n, x = n * y)
+            le_refl := fun x => ⟨1, by simp⟩
+            le_trans := ?_
+            le_antisymm := ?_
+            lt_iff_le_not_ge := fun x y => Iff.rfl }, rfl⟩
+  · rintro a b c ⟨m, rfl⟩ ⟨n, rfl⟩
+    exact ⟨n*m, by rw [mul_assoc]⟩
+  · rintro a b ⟨m, rfl⟩ ⟨n, hn⟩
+    have key : (n*m) = 1 := by
+      have h2 : a = (n*m)*a := by rw [mul_assoc, ← hn]
+      have : (n*m)*a = 1*a := by rw [← h2, one_mul]
+      exact mul_right_cancel this
+    have hm : m = 1 := by
+      have hmn : (n:ℕ) * (m:ℕ) = 1 := by exact_mod_cast key
+      have : (m:ℕ) = 1 := Nat.eq_one_of_mul_eq_one_left hmn
+      exact_mod_cast this
+    rw [hm, one_mul]
 
-example : ¬ ∃ (h₀: LinearOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by sorry
+example : ¬ ∃ (h₀: LinearOrder PNat), h₀.le = (fun x y ↦ ∃ n, y = n * x) := by
+  rintro ⟨h₀, hle⟩
+  have htot := h₀.le_total (2:PNat) (3:PNat)
+  rw [hle] at htot
+  simp only at htot
+  rcases htot with ⟨n, hn⟩|⟨n, hn⟩
+  · have : (3:ℕ) = (n:ℕ)*2 := by exact_mod_cast hn
+    omega
+  · have : (2:ℕ) = (n:ℕ)*3 := by exact_mod_cast hn
+    omega
 
 /-- Exercise 8.5.4 -/
 example : ¬ ∃ x : {x:ℝ| x > 0}, IsMin x := by
@@ -436,19 +592,34 @@ example {X Y:Type} [PartialOrder Y] (f:X → Y) : ∃ h₀: PartialOrder X, h₀
     · exact h
 
 def Ex_8_5_5_b : Decidable (∀ (X Y:Type) (h: LinearOrder Y) (f:X → Y), ∃ h₀: LinearOrder X, h₀.le = (fun x y ↦ f x < f y ∨ x = y)) := by
-  sorry
+  apply isFalse
+  intro H
+  obtain ⟨h₀, hle⟩ := H Bool Unit inferInstance (fun _ => ())
+  have := h₀.le_total false true
+  rw [hle] at this
+  simp at this
 
 -- Final part of Exercise 8.5.5; if the answer to the previous part is "no", modify the hypotheses to make it true.
 
 /-- Exercise 8.5.6 -/
 abbrev OrderIdeals (X: Type) [PartialOrder X] : Set (Set X) := .Iic '' (.univ : Set X)
 
-def OrderIdeals.iso {X: Type} [PartialOrder X] : X ≃o OrderIdeals X := {
+noncomputable def OrderIdeals.iso {X: Type} [PartialOrder X] : X ≃o OrderIdeals X := {
   toFun x := ⟨ .Iic x, by simp ⟩
-  invFun := by sorry
-  left_inv := by sorry
-  right_inv := by sorry
-  map_rel_iff' := by sorry
+  invFun S := S.property.choose
+  left_inv := by
+    intro x
+    simp only
+    have h := (⟨ Set.Iic x, by simp ⟩ : OrderIdeals X).property.choose_spec
+    have : Set.Iic (Subtype.property (⟨ Set.Iic x, by simp ⟩ : OrderIdeals X)).choose = Set.Iic x := h.2
+    exact (Set.Iic_injective this)
+  right_inv := by
+    intro ⟨S, hS⟩
+    apply Subtype.ext
+    exact hS.choose_spec.2
+  map_rel_iff' := by
+    intro a b
+    simp only [Equiv.coe_fn_mk, Subtype.mk_le_mk, Set.le_eq_subset, Set.Iic_subset_Iic]
   }
 
 /-- Exercise 8.5.7 -/
@@ -469,15 +640,51 @@ def Lex' (α : Type) := α
 
 instance Lex'.partialOrder {X Y: Type} [PartialOrder X] [PartialOrder Y] : PartialOrder (Lex' (X × Y)) := {
   le := fun ⟨ x, y ⟩ ⟨ x', y' ⟩ ↦ (x < x') ∨ (x = x' ∧ y ≤ y')
-  le_refl := by sorry
-  le_antisymm := by sorry
-  le_trans := by sorry
+  le_refl := by rintro ⟨x,y⟩; right; exact ⟨rfl, le_refl y⟩
+  le_antisymm := by
+    rintro ⟨x,y⟩ ⟨x',y'⟩ (h|⟨rfl,h⟩) (h2|⟨h3,h4⟩)
+    · exact absurd h (lt_asymm h2)
+    · exact absurd h3.symm (ne_of_lt h)
+    · exact absurd rfl (ne_of_lt h2)
+    · exact congrArg (Prod.mk x) (le_antisymm h h4)
+  le_trans := by
+    rintro ⟨x,y⟩ ⟨x',y'⟩ ⟨x'',y''⟩ (h|⟨rfl,h⟩) (h2|⟨rfl,h2⟩)
+    · left; exact lt_trans h h2
+    · left; exact h
+    · left; exact h2
+    · right; exact ⟨rfl, le_trans h h2⟩
 }
 
-instance Lex'.linearOrder {X Y:Type} [LinearOrder X] [LinearOrder Y] : LinearOrder (Lex' (X × Y)) := by sorry
+noncomputable instance Lex'.linearOrder {X Y:Type} [LinearOrder X] [LinearOrder Y] : LinearOrder (Lex' (X × Y)) :=
+  LinearOrder.mk (by
+    rintro ⟨x,y⟩ ⟨x',y'⟩
+    rcases lt_trichotomy x x' with h|rfl|h
+    · left; left; exact h
+    · rcases le_total y y' with hy|hy
+      · left; right; exact ⟨rfl, hy⟩
+      · right; right; exact ⟨rfl, hy⟩
+    · right; left; exact h)
 
 instance Lex'.WellFoundedLT {X Y:Type} [LinearOrder X] [WellFoundedLT X] [LinearOrder Y] [WellFoundedLT Y]:
-  WellFoundedLT (Lex' (X × Y)) := by sorry
+  WellFoundedLT (Lex' (X × Y)) := by
+  constructor
+  rw [WellFounded.wellFounded_iff_has_min]
+  intro S hS
+  obtain ⟨a, ha⟩ := hS
+  let S1 : Set X := {x | ∃ y, (⟨x,y⟩ : X × Y) ∈ S}
+  have hS1 : S1.Nonempty := ⟨a.1, a.2, by cases a; exact ha⟩
+  obtain ⟨x0, ⟨y00, hx0mem⟩, hx0min⟩ := (wellFounded_lt (α := X)).has_min S1 hS1
+  let S2 : Set Y := {y | (⟨x0,y⟩ : X × Y) ∈ S}
+  have hS2 : S2.Nonempty := ⟨y00, hx0mem⟩
+  obtain ⟨y0, hy0mem, hy0min⟩ := (wellFounded_lt (α := Y)).has_min S2 hS2
+  refine ⟨(⟨x0,y0⟩ : X × Y), hy0mem, ?_⟩
+  rintro ⟨x',y'⟩ hmem hlt
+  obtain ⟨hle, hnle⟩ := hlt
+  have hle' : (x' < x0) ∨ (x' = x0 ∧ y' ≤ y0) := hle
+  rcases hle' with hlt'|⟨rfl,hle2⟩
+  · exact hx0min x' ⟨y', hmem⟩ hlt'
+  · refine hy0min y' hmem (lt_of_le_of_ne hle2 ?_)
+    rintro rfl; exact hnle (Or.inr ⟨rfl, le_refl _⟩)
 
 
 end Chapter8
