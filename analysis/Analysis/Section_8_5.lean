@@ -385,7 +385,16 @@ theorem WellFoundedLT.partialOrder {X:Type} [PartialOrder X] (x₀ : X) : ∃ Y 
     rw [IsMin.iff_lowerbound' (IsTotal.subtype htotal)]
     use ⟨ _, hbY_infty ⟩, hbA; intro ⟨ x, hx ⟩ hxA
     simp [Y_infty] at hx ⊢; obtain ⟨ Y', ⟨ hY'Ω₀, hY'Ω ⟩, hxY' ⟩ := hx
-    sorry
+    by_cases hxinY : x ∈ Y
+    · -- x ∈ Y, so x is in the restricted set; use minimality of b
+      rcases hYΩ₀.1 ⟨b, hb⟩ ⟨x, hxinY⟩ with hbx | hxb
+      · simpa using hbx
+      · have := hbmin (b := ⟨⟨x, hxinY⟩, ⟨⟨x, hx⟩, hxA⟩, rfl⟩) hxb
+        simpa using this
+    · -- x ∈ Y' \ Y, use ex_8_5_13
+      have hsub := ex_8_5_13 (Y := ⟨_, hYΩ⟩) (Y' := ⟨_, hY'Ω⟩) x ⟨hxY', hxinY⟩
+      rw [IsStrictUpperBound.iff] at hsub
+      exact (hsub b hb).le
   have hY_inftyΩ₀ : Y_infty ∈ Ω₀ := by
     exact ⟨htotal, hwell, hmem, fun x hx => hmin hx⟩
   set sY_infty : X := s ⟨ _, hY_inftyΩ₀ ⟩
