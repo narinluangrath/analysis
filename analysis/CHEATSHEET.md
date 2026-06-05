@@ -256,3 +256,14 @@ New this session (verified by counterexample/scratch proof):
 - **11_8:462** `f_11_8_6_RS_integ = 22` with `α=id`: with α=id the RS-integral = ordinary integral = **6**; the 22 needs `α=x²` (Tao's Example 11.8.6). Scratch-proven = 6.
 - **11_3:175/180** `upper/lower_riemann_sum` bound over an ARBITRARY unconstrained partition — counterexample with a single-interval coarse P. Needs the upper/lower INTEGRAL (inf/sup over P), not a fixed P.
 Genuinely-hard-but-true residue (not bugged): 8_2 Riemann rearrangement, 8_3 Schroder-Bernstein lemma, 8_5 Bourbaki good-set/Zorn core, 11_6 integral test, 11_9/11_10 FTC pushforward/change-of-variables.
+
+New bugs confirmed by subagents (research-grade wave):
+- **11_6:227** Ex 11.6.4 `∃ f≥0, Summable f ∧ ¬∃M, ∀N≥0, integ f (Icc 0 N) ≤ M`: FALSE. `integ`=upper_integral; a nonneg *summable* f has upper-integral 0 on every [0,N] (only finitely many points exceed any ε, thin tall spikes give upper_integral ≤ ε·N ∀ε), so M=0 works and the `¬∃M` clause cannot hold.
+- **11_9:115** `DifferentiableOn.of_F_11_9_2'` (Ex 11.9.1): FALSE at boundary q=0,1 which `(q:ℝ)∈Icc 0 1` admits — within-Icc derivative at an endpoint is one-sided and DOES exist (right-limit of monotone integrand). True only for interior `0<q<1`.
+- **11_9:453** Ex 11.9.3 iff: FALSE at boundary x₀=a,b (one-sided derivative exists ⇒ the differentiability-iff-continuity equivalence breaks at endpoints). True on the open interval.
+
+Hard-but-true sub-sorry map (for dedicated multi-session attack):
+- **8_2** greedy-selection core: hn'_inj, hn'_surj, h_case_I, h_case_II, hconv, hsum + permute_diverges_of_divergent/'. (A₊/A₋-infinite + diff-infinite parts now DONE via `divergent_parts_infinite`.)
+- **8_5:356** `ex_8_5_13` nesting lemma: good sets nested as initial segments; needs symmetric/joint induction over a common well-order of Y∪Y' (cross-membership step `w∈Y, w<p ⟹ w∈Y'`). Unblocks line ~388 (already done).
+- **11_6:220** Prop 11.6.4 integral test: step-function sandwich f(n+1) ≤ ∫ₙ^{n+1} f ≤ f(n) + integ additivity over unit subintervals + bounded-monotone series. Several hundred lines.
+- **7_4** ex_7_4_4_sum/'_conv/'_sum: alternating-series value-sign estimates under conditional rearrangement.
