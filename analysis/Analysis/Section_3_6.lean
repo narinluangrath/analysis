@@ -848,10 +848,6 @@ theorem SetTheory.Set.card_union_add_card_inter {A B:Set} (hA: A.finite) (hB: B.
     exact card_union_disjoint hBA hAB hdisj2
   omega
 
-/-- Exercise 3.6.10 -/
-theorem SetTheory.Set.pigeonhole_principle {n:ℕ} {A: Fin n → Set}
-  (hA: ∀ i, (A i).finite) (hAcard: (iUnion _ A).card > n) : ∃ i, (A i).card ≥ 2 := by sorry
-
 /-- Exercise 3.6.11 -/
 theorem SetTheory.Set.two_to_two_iff {X Y:Set} (f: X → Y): Function.Injective f ↔
     ∀ S ⊆ X, S.card = 2 → (image f S).card = 2 := by
@@ -1106,6 +1102,56 @@ theorem SetTheory.Set.card_iUnion_card_disjoint {n m: ℕ} {S : Fin n → Set}
     refine ⟨union_finite' hfin' hlastfin, ?_⟩
     rw [card_union_disjoint hfin' hlastfin hdisj]
     rw [hcard', hlastcard]; ring
+
+
+theorem SetTheory.Set.iUnion_finite_le {n:ℕ} (A : SetTheory.Set.Fin n → Set) (hA : ∀ i, (A i).finite)
+    (hb : ∀ i, (A i).card ≤ 1) :
+    ((SetTheory.Set.Fin n).iUnion A).finite ∧ ((SetTheory.Set.Fin n).iUnion A).card ≤ n := by
+  induction n with
+  | zero =>
+    have : (SetTheory.Set.Fin 0).iUnion A = ∅ := by
+      apply ext; intro z; rw [mem_iUnion]
+      constructor
+      · rintro ⟨α, _⟩; exact absurd (Fin.toNat_lt α) (by omega)
+      · intro h; exact absurd h (not_mem_empty z)
+    rw [this]; exact ⟨empty_finite, by simp⟩
+  | succ k ih =>
+    have hsplit : (SetTheory.Set.Fin (k+1)).iUnion A
+        = ((SetTheory.Set.Fin k).iUnion (fun i => A (SetTheory.Set.Fin.castSucc i))) ∪ A (SetTheory.Set.Fin.last k) := by
+      apply ext; intro z
+      rw [mem_union, mem_iUnion, mem_iUnion]
+      constructor
+      · rintro ⟨α, hα⟩
+        by_cases hl : (α:ℕ) = k
+        · right
+          have : α = SetTheory.Set.Fin.last k := by rw [Fin.coe_inj]; unfold SetTheory.Set.Fin.last; rw [Fin.toNat_mk, hl]
+          rwa [this] at hα
+        · left
+          have hαn : (α:ℕ) < k := by have := Fin.toNat_lt α; omega
+          refine ⟨Fin_mk k (α:ℕ) hαn, ?_⟩
+          have : SetTheory.Set.Fin.castSucc (Fin_mk k (α:ℕ) hαn) = α := by rw [Fin.coe_inj, SetTheory.Set.Fin.castSucc_toNat, Fin.toNat_mk]
+          rw [this]; exact hα
+      · rintro (⟨β, hβ⟩ | hl)
+        · exact ⟨SetTheory.Set.Fin.castSucc β, hβ⟩
+        · exact ⟨SetTheory.Set.Fin.last k, hl⟩
+    obtain ⟨hfin', hcard'⟩ := ih (fun i => A (SetTheory.Set.Fin.castSucc i)) (fun i => hA _) (fun i => hb _)
+    have hlastfin : (A (SetTheory.Set.Fin.last k)).finite := hA _
+    rw [hsplit]
+    have hcu := card_union hfin' hlastfin
+    refine ⟨hcu.1, ?_⟩
+    have hlb := hb (SetTheory.Set.Fin.last k)
+    calc ((SetTheory.Set.Fin k).iUnion (fun i => A (SetTheory.Set.Fin.castSucc i)) ∪ A (SetTheory.Set.Fin.last k)).card
+        ≤ ((SetTheory.Set.Fin k).iUnion (fun i => A (SetTheory.Set.Fin.castSucc i))).card + (A (SetTheory.Set.Fin.last k)).card := hcu.2
+      _ ≤ k + 1 := by omega
+
+/-- Exercise 3.6.10 -/
+theorem SetTheory.Set.pigeonhole_principle {n:ℕ} {A: Fin n → Set}
+  (hA: ∀ i, (A i).finite) (hAcard: (iUnion _ A).card > n) : ∃ i, (A i).card ≥ 2 := by
+  by_contra hc
+  push_neg at hc
+  have hb : ∀ i, (A i).card ≤ 1 := fun i => by have := hc i; omega
+  have := (iUnion_finite_le A hA hb).2
+  omega
 
 
 /- Finally, we'll set up a way to shrink `Fin (n + 1)` into `Fin n` (or expand the latter) by making a hole. -/
