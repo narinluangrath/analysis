@@ -28,24 +28,55 @@ abbrev BddOn (f:ℝ → ℝ) (X:Set ℝ) : Prop := ∃ M, ∀ x ∈ X, |f x| ≤
 
 /-- Remark 9.6.2 -/
 theorem BddOn.iff (f:ℝ → ℝ) (X:Set ℝ) : BddOn f X ↔ BddAboveOn f X ∧ BddBelowOn f X := by
-  sorry
+  constructor
+  · intro ⟨M, hM⟩
+    exact ⟨⟨M, fun x hx => (abs_le.mp (hM x hx)).2⟩,
+           ⟨M, fun x hx => by linarith [(abs_le.mp (hM x hx)).1]⟩⟩
+  · intro ⟨⟨M₁, hM₁⟩, ⟨M₂, hM₂⟩⟩
+    exact ⟨max M₁ M₂, fun x hx => abs_le.mpr
+      ⟨by have := hM₂ x hx; linarith [le_max_right M₁ M₂],
+       by have := hM₁ x hx; linarith [le_max_left M₁ M₂]⟩⟩
 
 theorem BddOn.iff' (f:ℝ → ℝ) (X:Set ℝ) :  BddOn f X ↔ Bornology.IsBounded (f '' X) := by
-  sorry
+  rw [isBounded_iff_forall_norm_le]
+  constructor
+  · intro ⟨M, hM⟩
+    exact ⟨M, fun y ⟨x, hx, hfx⟩ => by rw [← hfx, Real.norm_eq_abs]; exact hM x hx⟩
+  · intro ⟨M, hM⟩
+    exact ⟨M, fun x hx => by rw [← Real.norm_eq_abs]; exact hM _ ⟨x, hx, rfl⟩⟩
 
 theorem BddOn.of_bounded {f :ℝ → ℝ} {X: Set ℝ} {M:ℝ} (h: ∀ x ∈ X, |f x| ≤ M) : BddOn f X := by use M
 
-example : Continuous (fun x:ℝ ↦ x) := by sorry
+example : Continuous (fun x:ℝ ↦ x) := continuous_id
 
-example : ¬ BddOn (fun x:ℝ ↦ x) .univ  := by sorry
+example : ¬ BddOn (fun x:ℝ ↦ x) .univ  := by
+  intro ⟨M, hM⟩
+  have := hM (M + 1) (Set.mem_univ _)
+  linarith [abs_le.mp this]
 
-example : BddOn (fun x:ℝ ↦ x) (.Icc 1 2) := by sorry
+example : BddOn (fun x:ℝ ↦ x) (.Icc 1 2) := by
+  exact ⟨2, fun x hx => abs_le.mpr ⟨by linarith [hx.1], by linarith [hx.2]⟩⟩
 
-example : ContinuousOn (fun x:ℝ ↦ 1/x) (.Ioo 0 1) := by sorry
+example : ContinuousOn (fun x:ℝ ↦ 1/x) (.Ioo 0 1) := by
+  apply ContinuousOn.div continuousOn_const continuousOn_id
+  intro x hx; exact ne_of_gt hx.1
 
-example : ¬ BddOn (fun x:ℝ ↦ 1/x) (.Ioo 0 1) := by sorry
+example : ¬ BddOn (fun x:ℝ ↦ 1/x) (.Ioo 0 1) := by
+  intro ⟨M, hM⟩
+  have hM' : M ≥ 0 := by
+    have := hM (1/2) (by norm_num)
+    simp at this; linarith
+  have h1 : (1:ℝ) / (M + 2) ∈ Set.Ioo 0 1 := by
+    refine ⟨by positivity, by rw [div_lt_one (by linarith)]; linarith⟩
+  have h2 := hM _ h1
+  rw [abs_le] at h2
+  have h3 : (fun x:ℝ ↦ 1/x) (1 / (M + 2)) = M + 2 := by simp [one_div_one_div]
+  linarith [h2.2]
 
-theorem why_7_6_3 {n: ℕ → ℕ} (hn: StrictMono n) (j:ℕ) : n j ≥ j := by sorry
+theorem why_7_6_3 {n: ℕ → ℕ} (hn: StrictMono n) (j:ℕ) : n j ≥ j := by
+  induction j with
+  | zero => omega
+  | succ k ih => exact Nat.succ_le_of_lt (Nat.lt_of_le_of_lt ih (hn (Nat.lt_succ_of_le le_rfl)))
 
 /-- Lemma 9.6.3 -/
 theorem BddOn.of_continuous_on_compact {a b:ℝ} (_h:a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b) ) :
@@ -78,9 +109,11 @@ theorem BddOn.of_continuous_on_compact {a b:ℝ} (_h:a < b) {f:ℝ → ℝ} (hf:
 #check isMinOn_iff
 
 /-- Remark 9.6.6 -/
-theorem BddAboveOn.isMaxOn {f:ℝ → ℝ} {X:Set ℝ} {x₀:ℝ} (h: IsMaxOn f X x₀): BddAboveOn f X := by sorry
+theorem BddAboveOn.isMaxOn {f:ℝ → ℝ} {X:Set ℝ} {x₀:ℝ} (h: IsMaxOn f X x₀): BddAboveOn f X := by
+  exact ⟨f x₀, fun x hx => h hx⟩
 
-theorem BddBelowOn.isMinOn {f:ℝ → ℝ} {X:Set ℝ} {x₀:ℝ} (h: IsMinOn f X x₀): BddBelowOn f X := by sorry
+theorem BddBelowOn.isMinOn {f:ℝ → ℝ} {X:Set ℝ} {x₀:ℝ} (h: IsMinOn f X x₀): BddBelowOn f X := by
+  exact ⟨-f x₀, fun x hx => by simp; exact h hx⟩
 
 /-- Proposition 9.6.7 (Maximum principle) -/
 theorem IsMaxOn.of_continuous_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) :
@@ -93,7 +126,8 @@ theorem IsMaxOn.of_continuous_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf
   set m := sSup E
   have claim1 {y:ℝ} (hy: y ∈ E) : y ≤ m := le_csSup (BddAbove.mono hE bddAbove_Icc) hy
   suffices h : ∃ xmax, xmax ∈ Set.Icc a b ∧ f xmax = m
-  . sorry
+  . obtain ⟨xmax, hxmax, hfmax⟩ := h
+    exact ⟨xmax, hxmax, fun x hx => by rw [hfmax]; exact claim1 ⟨x, hx, rfl⟩⟩
   have claim2 (n:ℕ) : ∃ x ∈ Set.Icc a b, m - 1/(n+1:ℝ) < f x := by
     have : 1/(n+1:ℝ) > 0 := by positivity
     replace : m - 1/(n+1:ℝ) < sSup E := by linarith
@@ -128,11 +162,17 @@ theorem IsMaxOn.of_continuous_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf
 
 theorem IsMinOn.of_continuous_on_compact {a b:ℝ} (h:a < b) {f:ℝ → ℝ} (hf: ContinuousOn f (.Icc a b)) :
   ∃ xmin ∈ Set.Icc a b, IsMinOn f (.Icc a b) xmin := by
-  sorry
+  obtain ⟨xmax, hxmax, hmax⟩ := IsMaxOn.of_continuous_on_compact h hf.neg
+  refine ⟨xmax, hxmax, fun x hx => ?_⟩
+  have := hmax hx
+  simp only [Pi.neg_apply, neg_le_neg_iff] at this
+  exact this
 
-example : IsMaxOn (fun x ↦ x^2) (.Icc (-2) 2) 2 := by sorry
+example : IsMaxOn (fun x ↦ x^2) (.Icc (-2) 2) 2 := by
+  intro x hx; simp; nlinarith [hx.1, hx.2, sq_nonneg x, sq_nonneg (x - 2), sq_nonneg (x + 2)]
 
-example : IsMaxOn (fun x ↦ x^2) (.Icc (-2) 2) (-2) := by sorry
+example : IsMaxOn (fun x ↦ x^2) (.Icc (-2) 2) (-2) := by
+  intro x hx; simp; nlinarith [hx.1, hx.2, sq_nonneg x, sq_nonneg (x - 2), sq_nonneg (x + 2)]
 
 theorem sSup.of_isMaxOn {f:ℝ → ℝ} {X:Set ℝ} {x₀:ℝ} (hx₀: x₀ ∈ X) (h: IsMaxOn f X x₀) :
   sSup (f '' X) = f x₀ := by
@@ -158,7 +198,19 @@ theorem sInf.of_continuous_on_compact {a b:ℝ} (h:a < b) (f:ℝ → ℝ) (hf: C
 example : ∃ f: ℝ → ℝ, ContinuousOn f (.Ioo 1 2) ∧ BddOn f (.Ioo 1 2) ∧
   ∃ x₀ ∈ Set.Ioo 1 2, IsMinOn f (.Ioo 1 2) x₀ ∧
   ¬ ∃ x₀ ∈ Set.Ioo 1 2, IsMaxOn f (.Ioo 1 2) x₀
-  := by sorry
+  := by
+  refine ⟨fun x => (x - 3/2)^2, by fun_prop, ⟨1/4, ?_⟩, 3/2, by norm_num, ?_, ?_⟩
+  · intro x hx; rw [Set.mem_Ioo] at hx; rw [abs_le]; constructor <;> nlinarith [hx.1, hx.2]
+  · rw [isMinOn_iff]; intro x _; nlinarith [sq_nonneg (x - 3/2)]
+  · rintro ⟨x₀, hx₀, hmax⟩
+    rw [Set.mem_Ioo] at hx₀; rw [isMaxOn_iff] at hmax
+    have ht5 : |x₀ - 3/2| < 1/2 := by rw [abs_lt]; constructor <;> linarith [hx₀.1, hx₀.2]
+    have hy : (3/2 + (|x₀ - 3/2|+1/2)/2) ∈ Set.Ioo (1:ℝ) 2 := by
+      rw [Set.mem_Ioo]; constructor <;> nlinarith [abs_nonneg (x₀ - 3/2), ht5]
+    have hle := hmax _ hy
+    nlinarith [hle, sq_abs (x₀ - 3/2), abs_nonneg (x₀ - 3/2), ht5,
+      mul_pos (by linarith [ht5] : (0:ℝ) < 1/2 - |x₀ - 3/2|)
+              (by linarith [abs_nonneg (x₀ - 3/2)] : (0:ℝ) < 3*|x₀ - 3/2| + 1/2)]
 
 /-- Exercise 9.6.1 b) -/
 example : ∃ f: ℝ → ℝ, ContinuousOn f (.Ici 0) ∧ BddOn f (.Ici 0) ∧
