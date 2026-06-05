@@ -40,13 +40,30 @@ theorem isLowerSet_iff (E: Set ℚ) : IsLowerSet E ↔ ∀ q r, r < q → q ∈ 
 
 abbrev Real.toSet_Rat (x:Real) : Set ℚ := { q | (q:Real) < x }
 
-lemma Real.toSet_Rat_nonempty (x:Real) : x.toSet_Rat.Nonempty := by sorry
+lemma Real.toSet_Rat_nonempty (x:Real) : x.toSet_Rat.Nonempty := by
+  obtain ⟨q, _, hq⟩ := Real.rat_between (show x - 1 < x by linarith)
+  exact ⟨q, hq⟩
 
-lemma Real.toSet_Rat_bounded (x:Real) : BddAbove x.toSet_Rat := by sorry
+lemma Real.toSet_Rat_bounded (x:Real) : BddAbove x.toSet_Rat := by
+  obtain ⟨q, hq, _⟩ := Real.rat_between (show x < x + 1 by linarith)
+  refine ⟨q, ?_⟩
+  intro r hr
+  simp only [Real.toSet_Rat, Set.mem_setOf_eq] at hr
+  have : (r:Real) < (q:Real) := lt_trans hr hq
+  exact le_of_lt ((Real.lt_of_coe r q).mpr this)
 
-lemma Real.toSet_Rat_lower (x:Real) : IsLowerSet x.toSet_Rat := by sorry
+lemma Real.toSet_Rat_lower (x:Real) : IsLowerSet x.toSet_Rat := by
+  intro a b hba ha
+  simp only [Real.toSet_Rat, Set.mem_setOf_eq] at *
+  rcases lt_or_eq_of_le hba with h|h
+  · exact lt_trans ((Real.lt_of_coe _ _).mp h) ha
+  · rw [h]; exact ha
 
-lemma Real.toSet_Rat_nomax {x:Real} : ∀ q ∈ x.toSet_Rat, ∃ r ∈ x.toSet_Rat, r > q := by sorry
+lemma Real.toSet_Rat_nomax {x:Real} : ∀ q ∈ x.toSet_Rat, ∃ r ∈ x.toSet_Rat, r > q := by
+  intro q hq
+  simp only [Real.toSet_Rat, Set.mem_setOf_eq] at hq
+  obtain ⟨r, hqr, hrx⟩ := Real.rat_between hq
+  exact ⟨r, hrx, (Real.gt_of_coe _ _).mpr hqr⟩
 
 abbrev Real.toCut (x:Real) : DedekindCut :=
  {
@@ -59,9 +76,16 @@ abbrev Real.toCut (x:Real) : DedekindCut :=
 
 abbrev DedekindCut.toSet_Real (c: DedekindCut) : Set Real := (fun (q:ℚ) ↦ (q:Real)) '' c.E
 
-lemma DedekindCut.toSet_Real_nonempty (c: DedekindCut) : c.toSet_Real.Nonempty := by sorry
+lemma DedekindCut.toSet_Real_nonempty (c: DedekindCut) : c.toSet_Real.Nonempty :=
+  c.nonempty.image _
 
-lemma DedekindCut.toSet_Real_bounded (c: DedekindCut) : BddAbove c.toSet_Real := by sorry
+lemma DedekindCut.toSet_Real_bounded (c: DedekindCut) : BddAbove c.toSet_Real := by
+  obtain ⟨b, hb⟩ := c.bounded
+  refine ⟨(b:Real), ?_⟩
+  rintro _ ⟨q, hq, rfl⟩
+  rcases lt_or_eq_of_le (hb hq) with h|h
+  · exact le_of_lt ((Real.lt_of_coe _ _).mp h)
+  · rw [h]
 
 noncomputable abbrev DedekindCut.toReal (c: DedekindCut) : Real := sSup c.toSet_Real
 
@@ -72,9 +96,42 @@ noncomputable abbrev Real.equivCut : Real ≃ DedekindCut where
   toFun := toCut
   invFun := DedekindCut.toReal
   left_inv x := by
-    sorry
+    show (x.toCut).toReal = x
+    have hlub := (x.toCut).toReal_isLUB
+    refine IsLUB.unique hlub ?_
+    constructor
+    · rintro _ ⟨q, hq, rfl⟩
+      exact le_of_lt hq
+    · intro y hy
+      by_contra h
+      push_neg at h
+      obtain ⟨r, hyr, hrx⟩ := Real.rat_between h
+      have hmem : (r:Real) ∈ (x.toCut).toSet_Real := ⟨r, hrx, rfl⟩
+      have := hy hmem
+      exact absurd this (not_le.mpr hyr)
   right_inv c := by
-    sorry
+    apply DedekindCut.ext
+    ext q
+    show (q:Real) < c.toReal ↔ q ∈ c.E
+    constructor
+    · intro hq
+      have hlub := c.toReal_isLUB
+      by_contra hqc
+      have hub : (q:Real) ∈ upperBounds c.toSet_Real := by
+        rintro _ ⟨r, hr, rfl⟩
+        by_contra hlt
+        push_neg at hlt
+        have hrq : r > q := (Real.gt_of_coe _ _).mpr hlt
+        exact hqc (c.lower (le_of_lt hrq) hr)
+      have := hlub.2 hub
+      exact absurd this (not_le.mpr hq)
+    · intro hq
+      have hlub := c.toReal_isLUB
+      obtain ⟨r, hr, hrq⟩ := c.nomax q hq
+      have hmem : (r:Real) ∈ c.toSet_Real := ⟨r, hr, rfl⟩
+      have hle := hlub.1 hmem
+      have hqr : (q:Real) < (r:Real) := (Real.lt_of_coe _ _).mp hrq
+      exact lt_of_lt_of_le hqr hle
 
 end Chapter5
 
@@ -82,13 +139,28 @@ end Chapter5
 
 abbrev Real.toSet_Rat (x:ℝ) : Set ℚ := { q | (q:ℝ) < x }
 
-lemma Real.toSet_Rat_nonempty (x:ℝ) : x.toSet_Rat.Nonempty := by sorry
+lemma Real.toSet_Rat_nonempty (x:ℝ) : x.toSet_Rat.Nonempty := by
+  obtain ⟨q, hq⟩ := exists_rat_lt x
+  exact ⟨q, hq⟩
 
-lemma Real.toSet_Rat_bounded (x:ℝ) : BddAbove x.toSet_Rat := by sorry
+lemma Real.toSet_Rat_bounded (x:ℝ) : BddAbove x.toSet_Rat := by
+  obtain ⟨q, hq⟩ := exists_rat_gt x
+  refine ⟨q, ?_⟩
+  intro r hr
+  simp only [Real.toSet_Rat, Set.mem_setOf_eq] at hr
+  exact_mod_cast le_of_lt (lt_trans hr hq)
 
-lemma Real.toSet_Rat_lower (x:ℝ) : IsLowerSet x.toSet_Rat := by sorry
+lemma Real.toSet_Rat_lower (x:ℝ) : IsLowerSet x.toSet_Rat := by
+  intro a b hba ha
+  simp only [Real.toSet_Rat, Set.mem_setOf_eq] at *
+  calc (b:ℝ) ≤ a := by exact_mod_cast hba
+    _ < x := ha
 
-lemma Real.toSet_Rat_nomax (x:ℝ) : ∀ q ∈ x.toSet_Rat, ∃ r ∈ x.toSet_Rat, r > q := by sorry
+lemma Real.toSet_Rat_nomax (x:ℝ) : ∀ q ∈ x.toSet_Rat, ∃ r ∈ x.toSet_Rat, r > q := by
+  intro q hq
+  simp only [Real.toSet_Rat, Set.mem_setOf_eq] at hq
+  obtain ⟨r, hqr, hrx⟩ := exists_rat_btwn hq
+  exact ⟨r, hrx, by exact_mod_cast hqr⟩
 
 abbrev Real.toCut (x:ℝ) : Chapter5.DedekindCut :=
  {
@@ -103,9 +175,15 @@ namespace Chapter5
 
 abbrev DedekindCut.toSet_R (c: DedekindCut) : Set ℝ := (fun (q:ℚ) ↦ (q:ℝ)) '' c.E
 
-lemma DedekindCut.toSet_R_nonempty (c: DedekindCut) : c.toSet_R.Nonempty := by sorry
+lemma DedekindCut.toSet_R_nonempty (c: DedekindCut) : c.toSet_R.Nonempty :=
+  c.nonempty.image _
 
-lemma DedekindCut.toSet_R_bounded (c: DedekindCut) : BddAbove c.toSet_R := by sorry
+lemma DedekindCut.toSet_R_bounded (c: DedekindCut) : BddAbove c.toSet_R := by
+  obtain ⟨b, hb⟩ := c.bounded
+  refine ⟨(b:ℝ), ?_⟩
+  rintro _ ⟨q, hq, rfl⟩
+  show (q:ℝ) ≤ (b:ℝ)
+  exact_mod_cast hb hq
 
 noncomputable abbrev DedekindCut.toR (c: DedekindCut) : ℝ := sSup c.toSet_R
 
@@ -118,9 +196,43 @@ noncomputable abbrev Real.equivCut : ℝ ≃ Chapter5.DedekindCut where
   toFun := _root_.Real.toCut
   invFun := Chapter5.DedekindCut.toR
   left_inv x := by
-    sorry
+    show sSup ((fun (q:ℚ) ↦ (q:ℝ)) '' x.toSet_Rat) = x
+    have hne : ((fun (q:ℚ) ↦ (q:ℝ)) '' x.toSet_Rat).Nonempty := by
+      obtain ⟨q, hq⟩ := exists_rat_lt x; exact ⟨q, q, hq, rfl⟩
+    apply IsLUB.csSup_eq _ hne
+    constructor
+    · rintro _ ⟨q, hq, rfl⟩
+      exact le_of_lt hq
+    · intro y hy
+      by_contra h
+      push_neg at h
+      obtain ⟨r, hyr, hrx⟩ := exists_rat_btwn h
+      have : (r:ℝ) ∈ (fun (q:ℚ) ↦ (q:ℝ)) '' x.toSet_Rat := ⟨r, hrx, rfl⟩
+      have := hy this
+      linarith
   right_inv c := by
-    sorry
+    apply Chapter5.DedekindCut.ext
+    ext q
+    show (q:ℝ) < c.toR ↔ q ∈ c.E
+    constructor
+    · intro hq
+      have hlub := c.toR_isLUB
+      by_contra hqc
+      have hub : (q:ℝ) ∈ upperBounds c.toSet_R := by
+        rintro _ ⟨r, hr, rfl⟩
+        by_contra hlt
+        push_neg at hlt
+        have hrq : r > q := by exact_mod_cast hlt
+        exact hqc (c.lower (le_of_lt hrq) hr)
+      have := hlub.2 hub
+      linarith
+    · intro hq
+      have hlub := c.toR_isLUB
+      obtain ⟨r, hr, hrq⟩ := c.nomax q hq
+      have hmem : (r:ℝ) ∈ c.toSet_R := ⟨r, hr, rfl⟩
+      have hle := hlub.1 hmem
+      have : (q:ℝ) < (r:ℝ) := by exact_mod_cast hrq
+      linarith
 
 namespace Chapter5
 
@@ -136,7 +248,13 @@ lemma Real.equivR_iff (x : Real) (y : ℝ) : y = Real.equivR x ↔ y.toCut = x.t
 
 -- We start by showing it works for ratCasts
 theorem Real.equivR_ratCast {q: ℚ} : equivR q = (q: ℝ) := by
-  sorry
+  symm
+  rw [Real.equivR_iff]
+  apply DedekindCut.ext
+  ext r
+  show (r:ℝ) < (q:ℝ) ↔ (r:Real) < (q:Real)
+  rw [← Real.lt_of_coe r q]
+  exact_mod_cast Iff.rfl
 
 lemma Real.equivR_nat {n: ℕ} : equivR n = (n: ℝ) := equivR_ratCast
 lemma Real.equivR_int {n: ℤ} : equivR n = (n: ℝ) := equivR_ratCast
@@ -148,7 +266,15 @@ lemma Real.equivR_int {n: ℤ} : equivR n = (n: ℝ) := equivR_ratCast
 
 -- Convertion between the notions of Cauchy Sequences
 theorem Sequence.IsCauchy.to_IsCauSeq {a: ℕ → ℚ} (ha: IsCauchy a) : IsCauSeq _root_.abs a := by
-  sorry
+  rw [Sequence.IsCauchy.coe] at ha
+  intro ε hε
+  obtain ⟨N, hN⟩ := ha (ε/2) (by linarith)
+  refine ⟨N, ?_⟩
+  intro j hj
+  have := hN j hj N le_rfl
+  rw [Section_4_3.dist_eq] at this
+  calc |a j - a N| ≤ ε/2 := this
+    _ < ε := by linarith
 
 -- Convertion of an `IsCauchy` to a `CauSeq`
 abbrev Sequence.IsCauchy.CauSeq {a: ℕ → ℚ} : (ha: IsCauchy a) → CauSeq ℚ _root_.abs := 
@@ -160,7 +286,14 @@ example {a b: CauSeq ℚ abs} : a ≈ b ↔ CauSeq.LimZero (a - b) := by rfl
 
 theorem Sequence.Equiv.LimZero {a b: ℕ → ℚ} (ha: IsCauchy a) (hb: IsCauchy b) (h:Equiv a b) 
   : CauSeq.LimZero (ha.CauSeq - hb.CauSeq) := by
-    sorry
+    rw [Sequence.equiv_iff] at h
+    intro ε hε
+    obtain ⟨N, hN⟩ := h (ε/2) (by linarith)
+    refine ⟨N, fun j hj => ?_⟩
+    have := hN j hj
+    show |a j - b j| < ε
+    calc |a j - b j| ≤ ε/2 := this
+      _ < ε := by linarith
 
 -- We can now use it to convert between different functions in Real.mk
 theorem Real.mk_eq_mk {a b: ℕ → ℚ} (ha : Sequence.IsCauchy a) (hb : Sequence.IsCauchy b) (hab: Sequence.Equiv a b)
@@ -170,7 +303,14 @@ theorem Real.mk_eq_mk {a b: ℕ → ℚ} (ha : Sequence.IsCauchy a) (hb : Sequen
 theorem Sequence.Equiv_iff_LimZero {a b: ℕ → ℚ} (ha: IsCauchy a) (hb: IsCauchy b) 
   : Equiv a b ↔ CauSeq.LimZero (ha.CauSeq - hb.CauSeq) := by
     refine ⟨(·.LimZero ha hb), ?_⟩
-    sorry
+    intro h
+    rw [Sequence.equiv_iff]
+    intro ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    refine ⟨N, fun n hn => ?_⟩
+    have := hN n hn
+    show |a n - b n| ≤ ε
+    exact le_of_lt this
 
 ----
 -- We create some cauchy sequences with useful properties
@@ -179,7 +319,44 @@ theorem Sequence.Equiv_iff_LimZero {a b: ℕ → ℚ} (ha: IsCauchy a) (hb: IsCa
 open Real in
 theorem Sequence.difference_approaches_zero {a: ℕ → ℚ} (ha: Sequence.IsCauchy a) :
   ∀ε > 0, ∃N, ∀n ≥ N, |LIM a - a n| ≤ (ε: ℚ) := by
-    sorry
+    intro ε hε
+    have hacoe := (Sequence.IsCauchy.coe a).mp ha
+    obtain ⟨N, hN⟩ := hacoe ε hε
+    refine ⟨N, fun n hn => ?_⟩
+    set b : ℕ → ℚ := fun m => a (m + N) with hb
+    have hbcau : (b:Sequence).IsCauchy := by
+      rw [Sequence.IsCauchy.coe]
+      intro δ hδ
+      obtain ⟨M, hM⟩ := hacoe δ hδ
+      exact ⟨M, fun j _ k _ => hM (j+N) (by omega) (k+N) (by omega)⟩
+    have heqL : LIM a = LIM b := by
+      apply (Real.LIM_eq_LIM ha hbcau).mpr
+      rw [Sequence.equiv_iff]
+      intro δ hδ
+      obtain ⟨M, hM⟩ := hacoe δ hδ
+      refine ⟨M, fun m hm => ?_⟩
+      simp only [hb]
+      have := hM m (by omega) (m+N) (by omega)
+      rwa [Section_4_3.dist_eq] at this
+    have hbnd : ∀ m, |b m - a n| ≤ ε := by
+      intro m
+      have := hN (m+N) (by omega) n hn
+      rwa [Section_4_3.dist_eq] at this
+    rw [heqL]
+    rw [show ((ε:ℚ):Real) = (ε:Real) from by norm_cast, abs_le]
+    constructor
+    · have hge : ∀ m, ((a n : ℚ) - ε) ≤ b m := by
+        intro m; have := abs_le.mp (hbnd m); linarith [this.1]
+      have := Real.LIM_of_ge hbcau (x := ((a n : ℚ) - ε : ℚ)) (by
+        intro m; push_cast; exact_mod_cast hge m)
+      push_cast at this ⊢
+      linarith
+    · have hle : ∀ m, b m ≤ ((a n : ℚ) + ε) := by
+        intro m; have := abs_le.mp (hbnd m); linarith [this.2]
+      have := Real.LIM_of_le hbcau (x := ((a n : ℚ) + ε : ℚ)) (by
+        intro m; exact_mod_cast hle m)
+      push_cast at this ⊢
+      linarith
 
 -- There exists a Cauchy sequence entirely above the LIM
 theorem Real.exists_equiv_above {a: ℕ → ℚ} (ha: Sequence.IsCauchy a) 
