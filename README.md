@@ -4,7 +4,7 @@ A fork of **[teorth/analysis](https://github.com/teorth/analysis)** (Terence Tao
 
 The upstream repository deliberately leaves exercises as `sorry` and does not host solutions; this fork is an independent solving effort. `lake build` is green at every commit.
 
-**Progress: 1536 / 2083 exercises solved (74%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
+**Progress: 1542 / 2083 exercises solved (74%).** Counts are *live* `sorry`s (proof-term `sorry`, excluding any in comments); “Total” is the number upstream leaves open in that section.
 
 ## Chapter 2 — Natural numbers
 
@@ -85,7 +85,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 |---|---|---:|---:|:--:|
 | 9.1 | Subsets of the real line | 72/72 | 0 | ✅ |
 | 9.2 | The algebra of real-valued functions | 4/4 | 0 | ✅ |
-| 9.3 | Limiting values of functions | 25/32 | 7 | 🟡 |
+| 9.3 | Limiting values of functions | 28/32 | 4 | 🟡 |
 | 9.4 | Continuous functions | 22/22 | 0 | ✅ |
 | 9.5 | Left and right limits | 10/10 | 0 | ✅ |
 | 9.6 | The maximum principle | 22/22 | 0 | ✅ |
@@ -101,7 +101,7 @@ The upstream repository deliberately leaves exercises as `sorry` and does not ho
 | 10.1 | Basic definitions | 26/26 | 0 | ✅ |
 | 10.2 | Local maxima, local minima, and derivatives | 15/18 | 3 | 🟡 |
 | 10.3 | Monotone functions and derivatives | 7/7 | 0 | ✅ |
-| 10.4 | Inverse functions and derivatives | 3/8 | 5 | 🟡 |
+| 10.4 | Inverse functions and derivatives | 6/8 | 2 | 🟡 |
 | 10.5 | L'Hôpital's rule | 1/1 | 0 | ✅ |
 
 ## Chapter 11 — The Riemann integral
