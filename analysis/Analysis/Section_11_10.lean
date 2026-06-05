@@ -29,7 +29,37 @@ theorem integ_of_mul_deriv {a b:ℝ} (hab: a ≤ b) {F G: ℝ → ℝ}
   (hG': IntegrableOn (derivWithin G (Icc a b)) (Icc a b)) :
   integ (F * derivWithin G (Icc a b)) (Icc a b) = F b * G b - F a * G a -
     integ (G * derivWithin F (Icc a b)) (Icc a b) := by
-    sorry
+    set I := Icc a b
+    set F' := derivWithin F I
+    set G' := derivWithin G I
+    have hF_cts : ContinuousOn F I := hF.continuousOn
+    have hG_cts : ContinuousOn G I := hG.continuousOn
+    have hbdd_of_cts : ∀ {H:ℝ→ℝ}, ContinuousOn H I → BddOn H I := by
+      intro H hH
+      have hcpt : IsCompact (I:Set ℝ) := by
+        rw [BoundedInterval.set_Icc]; exact isCompact_Icc
+      obtain ⟨M, hM⟩ := hcpt.exists_bound_of_continuousOn hH
+      exact ⟨M, fun x hx => hM x hx⟩
+    have hF_bdd : BddOn F I := hbdd_of_cts hF_cts
+    have hG_bdd : BddOn G I := hbdd_of_cts hG_cts
+    have hF_int : IntegrableOn F I := integ_of_bdd_cts hF_bdd hF_cts
+    have hG_int : IntegrableOn G I := integ_of_bdd_cts hG_bdd hG_cts
+    have hFG' : IntegrableOn (F * G') I := integ_of_mul hF_int hG'
+    have hGF' : IntegrableOn (G * F') I := integ_of_mul hG_int hF'
+    have hsum : IntegrableOn (F * G' + G * F') I := (hFG'.add hGF').1
+    have hanti : AntiderivOn (F * G) (F * G' + G * F') I := by
+      refine ⟨ hF.mul hG, ?_ ⟩
+      intro x hx
+      have hdF : HasDerivWithinAt F (F' x) I x := (hF x hx).hasDerivWithinAt
+      have hdG : HasDerivWithinAt G (G' x) I x := (hG x hx).hasDerivWithinAt
+      have := hdF.mul hdG
+      simp only [Pi.add_apply, Pi.mul_apply]
+      convert this using 1
+      ring
+    have hftc := integ_eq_antideriv_sub hab hsum hanti
+    rw [(hFG'.add hGF').2] at hftc
+    simp only [Pi.mul_apply] at hftc
+    linarith
 
 /-- Theorem 11.10.2.  Need to add continuity of α due to our conventions on α-length -/
 theorem PiecewiseConstantOn.RS_integ_eq_integ_of_mul_deriv
