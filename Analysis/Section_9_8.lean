@@ -238,22 +238,38 @@ theorem BddOn.of_antitone {a b:ℝ} {f:ℝ → ℝ} (hf: AntitoneOn f (.Icc a b)
 theorem no_strictmono_intermediate_value :
     ∃ (a b:ℝ) (hab: a < b) (f:ℝ → ℝ) (hf: StrictMonoOn f (.Icc a b)),
       ∃ y, (y ∈ Set.Icc (f a) (f b) ∨ y ∈ Set.Icc (f b) (f a)) ∧
-      ¬ ∃ c ∈ Set.Icc a b, f c = y := by sorry
+      ¬ ∃ c ∈ Set.Icc a b, f c = y := by
+  refine ⟨0, 1, by norm_num, fun x => if x < 1/2 then x else x + 1, ?_, 1, Or.inl ?_, ?_⟩
+  · intro p _ q _ hpq; dsimp only; split_ifs <;> linarith
+  · simp only [Set.mem_Icc]; split_ifs <;> norm_num
+  · rintro ⟨c, _, hfc⟩; dsimp only at hfc; split_ifs at hfc <;> linarith
 
 theorem no_monotone_intermediate_value :
     ∃ (a b:ℝ) (hab: a < b) (f:ℝ → ℝ) (hf: MonotoneOn f (.Icc a b)),
       ∃ y, (y ∈ Set.Icc (f a) (f b) ∨ y ∈ Set.Icc (f b) (f a)) ∧
-      ¬ ∃ c ∈ Set.Icc a b, f c = y := by sorry
+      ¬ ∃ c ∈ Set.Icc a b, f c = y := by
+  refine ⟨0, 1, by norm_num, fun x => if x < 1/2 then x else x + 1, ?_, 1, Or.inl ?_, ?_⟩
+  · intro p _ q _ hpq; dsimp only; split_ifs <;> linarith
+  · simp only [Set.mem_Icc]; split_ifs <;> norm_num
+  · rintro ⟨c, _, hfc⟩; dsimp only at hfc; split_ifs at hfc <;> linarith
 
 theorem no_strictanti_intermediate_value :
     ∃ (a b:ℝ) (hab: a < b) (f:ℝ → ℝ) (hf: StrictAntiOn f (.Icc a b)),
       ∃ y, (y ∈ Set.Icc (f a) (f b) ∨ y ∈ Set.Icc (f b) (f a)) ∧
-      ¬ ∃ c ∈ Set.Icc a b, f c = y := by sorry
+      ¬ ∃ c ∈ Set.Icc a b, f c = y := by
+  refine ⟨0, 1, by norm_num, fun x => if x < 1/2 then -x else -x - 1, ?_, -1, Or.inr ?_, ?_⟩
+  · intro p _ q _ hpq; dsimp only; split_ifs <;> linarith
+  · simp only [Set.mem_Icc]; split_ifs <;> norm_num
+  · rintro ⟨c, _, hfc⟩; dsimp only at hfc; split_ifs at hfc <;> linarith
 
 theorem no_antitone_intermediate_value :
     ∃ (a b:ℝ) (hab: a < b) (f:ℝ → ℝ) (hf: AntitoneOn f (.Icc a b)),
       ∃ y, (y ∈ Set.Icc (f a) (f b) ∨ y ∈ Set.Icc (f b) (f a)) ∧
-      ¬ ∃ c ∈ Set.Icc a b, f c = y := by sorry
+      ¬ ∃ c ∈ Set.Icc a b, f c = y := by
+  refine ⟨0, 1, by norm_num, fun x => if x < 1/2 then -x else -x - 1, ?_, -1, Or.inr ?_, ?_⟩
+  · intro p _ q _ hpq; dsimp only; split_ifs <;> linarith
+  · simp only [Set.mem_Icc]; split_ifs <;> norm_num
+  · rintro ⟨c, _, hfc⟩; dsimp only at hfc; split_ifs at hfc <;> linarith
 
 /-- Exercise 9.8.3 -/
 theorem mono_of_continuous_inj {a b:ℝ} (h: a < b) {f:ℝ → ℝ}
