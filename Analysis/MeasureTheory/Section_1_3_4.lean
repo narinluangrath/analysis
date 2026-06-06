@@ -985,25 +985,33 @@ theorem L1.dist_eq_zero {d:ℕ} (f g: EuclideanSpace' d → ℂ) (hf: ComplexAbs
       exact sub_eq_zero.mp (norm_eq_zero.mp h_norm_zero)
   rw [h_sets_eq]
 
-/-- Exercise 1.3.19 (Integration is linear) -/
-noncomputable def L1.integ {d:ℕ} : L1 d →ₗ[ℂ] ℂ := {
-  toFun := Quotient.lift (fun F ↦ F.integrable.integ) (by sorry)
-  map_smul' := by sorry
-  map_add' := by sorry
-}
-
-noncomputable def L1.conj {d:ℕ} : L1 d → L1 d := Quotient.lift (fun F ↦ (F.conj : L1 d)) (by sorry)
-
-theorem L1.integ_conj {d:ℕ} (F: L1 d) : L1.integ (L1.conj F) = starRingEnd ℂ (L1.integ F) := by sorry
-
 /-- Exercise 1.3.20 (Translation invariance)-/
 theorem RealAbsolutelyIntegrable.trans {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealAbsolutelyIntegrable f) (a: EuclideanSpace' d) : RealAbsolutelyIntegrable (fun x ↦ f (x + a)) := by sorry
 
 theorem RealAbsolutelyIntegrable.integ_trans {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealAbsolutelyIntegrable f) (a: EuclideanSpace' d) : (hf.trans a).integ = hf.integ  := by sorry
 
-theorem ComplexAbsolutelyIntegrable.trans {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexAbsolutelyIntegrable f) (a: EuclideanSpace' d) : ComplexAbsolutelyIntegrable (fun x ↦ f (x + a)) := by sorry
+theorem ComplexAbsolutelyIntegrable.trans {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexAbsolutelyIntegrable f) (a: EuclideanSpace' d) : ComplexAbsolutelyIntegrable (fun x ↦ f (x + a)) := by
+  rw [ComplexAbsolutelyIntegrable.iff]
+  constructor
+  · have h := (hf.re).trans a
+    have heq : Complex.re_fun (fun x ↦ f (x + a)) = (fun x ↦ Complex.re_fun f (x + a)) := by
+      funext x; rfl
+    rw [heq]; exact h
+  · have h := (hf.im).trans a
+    have heq : Complex.im_fun (fun x ↦ f (x + a)) = (fun x ↦ Complex.im_fun f (x + a)) := by
+      funext x; rfl
+    rw [heq]; exact h
 
-theorem ComplexAbsolutelyIntegrable.integ_trans {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexAbsolutelyIntegrable f) (a: EuclideanSpace' d) : (hf.trans a).integ = hf.integ  := by sorry
+theorem ComplexAbsolutelyIntegrable.integ_trans {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexAbsolutelyIntegrable f) (a: EuclideanSpace' d) : (hf.trans a).integ = hf.integ  := by
+  have hre_eq : (hf.trans a).re.integ = hf.re.integ := by
+    have hrt := (hf.re).integ_trans a
+    have e1 : (hf.trans a).re.integ = ((hf.re).trans a).integ := rfl
+    rw [e1, hrt]
+  have him_eq : (hf.trans a).im.integ = hf.im.integ := by
+    have hit := (hf.im).integ_trans a
+    have e1 : (hf.trans a).im.integ = ((hf.im).trans a).integ := rfl
+    rw [e1, hit]
+  simp only [ComplexAbsolutelyIntegrable.integ, hre_eq, him_eq]
 
 /-- Exercise 1.3.20 (Linear change of variables)-/
 theorem RealAbsolutelyIntegrable.comp_linear {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealAbsolutelyIntegrable f) {A: EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d} (hA: A.det ≠ 0) :
@@ -1013,10 +1021,30 @@ theorem RealAbsolutelyIntegrable.integ_comp_linear {d:ℕ} {f: EuclideanSpace' d
     (hf.comp_linear hA).integ = |A.det|⁻¹ * hf.integ := by sorry
 
 theorem ComplexAbsolutelyIntegrable.comp_linear {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexAbsolutelyIntegrable f) {A: EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d} (hA: A.det ≠ 0) :
-    ComplexAbsolutelyIntegrable (fun x ↦ f (A x)) := by sorry
+    ComplexAbsolutelyIntegrable (fun x ↦ f (A x)) := by
+  rw [ComplexAbsolutelyIntegrable.iff]
+  constructor
+  · have h := (hf.re).comp_linear hA
+    have heq : Complex.re_fun (fun x ↦ f (A x)) = (fun x ↦ Complex.re_fun f (A x)) := by
+      funext x; rfl
+    rw [heq]; exact h
+  · have h := (hf.im).comp_linear hA
+    have heq : Complex.im_fun (fun x ↦ f (A x)) = (fun x ↦ Complex.im_fun f (A x)) := by
+      funext x; rfl
+    rw [heq]; exact h
 
 theorem ComplexAbsolutelyIntegrable.integ_comp_linear {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexAbsolutelyIntegrable f) {A: EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d} (hA: A.det ≠ 0) :
-    (hf.comp_linear hA).integ = |A.det|⁻¹ * hf.integ := by sorry
+    (hf.comp_linear hA).integ = |A.det|⁻¹ * hf.integ := by
+  have hre_eq : (hf.comp_linear hA).re.integ = |A.det|⁻¹ * hf.re.integ := by
+    have hrt := (hf.re).integ_comp_linear hA
+    have e1 : (hf.comp_linear hA).re.integ = ((hf.re).comp_linear hA).integ := rfl
+    rw [e1, hrt]
+  have him_eq : (hf.comp_linear hA).im.integ = |A.det|⁻¹ * hf.im.integ := by
+    have hit := (hf.im).integ_comp_linear hA
+    have e1 : (hf.comp_linear hA).im.integ = ((hf.im).comp_linear hA).integ := rfl
+    rw [e1, hit]
+  simp only [ComplexAbsolutelyIntegrable.integ, hre_eq, him_eq]
+  push_cast; ring
 
 /-- Exercise 1.3.20 (Compatibility with the Riemann integral)-/
 theorem RiemannIntegrableOn.realAbsolutelyIntegrable {I: BoundedInterval} {f: ℝ → ℝ} (hf: RiemannIntegrableOn f I) : RealAbsolutelyIntegrable ((fun x ↦ (f x) * (I.toSet.indicator' x)) ∘ EuclideanSpace'.equiv_Real) := by sorry
@@ -1400,3 +1428,113 @@ theorem ComplexAbsolutelyIntegrable.abs_le {d:ℕ} {f: EuclideanSpace' d → ℂ
       _ ≤ (hf.smul u).re.abs.integ := (hf.smul u).re.abs_integ_le
       _ ≤ (hf.smul u).abs.integ := (hf.smul u).re_abs_integ_le
       _ = hf.abs.integ := hf.abs_smul_unit u hu_norm
+
+private lemma ComplexAbsolutelyIntegrable.integ_add'' {d:ℕ} {f g: EuclideanSpace' d → ℂ}
+    (hf: ComplexAbsolutelyIntegrable f) (hg: ComplexAbsolutelyIntegrable g) :
+    (hf.add hg).integ = hf.integ + hg.integ := by
+  have h_re : (hf.add hg).re.integ = hf.re.integ + hg.re.integ := by
+    have e1 : (hf.add hg).re.integ = (hf.re.add hg.re).integ := rfl
+    rw [e1, RealAbsolutelyIntegrable.integ_add' (hf := hf.re) (hg := hg.re)]
+  have h_im : (hf.add hg).im.integ = hf.im.integ + hg.im.integ := by
+    have e1 : (hf.add hg).im.integ = (hf.im.add hg.im).integ := rfl
+    rw [e1, RealAbsolutelyIntegrable.integ_add' (hf := hf.im) (hg := hg.im)]
+  simp only [ComplexAbsolutelyIntegrable.integ, h_re, h_im]
+  push_cast; ring
+
+private lemma ComplexAbsolutelyIntegrable.integ_sub'' {d:ℕ} {f g: EuclideanSpace' d → ℂ}
+    (hf: ComplexAbsolutelyIntegrable f) (hg: ComplexAbsolutelyIntegrable g) :
+    (hf.sub hg).integ = hf.integ - hg.integ := by
+  have h1 : (hf.sub hg).integ = (hf.add (hg.smul (-1 : ℂ))).integ := by
+    have heq : f - g = f + (-1 : ℂ) • g := by funext x; simp [sub_eq_add_neg]
+    simp only [ComplexAbsolutelyIntegrable.integ, RealAbsolutelyIntegrable.integ,
+               UnsignedAbsolutelyIntegrable.integ, EReal.pos_fun, EReal.neg_fun,
+               Complex.re_fun, Complex.im_fun, heq]
+  rw [h1, ComplexAbsolutelyIntegrable.integ_add'' (hf := hf) (hg := hg.smul _),
+      ComplexAbsolutelyIntegrable.integ_smul (hf := hg)]
+  ring
+
+private lemma PreL1.integ_eq_of_inseparable {d:ℕ} (F G: PreL1 d) (h: Inseparable F G) :
+    F.integrable.integ = G.integrable.integ := by
+  have hd : dist F G = 0 := h.dist_eq_zero
+  rw [PreL1.dist_eq] at hd
+  -- ‖F - G‖ = (F.integrable.sub G.integrable).abs.integ
+  have hnorm : (F.integrable.sub G.integrable).norm = 0 := hd
+  have hle : ‖(F.integrable.sub G.integrable).integ‖ ≤ 0 := by
+    have := (F.integrable.sub G.integrable).abs_le
+    rwa [show (F.integrable.sub G.integrable).abs.integ
+        = (F.integrable.sub G.integrable).norm from rfl, hnorm] at this
+  have hzero : (F.integrable.sub G.integrable).integ = 0 := by
+    have := le_antisymm hle (norm_nonneg _)
+    exact norm_eq_zero.mp this
+  rw [ComplexAbsolutelyIntegrable.integ_sub'' (hf := F.integrable) (hg := G.integrable)] at hzero
+  exact sub_eq_zero.mp hzero
+
+/-- Exercise 1.3.19 (Integration is linear) -/
+noncomputable def L1.integ {d:ℕ} : L1 d →ₗ[ℂ] ℂ := {
+  toFun := Quotient.lift (fun F ↦ F.integrable.integ)
+    (fun F G h => PreL1.integ_eq_of_inseparable F G h)
+  map_smul' := by
+    intro c F
+    induction F using Quotient.ind with
+    | _ F =>
+      show (c • F).integrable.integ = c • F.integrable.integ
+      have : (c • F).integrable.integ = (F.integrable.smul c).integ := rfl
+      rw [this, ComplexAbsolutelyIntegrable.integ_smul]
+      rfl
+  map_add' := by
+    intro F G
+    induction F using Quotient.ind with
+    | _ F =>
+      induction G using Quotient.ind with
+      | _ G =>
+        show (F + G).integrable.integ = F.integrable.integ + G.integrable.integ
+        have : (F + G).integrable.integ = (F.integrable.add G.integrable).integ := rfl
+        rw [this, ComplexAbsolutelyIntegrable.integ_add'']
+}
+
+private lemma PreL1.conj_inseparable_of_inseparable {d:ℕ} (F G: PreL1 d) (h: Inseparable F G) :
+    Inseparable F.conj G.conj := by
+  rw [Metric.inseparable_iff] at h ⊢
+  rw [PreL1.dist_eq] at h ⊢
+  -- ‖F.conj - G.conj‖ = ‖F - G‖ since |conj(z)| = |z|
+  have hfun : (F.conj.integrable.sub G.conj.integrable).abs.integ
+            = (F.integrable.sub G.integrable).abs.integ := by
+    simp only [UnsignedAbsolutelyIntegrable.integ]
+    congr 2
+    funext x
+    simp only [EReal.abs_fun, PreL1.conj, Complex.conj_fun, Pi.sub_apply]
+    rw [show (starRingEnd ℂ (F.f x) - starRingEnd ℂ (G.f x))
+        = starRingEnd ℂ (F.f x - G.f x) from by rw [map_sub], RCLike.norm_conj]
+  show (F.conj.integrable.sub G.conj.integrable).norm = 0
+  rw [show (F.conj.integrable.sub G.conj.integrable).norm
+      = (F.conj.integrable.sub G.conj.integrable).abs.integ from rfl, hfun]
+  exact h
+
+noncomputable def L1.conj {d:ℕ} : L1 d → L1 d := Quotient.lift (fun F ↦ (F.conj : L1 d))
+  (fun F G h => SeparationQuotient.mk_eq_mk.mpr (PreL1.conj_inseparable_of_inseparable F G h))
+
+theorem L1.integ_conj {d:ℕ} (F: L1 d) : L1.integ (L1.conj F) = starRingEnd ℂ (L1.integ F) := by
+  induction F using Quotient.ind with
+  | _ F =>
+    show F.conj.integrable.integ = starRingEnd ℂ F.integrable.integ
+    -- conj's re = re, im = -im
+    have hre_fun : Complex.re_fun (Complex.conj_fun F.f) = Complex.re_fun F.f := by
+      funext x; simp only [Complex.re_fun, Complex.conj_fun, Complex.conj_re]
+    have him_fun : Complex.im_fun (Complex.conj_fun F.f) = (-1:ℝ) • Complex.im_fun F.f := by
+      funext x; simp only [Complex.im_fun, Complex.conj_fun, Complex.conj_im, Pi.smul_apply,
+        smul_eq_mul]; ring
+    have hre : F.conj.integrable.re.integ = F.integrable.re.integ := by
+      have e : F.conj.integrable.re.integ = F.integrable.re.integ := by
+        simp only [RealAbsolutelyIntegrable.integ, UnsignedAbsolutelyIntegrable.integ,
+          PreL1.conj, hre_fun]
+      exact e
+    have him : F.conj.integrable.im.integ = - F.integrable.im.integ := by
+      have e : F.conj.integrable.im.integ = (F.integrable.im.smul (-1:ℝ)).integ := by
+        simp only [RealAbsolutelyIntegrable.integ, UnsignedAbsolutelyIntegrable.integ,
+          PreL1.conj, him_fun]
+      rw [e, RealAbsolutelyIntegrable.integ_smul' (hf := F.integrable.im)]; ring
+    simp only [ComplexAbsolutelyIntegrable.integ, hre, him]
+    rw [show starRingEnd ℂ ((F.integrable.re.integ : ℂ) + Complex.I * F.integrable.im.integ)
+        = (F.integrable.re.integ : ℂ) - Complex.I * F.integrable.im.integ from by
+      simp [map_add, map_mul, Complex.conj_I, Complex.conj_ofReal]; ring]
+    push_cast; ring

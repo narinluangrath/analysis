@@ -1714,10 +1714,22 @@ theorem UnsignedMeasurable.TFAE {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: Un
   tfae_finish
 
 /-- Exercise 1.3.3(i) -/
-theorem Continuous.UnsignedMeasurable {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: Continuous f) (hnonneg: Unsigned f): UnsignedMeasurable f := by sorry
+theorem Continuous.UnsignedMeasurable {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: Continuous f) (hnonneg: Unsigned f): UnsignedMeasurable f := by
+  have hx : ∀ U: Set EReal, IsOpen U → LebesgueMeasurable (f⁻¹' U) :=
+    fun U hU => (hf.isOpen_preimage U hU).measurable
+  exact ((UnsignedMeasurable.TFAE hnonneg).out 9 0).mp hx
 
 /-- Exercise 1.3.3(ii) -/
-theorem UnsignedSimpleFunction.unsignedMeasurable {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f): UnsignedMeasurable f := by sorry
+theorem UnsignedSimpleFunction.unsignedMeasurable {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f): UnsignedMeasurable f := by
+  have hnonneg : Unsigned f := by
+    obtain ⟨k, c, E, hcE, heq⟩ := hf
+    intro x
+    rw [heq]
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    apply Finset.sum_nonneg
+    intro i _
+    exact mul_nonneg (hcE i).2 (EReal.coe_nonneg.mpr (Set.indicator_nonneg (fun _ _ => zero_le_one) x))
+  exact ⟨hnonneg, fun _ => f, fun _ => hf, fun x => tendsto_const_nhds⟩
 
 /-- Exercise 1.3.3(iii) -/
 theorem UnsignedMeasurable.sup {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ iSup (fun n ↦ f n x)) := by sorry
@@ -3296,20 +3308,104 @@ theorem RealMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: Real
 
 theorem ComplexMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) {φ: ℂ → ℂ} (hφ: Continuous φ)  : ComplexMeasurable (φ ∘ f) := by sorry
 
+private lemma RealSimpleFunction.mul' {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f) (hg: RealSimpleFunction g) : RealSimpleFunction (f * g) := by
+  obtain ⟨k₁, c₁, E₁, hmes₁, heq₁⟩ := hf
+  obtain ⟨k₂, c₂, E₂, hmes₂, heq₂⟩ := hg
+  -- product is ∑_{i,j} (c₁ i * c₂ j) • indicator' (E₁ i ∩ E₂ j)
+  refine ⟨k₁ * k₂, fun p => c₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 * c₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2,
+    fun p => E₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 ∩ E₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2, ?_, ?_⟩
+  · intro p; exact LebesgueMeasurable.inter (hmes₁ _) (hmes₂ _)
+  · ext x
+    rw [heq₁, heq₂]
+    simp only [Pi.mul_apply, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [Finset.sum_mul_sum]
+    rw [← (finProdFinEquiv (m := k₁) (n := k₂)).sum_comp (fun p => c₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 * c₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2
+        * (E₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 ∩ E₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2).indicator' x)]
+    rw [← Finset.sum_product']
+    apply Finset.sum_congr rfl
+    intro p _
+    simp only [Equiv.symm_apply_apply]
+    rw [mul_mul_mul_comm]
+    congr 1
+    by_cases hx1 : x ∈ E₁ p.1 <;> by_cases hx2 : x ∈ E₂ p.2
+    · rw [Set.indicator'_of_mem hx1, Set.indicator'_of_mem hx2,
+        Set.indicator'_of_mem (Set.mem_inter hx1 hx2), mul_one]
+    · rw [Set.indicator'_of_notMem hx2, Set.indicator'_of_notMem (fun h => hx2 (Set.mem_of_mem_inter_right h)), mul_zero]
+    · rw [Set.indicator'_of_notMem hx1, Set.indicator'_of_notMem (fun h => hx1 (Set.mem_of_mem_inter_left h)), zero_mul]
+    · rw [Set.indicator'_of_notMem hx1, Set.indicator'_of_notMem (fun h => hx1 (Set.mem_of_mem_inter_left h)), zero_mul]
+
+private lemma ComplexSimpleFunction.mul' {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexSimpleFunction f) (hg: ComplexSimpleFunction g) : ComplexSimpleFunction (f * g) := by
+  obtain ⟨k₁, c₁, E₁, hmes₁, heq₁⟩ := hf
+  obtain ⟨k₂, c₂, E₂, hmes₂, heq₂⟩ := hg
+  refine ⟨k₁ * k₂, fun p => c₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 * c₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2,
+    fun p => E₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 ∩ E₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2, ?_, ?_⟩
+  · intro p; exact LebesgueMeasurable.inter (hmes₁ _) (hmes₂ _)
+  · ext x
+    rw [heq₁, heq₂]
+    simp only [Pi.mul_apply, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [Finset.sum_mul_sum]
+    rw [← (finProdFinEquiv (m := k₁) (n := k₂)).sum_comp (fun p => c₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 * c₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2
+        * Complex.indicator (E₁ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).1 ∩ E₂ ((finProdFinEquiv (m := k₁) (n := k₂)).symm p).2) x)]
+    rw [← Finset.sum_product']
+    apply Finset.sum_congr rfl
+    intro p _
+    simp only [Equiv.symm_apply_apply]
+    rw [mul_mul_mul_comm]
+    congr 1
+    simp only [Complex.indicator, Real.complex_fun]
+    rw [← Complex.ofReal_mul]
+    congr 1
+    by_cases hx1 : x ∈ E₁ p.1 <;> by_cases hx2 : x ∈ E₂ p.2
+    · rw [Set.indicator'_of_mem hx1, Set.indicator'_of_mem hx2,
+        Set.indicator'_of_mem (Set.mem_inter hx1 hx2), mul_one]
+    · rw [Set.indicator'_of_notMem hx2, Set.indicator'_of_notMem (fun h => hx2 (Set.mem_of_mem_inter_right h)), mul_zero]
+    · rw [Set.indicator'_of_notMem hx1, Set.indicator'_of_notMem (fun h => hx1 (Set.mem_of_mem_inter_left h)), zero_mul]
+    · rw [Set.indicator'_of_notMem hx1, Set.indicator'_of_notMem (fun h => hx1 (Set.mem_of_mem_inter_left h)), zero_mul]
+
 /-- Exercise 1.3.8(vi) -/
-theorem RealMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) (hg: RealMeasurable g) : RealMeasurable (f + g) := by sorry
+theorem RealMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) (hg: RealMeasurable g) : RealMeasurable (f + g) := by
+  obtain ⟨gn, hgn_simple, hgn_conv⟩ := hf
+  obtain ⟨hn, hhn_simple, hhn_conv⟩ := hg
+  exact ⟨fun n => gn n + hn n, fun n => (hgn_simple n).add (hhn_simple n),
+    fun x => by simpa using (hgn_conv x).add (hhn_conv x)⟩
 
-theorem ComplexMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) (hg: ComplexMeasurable g) : ComplexMeasurable (f + g) := by sorry
+theorem ComplexMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) (hg: ComplexMeasurable g) : ComplexMeasurable (f + g) := by
+  obtain ⟨gn, hgn_simple, hgn_conv⟩ := hf
+  obtain ⟨hn, hhn_simple, hhn_conv⟩ := hg
+  exact ⟨fun n => gn n + hn n, fun n => (hgn_simple n).add (hhn_simple n),
+    fun x => by simpa using (hgn_conv x).add (hhn_conv x)⟩
 
 /-- Exercise 1.3.8(vi) -/
-theorem RealMeasurable.sub {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) (hg: RealMeasurable g) : RealMeasurable (f - g) := by sorry
+theorem RealMeasurable.sub {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) (hg: RealMeasurable g) : RealMeasurable (f - g) := by
+  obtain ⟨gn, hgn_simple, hgn_conv⟩ := hf
+  obtain ⟨hn, hhn_simple, hhn_conv⟩ := hg
+  refine ⟨fun n => gn n + (-1 : ℝ) • hn n, fun n => (hgn_simple n).add ((hhn_simple n).smul _),
+    fun x => ?_⟩
+  have := (hgn_conv x).add ((hhn_conv x).const_smul ((-1 : ℝ)))
+  simp only [Pi.add_apply, Pi.smul_apply, smul_eq_mul, neg_one_mul] at this ⊢
+  simpa [sub_eq_add_neg] using this
 
-theorem ComplexMeasurable.sub {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) (hg: ComplexMeasurable g) : ComplexMeasurable (f - g) := by sorry
+theorem ComplexMeasurable.sub {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) (hg: ComplexMeasurable g) : ComplexMeasurable (f - g) := by
+  obtain ⟨gn, hgn_simple, hgn_conv⟩ := hf
+  obtain ⟨hn, hhn_simple, hhn_conv⟩ := hg
+  refine ⟨fun n => gn n + (-1 : ℂ) • hn n, fun n => (hgn_simple n).add ((hhn_simple n).smul _),
+    fun x => ?_⟩
+  have := (hgn_conv x).add ((hhn_conv x).const_smul ((-1 : ℂ)))
+  simp only [Pi.add_apply, Pi.smul_apply, smul_eq_mul, neg_one_mul] at this ⊢
+  simpa [sub_eq_add_neg] using this
 
 /-- Exercise 1.3.8(vi) -/
-theorem RealMeasurable.mul {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) (hg: RealMeasurable g) : RealMeasurable (f * g) := by sorry
+theorem RealMeasurable.mul {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) (hg: RealMeasurable g) : RealMeasurable (f * g) := by
+  obtain ⟨gn, hgn_simple, hgn_conv⟩ := hf
+  obtain ⟨hn, hhn_simple, hhn_conv⟩ := hg
+  exact ⟨fun n => gn n * hn n, fun n => (hgn_simple n).mul' (hhn_simple n),
+    fun x => by simpa using (hgn_conv x).mul (hhn_conv x)⟩
 
-theorem ComplexMeasurable.mul {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) (hg: ComplexMeasurable g) : ComplexMeasurable (f * g) := by sorry
+theorem ComplexMeasurable.mul {d:ℕ} {f g: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) (hg: ComplexMeasurable g) : ComplexMeasurable (f * g) := by
+  obtain ⟨gn, hgn_simple, hgn_conv⟩ := hf
+  obtain ⟨hn, hhn_simple, hhn_conv⟩ := hg
+  exact ⟨fun n => gn n * hn n, fun n => (hgn_simple n).mul' (hhn_simple n),
+    fun x => by simpa using (hgn_conv x).mul (hhn_conv x)⟩
 
 
 open Classical in
