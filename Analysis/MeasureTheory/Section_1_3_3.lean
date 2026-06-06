@@ -404,9 +404,270 @@ noncomputable def UnsignedLebesgueIntegral {d:ℕ} (f: EuclideanSpace' d → ERe
 
 noncomputable def UnsignedMeasurable.integ {d:ℕ} (f: EuclideanSpace' d → EReal) (_: UnsignedMeasurable f) : EReal := UnsignedLebesgueIntegral f
 
+/-- The lower integral never exceeds the upper integral: any simple minorant is `≤` any
+    simple majorant (a.e.), and these dominate the lower/upper integrals respectively. -/
+private lemma LowerUnsignedLebesgueIntegral.le_upper {d:ℕ} (f: EuclideanSpace' d → EReal) :
+    LowerUnsignedLebesgueIntegral f ≤ UpperUnsignedLebesgueIntegral f := by
+  haveI : Nonempty (EuclideanSpace' d) := inferInstance
+  unfold LowerUnsignedLebesgueIntegral UpperUnsignedLebesgueIntegral
+  apply sSup_le
+  rintro R ⟨g, hg, hcond⟩
+  apply le_csInf
+  · exact ⟨_, _, UnsignedSimpleFunction.top, fun x => ⟨le_top, rfl⟩⟩
+  · rintro S ⟨h, hh, hcond'⟩
+    have hRg : R = hg.integ := (hcond (Classical.arbitrary _)).2
+    have hSh : S = hh.integ := (hcond' (Classical.arbitrary _)).2
+    rw [hRg, hSh]
+    exact UnsignedSimpleFunction.integral_le_integral_of_aeLe hg hh
+      (AlmostAlways.ofAlways (fun x => le_trans (hcond x).1 (hcond' x).1))
+
+/-- Extract a real, nonnegative pointwise bound from `EReal.BoundedFunction` for an unsigned function. -/
+private lemma EReal.BoundedFunction.exists_real_bound {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hbound: EReal.BoundedFunction f) : ∃ M:ℝ, 0 ≤ M ∧ ∀ x, f x ≤ (M:EReal) := by
+  obtain ⟨M, hM⟩ := hbound
+  refine ⟨(M:ℝ), M.2, fun x => ?_⟩
+  have h := hM x
+  rcases lt_or_ge (f x) ⊤ with hfin | htop
+  · by_cases hbot' : f x = ⊥
+    · exfalso; rw [hbot', EReal.abs_bot] at h; simp at h
+    · have hr := EReal.coe_toReal (ne_of_lt hfin) hbot'
+      rw [← hr] at h ⊢
+      rw [EReal.abs_def] at h
+      rw [EReal.coe_le_coe_iff]
+      have hle : |(f x).toReal| ≤ (M:ℝ) := by exact_mod_cast h
+      calc (f x).toReal ≤ |(f x).toReal| := le_abs_self _
+        _ ≤ (M:ℝ) := hle
+  · exfalso
+    have : f x = ⊤ := le_antisymm le_top htop
+    rw [this, EReal.abs_top] at h
+    simp at h
+
+open scoped Classical in
+/-- A constant times `card` of a filtered `Fin n` set, written through real coercion. -/
+private lemma EReal.nsmul_coe (m:ℕ) (wr:ℝ) : m • ((wr:ℝ):EReal) = (((m:ℝ)*wr : ℝ):EReal) := by
+  induction m with
+  | zero => simp
+  | succ k ih =>
+    rw [succ_nsmul, ih, ← EReal.coe_add]
+    congr 1; push_cast; ring
+
+open scoped Classical in
+/-- The "band" minorant for slicing `[0,M]` into `n` equal pieces. For a fixed point `x` with
+    value `v=f x ∈ [0,M]`, the value of the minorant simple function is `(c·M/n)` where `c` counts
+    the crossed thresholds; it satisfies `minorant ≤ f ≤ minorant + M/n` pointwise. -/
+private lemma LowerUnsignedLebesgueIntegral.band_sandwich {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hf: UnsignedMeasurable f) (hbound: EReal.BoundedFunction f) (hsupp: FiniteMeasureSupport f)
+    (M:ℝ) (hMpos : 0 < M) (hMle : ∀ x, f x ≤ (M:EReal))
+    (hfin : ∀ x, f x ≠ ⊤) (n:ℕ) (hn : 0 < n) :
+    UpperUnsignedLebesgueIntegral f ≤
+      LowerUnsignedLebesgueIntegral f + (((M/n * (Lebesgue_measure (Support f)).toReal : ℝ)):EReal) := by
+  set w : ℝ := M / n with hwdef
+  have hnpos : (0:ℝ) < n := by exact_mod_cast hn
+  have hwpos : 0 < w := by rw [hwdef]; positivity
+  have hwnn : (0:EReal) ≤ ((w:ℝ):EReal) := by exact_mod_cast hwpos.le
+  set S : Set (EuclideanSpace' d) := Support f with hSdef
+  have hμS_fin : Lebesgue_measure S < ⊤ := hsupp
+  have hμS_ne : Lebesgue_measure S ≠ ⊤ := ne_of_lt hμS_fin
+  -- Level-set measurability via TFAE (i) ↔ (vi): {f ≥ t} measurable for all t.
+  have hge_iff : UnsignedMeasurable f ↔ ∀ t, LebesgueMeasurable {x | f x ≥ t} :=
+    (UnsignedMeasurable.TFAE hf.1).out 0 5
+  have hge : ∀ t:EReal, LebesgueMeasurable {x : EuclideanSpace' d | f x ≥ t} := hge_iff.mp hf
+  -- Threshold sets E i = {f ≥ (i+1)w}, i ∈ Fin n.
+  set E : Fin n → Set (EuclideanSpace' d) := fun i => {x | f x ≥ ((((i:ℝ)+1)*w : ℝ):EReal)} with hEdef
+  have hEmeas : ∀ i, LebesgueMeasurable (E i) := fun i => hge _
+  -- For i, E i ⊆ S (threshold (i+1)w > 0), so measure E i ≤ measure S, finite.
+  have hEsubS : ∀ i, E i ⊆ S := by
+    intro i x hx
+    simp only [hEdef, Set.mem_setOf_eq] at hx
+    simp only [hSdef, Support, Set.mem_setOf_eq]
+    have hthr : (0:EReal) < ((((i:ℝ)+1)*w : ℝ):EReal) := by
+      have : (0:ℝ) < ((i:ℝ)+1)*w := by positivity
+      exact_mod_cast this
+    exact ne_of_gt (lt_of_lt_of_le hthr hx)
+  have hEmeas_le : ∀ i, Lebesgue_measure (E i) ≤ Lebesgue_measure S :=
+    fun i => Lebesgue_outer_measure.mono (hEsubS i)
+  have hE_fin : ∀ i, Lebesgue_measure (E i) ≠ ⊤ :=
+    fun i => ne_of_lt (lt_of_le_of_lt (hEmeas_le i) hμS_fin)
+  -- The minorant simple function φ = ∑ i, w • 1_{E i}.
+  set φ : EuclideanSpace' d → EReal := ∑ i, ((w:ℝ):EReal) • (EReal.indicator (E i)) with hφdef
+  have hφ_simple : UnsignedSimpleFunction φ :=
+    ⟨n, fun _ => ((w:ℝ):EReal), E, fun i => ⟨hEmeas i, hwnn⟩, rfl⟩
+  -- The majorant ψ = φ + w • 1_S.
+  have hSmeas : LebesgueMeasurable S := by
+    have hgt_iff : UnsignedMeasurable f ↔ ∀ t, LebesgueMeasurable {x | f x > t} :=
+      (UnsignedMeasurable.TFAE hf.1).out 0 4
+    have hgt : LebesgueMeasurable {x : EuclideanSpace' d | f x > (0:EReal)} :=
+      hgt_iff.mp hf 0
+    have heq : S = {x : EuclideanSpace' d | f x > (0:EReal)} := by
+      ext x; simp only [hSdef, Support, Set.mem_setOf_eq]
+      exact ⟨fun h => lt_of_le_of_ne (hf.1 x) (Ne.symm h), fun h => ne_of_gt h⟩
+    rw [heq]; exact hgt
+  have hS_simple : UnsignedSimpleFunction (Real.toEReal ∘ S.indicator') :=
+    UnsignedSimpleFunction.indicator hSmeas
+  -- Pointwise value of φ: φ x = (card · w) where card counts crossed thresholds at x.
+  have hφ_val : ∀ x, φ x = (((Finset.univ.filter (fun i => x ∈ E i)).card * w : ℝ):EReal) := by
+    intro x
+    rw [hφdef, Finset.sum_apply]
+    have hstep : (∑ i, (((w:ℝ):EReal) • EReal.indicator (E i)) x)
+        = ∑ i ∈ Finset.univ.filter (fun i => x ∈ E i), ((w:ℝ):EReal) := by
+      rw [Finset.sum_filter]
+      apply Finset.sum_congr rfl; intro i _
+      simp only [Pi.smul_apply, smul_eq_mul]
+      by_cases hx : x ∈ E i
+      · rw [EReal.indicator_of_mem hx, if_pos hx, mul_one]
+      · rw [EReal.indicator_of_notMem hx, if_neg hx, mul_zero]
+    rw [hstep, Finset.sum_const, EReal.nsmul_coe]
+  -- For each x, the count equals ⌊t/w⌋₊ where t = (f x).toReal.
+  have hcard_eq : ∀ x, (Finset.univ.filter (fun i => x ∈ E i)).card = ⌊(f x).toReal / w⌋₊ := by
+    intro x
+    set t : ℝ := (f x).toReal with htdef
+    have hvbot : f x ≠ ⊥ := ne_of_gt (lt_of_lt_of_le EReal.bot_lt_zero (hf.1 x))
+    have hvr : ((t:ℝ):EReal) = f x := EReal.coe_toReal (hfin x) hvbot
+    have ht0 : 0 ≤ t := by rw [htdef]; exact EReal.toReal_nonneg (hf.1 x)
+    have htM : t ≤ M := by rw [← EReal.coe_le_coe_iff, hvr]; exact hMle x
+    -- membership iff (i+1) ≤ t/w
+    have hmem_iff : ∀ i : Fin n, (x ∈ E i) ↔ ((i:ℝ)+1 ≤ t / w) := by
+      intro i
+      simp only [hEdef, Set.mem_setOf_eq, ge_iff_le]
+      rw [← hvr, EReal.coe_le_coe_iff, le_div_iff₀ hwpos, mul_comm]
+    have hcond : ∀ i : Fin n, (x ∈ E i) ↔ (i:ℕ) < ⌊t/w⌋₊ := by
+      intro i; rw [hmem_iff i, Nat.lt_iff_add_one_le, Nat.le_floor_iff (by positivity)]
+      push_cast; tauto
+    have hfilter_eq : (Finset.univ.filter (fun i : Fin n => x ∈ E i))
+        = (Finset.univ.filter (fun i : Fin n => (i:ℕ) < ⌊t/w⌋₊)) := by
+      apply Finset.filter_congr; intro i _; rw [hcond i]
+    rw [hfilter_eq]
+    -- card of {i : Fin n | i < ⌊t/w⌋₊} = ⌊t/w⌋₊ since ⌊t/w⌋₊ ≤ n.
+    have hsn : t / w ≤ (n:ℝ) := by
+      rw [div_le_iff₀ hwpos]
+      have hnw : (n:ℝ) * w = M := by rw [hwdef]; field_simp
+      rw [hnw]; exact htM
+    have hfloor_le : ⌊t/w⌋₊ ≤ n := Nat.floor_le_of_le (by exact_mod_cast hsn)
+    rw [Finset.card_filter, Fin.sum_univ_eq_sum_range (fun i => if i < ⌊t/w⌋₊ then 1 else 0) n,
+        ← Finset.card_filter (fun i => i < ⌊t/w⌋₊) (Finset.range n)]
+    have : ((Finset.range n).filter (fun i => i < ⌊t/w⌋₊)) = Finset.range ⌊t/w⌋₊ := by
+      ext i; simp only [Finset.mem_filter, Finset.mem_range]; omega
+    rw [this, Finset.card_range]
+  -- The pointwise EReal sandwich:  φ x ≤ f x  and  f x ≤ φ x + w.
+  have hsand : ∀ x, φ x ≤ f x ∧ f x ≤ φ x + ((w:ℝ):EReal) := by
+    intro x
+    rw [hφ_val x, hcard_eq x]
+    set t : ℝ := (f x).toReal with htdef
+    set c : ℕ := ⌊t / w⌋₊ with hcdef
+    have hvbot : f x ≠ ⊥ := ne_of_gt (lt_of_lt_of_le EReal.bot_lt_zero (hf.1 x))
+    have hvr : ((t:ℝ):EReal) = f x := EReal.coe_toReal (hfin x) hvbot
+    have ht0 : 0 ≤ t := by rw [htdef]; exact EReal.toReal_nonneg (hf.1 x)
+    have hfl1 : (c:ℝ) * w ≤ t := by
+      have := Nat.floor_le (by positivity : (0:ℝ) ≤ t/w)
+      rw [le_div_iff₀ hwpos] at this; rw [hcdef]; linarith [this]
+    have hfl2 : t ≤ ((c:ℝ)+1) * w := by
+      have := Nat.lt_floor_add_one (t / w)
+      rw [div_lt_iff₀ hwpos] at this; rw [hcdef]; nlinarith [this]
+    constructor
+    · rw [← hvr, EReal.coe_le_coe_iff]; exact hfl1
+    · rw [← hvr, ← EReal.coe_add, EReal.coe_le_coe_iff]; nlinarith [hfl2]
+  have hφ_le_f : ∀ x, φ x ≤ f x := fun x => (hsand x).1
+  -- The majorant ψ = φ + w • 1_S.
+  set ψ : EuclideanSpace' d → EReal := φ + ((w:ℝ):EReal) • (Real.toEReal ∘ S.indicator') with hψdef
+  have hψ_simple : UnsignedSimpleFunction ψ := hφ_simple.add (hS_simple.smul hwnn)
+  -- f ≤ ψ everywhere.
+  have hf_le_ψ : ∀ x, f x ≤ ψ x := by
+    intro x
+    rw [hψdef]
+    simp only [Pi.add_apply, Pi.smul_apply, Function.comp_apply, smul_eq_mul]
+    by_cases hx : x ∈ S
+    · rw [Set.indicator'_of_mem hx, EReal.coe_one, mul_one]
+      exact (hsand x).2
+    · -- x ∉ S: f x = 0 and φ x = 0.
+      rw [Set.indicator'_of_notMem hx, EReal.coe_zero, mul_zero, add_zero]
+      have hfx0 : f x = 0 := by
+        by_contra h; exact hx (by simp only [hSdef, Support, Set.mem_setOf_eq]; exact h)
+      rw [hfx0, hφ_val x]
+      have : (0:ℝ) ≤ (Finset.univ.filter (fun i => x ∈ E i)).card * w := by positivity
+      exact_mod_cast this
+  -- Integrals.
+  have hφ_integ_lower : hφ_simple.integ ≤ LowerUnsignedLebesgueIntegral f :=
+    le_sSup ⟨φ, hφ_simple, fun x => ⟨hφ_le_f x, rfl⟩⟩
+  have hψ_integ_upper : UpperUnsignedLebesgueIntegral f ≤ hψ_simple.integ := by
+    apply csInf_le
+    · exact ⟨0, by rintro R ⟨h, hh, hc⟩
+                   haveI : Nonempty (EuclideanSpace' d) := inferInstance
+                   rw [(hc (Classical.arbitrary _)).2]; exact UnsignedSimpleFunction.integ_nonneg hh⟩
+    · exact ⟨ψ, hψ_simple, fun x => ⟨hf_le_ψ x, rfl⟩⟩
+  -- integ ψ = integ φ + w · μS.
+  have hψ_integ : hψ_simple.integ = hφ_simple.integ + ((w:ℝ):EReal) * Lebesgue_measure S := by
+    have h1 : hψ_simple.integ = hφ_simple.integ + (hS_simple.smul hwnn).integ :=
+      UnsignedSimpleFunction.integral_add hφ_simple (hS_simple.smul hwnn)
+    rw [h1]
+    congr 1
+    rw [UnsignedSimpleFunction.integral_smul hS_simple hwnn,
+        UnsignedSimpleFunction.integral_indicator hSmeas]
+  -- Combine:  Upper ≤ integ ψ = integ φ + w·μS ≤ Lower + w·μS.
+  have hμS_eq : ((w:ℝ):EReal) * Lebesgue_measure S = (((M/n * (Lebesgue_measure S).toReal : ℝ)):EReal) := by
+    have hμSr : ((Lebesgue_measure S).toReal : EReal) = Lebesgue_measure S :=
+      EReal.coe_toReal hμS_ne (by
+        have := Lebesgue_outer_measure.nonneg S
+        exact ne_of_gt (lt_of_lt_of_le EReal.bot_lt_zero this))
+    rw [← hμSr, ← EReal.coe_mul]; norm_cast
+  calc UpperUnsignedLebesgueIntegral f ≤ hψ_simple.integ := hψ_integ_upper
+    _ = hφ_simple.integ + ((w:ℝ):EReal) * Lebesgue_measure S := hψ_integ
+    _ ≤ LowerUnsignedLebesgueIntegral f + ((w:ℝ):EReal) * Lebesgue_measure S := by
+        gcongr
+    _ = LowerUnsignedLebesgueIntegral f + (((M/n * (Lebesgue_measure (Support f)).toReal : ℝ)):EReal) := by
+        rw [hμS_eq, hSdef]
+
 /-- Exercise 1.3.11 -/
 theorem LowerUnsignedLebesgueIntegral.eq_upperIntegral {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hbound: EReal.BoundedFunction f) (hsupp: FiniteMeasureSupport f) :
-    LowerUnsignedLebesgueIntegral f = UpperUnsignedLebesgueIntegral f := by sorry
+    LowerUnsignedLebesgueIntegral f = UpperUnsignedLebesgueIntegral f := by
+  haveI : Nonempty (EuclideanSpace' d) := inferInstance
+  obtain ⟨M, hM0, hMle⟩ := hbound.exists_real_bound
+  have hfin : ∀ x, f x ≠ ⊤ := fun x => ne_of_lt (lt_of_le_of_lt (hMle x) (by simp))
+  -- It always holds that Lower ≤ Upper.
+  refine le_antisymm (LowerUnsignedLebesgueIntegral.le_upper f) ?_
+  rcases eq_or_lt_of_le hM0 with hM0' | hMpos
+  · -- M = 0 ⟹ f ≡ 0.
+    have hf0 : f = (fun _ => (0:EReal)) := by
+      funext x
+      exact le_antisymm (by have := hMle x; rwa [← hM0', EReal.coe_zero] at this) (hf.1 x)
+    rw [hf0]
+    -- Upper(0) ≤ Lower(0): Lower(0)=0, Upper(0)≤0 via zero majorant.
+    rw [LowerUnsignedLebesgueIntegral.zero]
+    apply csInf_le
+    · exact ⟨0, by rintro R ⟨h, hh, hc⟩
+                   rw [(hc (Classical.arbitrary _)).2]; exact UnsignedSimpleFunction.integ_nonneg hh⟩
+    · exact ⟨(fun _ => (0:EReal)), UnsignedSimpleFunction.zero,
+        fun x => ⟨le_refl _, (UnsignedSimpleFunction.zero_integ (d := d)).symm⟩⟩
+  · -- M > 0: take the band-slicing limit.
+    set μSr : ℝ := (Lebesgue_measure (Support f)).toReal with hμSrdef
+    have hμSr_nn : 0 ≤ μSr := by rw [hμSrdef]; exact EReal.toReal_nonneg (Lebesgue_outer_measure.nonneg _)
+    -- Lower is finite (0 ≤ Lower ≤ Upper ≤ Lower + M·μSr from band with n=1, but just need ≠ ⊤,⊥).
+    have hLow_nn : (0:EReal) ≤ LowerUnsignedLebesgueIntegral f :=
+      LowerUnsignedLebesgueIntegral.nonneg hf.1
+    have hLow_ne_bot : LowerUnsignedLebesgueIntegral f ≠ ⊥ :=
+      ne_of_gt (lt_of_lt_of_le EReal.bot_lt_zero hLow_nn)
+    have hband : ∀ n:ℕ, 0 < n → UpperUnsignedLebesgueIntegral f ≤
+        LowerUnsignedLebesgueIntegral f + (((M/n * μSr : ℝ)):EReal) :=
+      fun n hn => LowerUnsignedLebesgueIntegral.band_sandwich hf hbound hsupp M hMpos hMle hfin n hn
+    -- The bounding sequence  r n = Lower + (M/n · μSr)  tends to Lower.
+    have hseq : Filter.atTop.Tendsto (fun n:ℕ => (((M/n * μSr : ℝ)):EReal)) (nhds 0) := by
+      have hr : Filter.atTop.Tendsto (fun n:ℕ => (M/n * μSr : ℝ)) (nhds 0) := by
+        have hM' : Filter.atTop.Tendsto (fun n:ℕ => (M/n : ℝ)) (nhds 0) := by
+          simpa using (tendsto_const_div_atTop_nhds_zero_nat M)
+        simpa using hM'.mul_const μSr
+      have h0 : ((0:ℝ):EReal) = 0 := by norm_num
+      rw [← h0]
+      exact (continuous_coe_real_ereal.tendsto 0).comp hr
+    have hlim : Filter.atTop.Tendsto
+        (fun n:ℕ => LowerUnsignedLebesgueIntegral f + (((M/n * μSr : ℝ)):EReal))
+        (nhds (LowerUnsignedLebesgueIntegral f)) := by
+      have hc : ContinuousAt (fun p : EReal × EReal => p.1 + p.2)
+          (LowerUnsignedLebesgueIntegral f, 0) :=
+        EReal.continuousAt_add (by right; simp) (by right; simp)
+      have := hc.tendsto.comp (Filter.Tendsto.prodMk_nhds tendsto_const_nhds hseq)
+      simpa using this
+    refine ge_of_tendsto hlim ?_
+    filter_upwards [Filter.eventually_gt_atTop 0] with n hn
+    exact hband n hn
 
 def LowerUnsignedLebesgueIntegral.eq_upperIntegral_unbounded : Decidable (∀ (d:ℕ) (f: EuclideanSpace' d → EReal) (hf: UnsignedMeasurable f) (hsupp: FiniteMeasureSupport f), LowerUnsignedLebesgueIntegral f = UpperUnsignedLebesgueIntegral f) := by
   -- the first line of this construction should be either `apply isTrue` or `apply isFalse`.

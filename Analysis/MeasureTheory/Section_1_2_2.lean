@@ -1719,7 +1719,35 @@ example : ∃ (d:ℕ) (E: ℕ → Set (EuclideanSpace' d)) (E₀ F: Set (Euclide
   (hsub: ∀ n, E n ⊆ F) (hFmes: LebesgueMeasurable F), ¬ Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure E₀)) := by sorry
 
 /-- Exercise 1.2.14 -/
-example {d:ℕ} (E: Set (EuclideanSpace' d)) : ∃ (F: Set (EuclideanSpace' d)), E ⊆ F ∧ LebesgueMeasurable F ∧ Lebesgue_measure F = Lebesgue_outer_measure E := by sorry
+example {d:ℕ} (E: Set (EuclideanSpace' d)) : ∃ (F: Set (EuclideanSpace' d)), E ⊆ F ∧ LebesgueMeasurable F ∧ Lebesgue_measure F = Lebesgue_outer_measure E := by
+  -- For each n, choose an open superset U n with m*(U n) ≤ m*(E) + 1/(n+1).
+  have hchoose : ∀ n : ℕ, ∃ U : Set (EuclideanSpace' d), IsOpen U ∧ E ⊆ U ∧
+      Lebesgue_outer_measure U ≤ Lebesgue_outer_measure E + ((1 / (n + 1) : ℝ) : EReal) := by
+    intro n
+    apply Lebesgue_outer_measure.exists_open_superset_measure_le
+    have : (0:ℝ) < 1 / (n + 1) := by positivity
+    exact_mod_cast this
+  choose U hU_open hU_sub hU_le using hchoose
+  refine ⟨⋂ n, U n, Set.subset_iInter hU_sub, ?_, ?_⟩
+  · -- F = ⋂ U n is measurable (countable intersection of measurables).
+    exact LebesgueMeasurable.countable_inter (fun n => (hU_open n).measurable)
+  · -- m(F) = m*(E)
+    unfold Lebesgue_measure
+    apply le_antisymm
+    · -- m*(⋂ U n) ≤ m*(E) via the ε-characterization
+      apply EReal.le_of_forall_pos_le_add'
+      intro ε hε
+      -- pick N with 1/(N+1) ≤ ε.
+      obtain ⟨N, hN⟩ : ∃ N : ℕ, (1 / (N + 1) : ℝ) ≤ ε := by
+        obtain ⟨N, hN⟩ := exists_nat_one_div_lt hε
+        exact ⟨N, le_of_lt hN⟩
+      calc Lebesgue_outer_measure (⋂ n, U n)
+          ≤ Lebesgue_outer_measure (U N) :=
+            Lebesgue_outer_measure.mono (Set.iInter_subset U N)
+        _ ≤ Lebesgue_outer_measure E + ((1 / (N + 1) : ℝ) : EReal) := hU_le N
+        _ ≤ Lebesgue_outer_measure E + (ε : ℝ) := by gcongr
+    · -- m*(E) ≤ m*(⋂ U n) by monotonicity
+      exact Lebesgue_outer_measure.mono (Set.subset_iInter hU_sub)
 
 /-- Exercise 1.2.15 (Inner regularity)-/
 theorem Lebesgue_measure.eq {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E): Lebesgue_measure E = sSup { M | ∃ K, K ⊆ E ∧ IsCompact K ∧ M = Lebesgue_measure K} := by
@@ -1749,7 +1777,19 @@ theorem LebesgueMeasurable.caratheodory {d:ℕ} (E: Set (EuclideanSpace' d)) :
     ].TFAE
   := by sorry
 
-theorem Bornology.IsBounded.inElementary {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: Bornology.IsBounded E) : ∃ (A: Set (EuclideanSpace' d)), IsElementary A ∧ E ⊆ A := by sorry
+theorem Bornology.IsBounded.inElementary {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: Bornology.IsBounded E) : ∃ (A: Set (EuclideanSpace' d)), IsElementary A ∧ E ⊆ A := by
+  obtain ⟨r, hr⟩ := (Metric.isBounded_iff_subset_closedBall 0).mp hE
+  -- The box [-r, r]^d contains the closed ball of radius r about 0.
+  set B : Box d := ⟨fun _ => BoundedInterval.Icc (-r) r⟩ with hB
+  refine ⟨B.toSet, IsElementary.box B, ?_⟩
+  intro x hx
+  have hx' : x ∈ Metric.closedBall 0 r := hr hx
+  rw [Metric.mem_closedBall, dist_zero_right] at hx'
+  simp only [Box.mem_toSet, hB, BoundedInterval.set_Icc, Set.mem_Icc]
+  intro i
+  have hcoord : |x i| ≤ r := le_trans (EuclideanSpace'.coord_le_norm x i) hx'
+  rw [abs_le] at hcoord
+  exact hcoord
 
 noncomputable def inner_measure {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: Bornology.IsBounded E) : ℝ := (Lebesgue_measure hE.inElementary.choose).toReal - (Lebesgue_measure (hE.inElementary.choose \ E)).toReal
 
@@ -1782,14 +1822,108 @@ theorem LebesgueMeasurable.TFAE' {d:ℕ} (E: Set (EuclideanSpace' d)) :
 
 open Pointwise
 
+/-- Translating a union of sets by `{x}` is the union of the translates. -/
+private lemma Set.iUnion_add_singleton {d:ℕ} {ι : Type*} (A : ι → Set (EuclideanSpace' d))
+    (x : EuclideanSpace' d) : (⋃ n, A n) + {x} = ⋃ n, (A n + {x}) := by
+  ext y
+  simp only [Set.mem_add, Set.mem_iUnion, Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨a, ⟨n, ha⟩, b, rfl, rfl⟩; exact ⟨n, a, ha, b, rfl, rfl⟩
+  · rintro ⟨n, a, ha, b, rfl, rfl⟩; exact ⟨a, ⟨n, ha⟩, b, rfl, rfl⟩
+
+/-- Outer measure is invariant under translation (one direction; equality follows by symmetry). -/
+private lemma Lebesgue_outer_measure.le_translate {d:ℕ} (E: Set (EuclideanSpace' d))
+    (x: EuclideanSpace' d) :
+    Lebesgue_outer_measure (E + {x}) ≤ Lebesgue_outer_measure E := by
+  apply le_sInf
+  rintro V ⟨X, S, hcover, rfl⟩
+  -- Translate each covering box by x.
+  choose S' hS'_set hS'_vol using fun n : X => (S n).volume_of_translate x
+  apply sInf_le
+  refine ⟨X, S', ?_, ?_⟩
+  · -- E + {x} ⊆ ⋃ n, (S' n).toSet
+    have hmono : (E + {x}) ⊆ (⋃ n, (S n).toSet) + {x} := by
+      intro y hy
+      obtain ⟨a, ha, b, hb, rfl⟩ := Set.mem_add.mp hy
+      exact Set.mem_add.mpr ⟨a, hcover ha, b, hb, rfl⟩
+    rw [Set.iUnion_add_singleton] at hmono
+    refine hmono.trans ?_
+    apply Set.iUnion_mono
+    intro n
+    rw [hS'_set n]
+  · -- volumes match termwise
+    apply tsum_congr
+    intro n
+    rw [hS'_vol n]
+
+theorem Lebesgue_outer_measure.translate {d:ℕ} (E: Set (EuclideanSpace' d))
+    (x: EuclideanSpace' d) :
+    Lebesgue_outer_measure (E + {x}) = Lebesgue_outer_measure E := by
+  apply le_antisymm (Lebesgue_outer_measure.le_translate E x)
+  have h := Lebesgue_outer_measure.le_translate (E + {x}) (-x)
+  have heq : (E + {x}) + {-x} = E := by
+    ext y
+    simp only [Set.mem_add, Set.mem_singleton_iff]
+    constructor
+    · rintro ⟨a, ⟨c, hc, b, rfl, rfl⟩, b', rfl, rfl⟩
+      simpa using hc
+    · intro hy
+      exact ⟨y + x, ⟨y, hy, x, rfl, rfl⟩, -x, rfl, by abel⟩
+  rwa [heq] at h
+
 /-- Exercise 1.2.20 (Translation invariance) -/
 theorem LebesgueMeasurable.translate {d:ℕ} (E: Set (EuclideanSpace' d)) (x: EuclideanSpace' d) :
     LebesgueMeasurable E ↔ LebesgueMeasurable (E + {x}) := by
-  sorry
+  -- It suffices to prove the forward implication for arbitrary E, x; the reverse uses -x.
+  suffices h : ∀ (F: Set (EuclideanSpace' d)) (y: EuclideanSpace' d),
+      LebesgueMeasurable F → LebesgueMeasurable (F + {y}) by
+    constructor
+    · exact h E x
+    · intro hEx
+      have := h (E + {x}) (-x) hEx
+      have heq : (E + {x}) + {-x} = E := by
+        ext y
+        simp only [Set.mem_add, Set.mem_singleton_iff]
+        constructor
+        · rintro ⟨a, ⟨c, hc, b, rfl, rfl⟩, b', rfl, rfl⟩; simpa using hc
+        · intro hy; exact ⟨y + x, ⟨y, hy, x, rfl, rfl⟩, -x, rfl, by abel⟩
+      rwa [heq] at this
+  intro F y hF ε hε
+  obtain ⟨U, hU_open, hU_sub, hU_meas⟩ := hF ε hε
+  -- Translate U.  Translation is a homeomorphism, so U + {y} is open.
+  refine ⟨U + {y}, ?_, ?_, ?_⟩
+  · -- openness of the translate
+    have : U + {y} = (fun z => z + y) '' U := by
+      ext z; simp only [Set.mem_add, Set.mem_singleton_iff, Set.mem_image]
+      constructor
+      · rintro ⟨a, ha, b, rfl, rfl⟩; exact ⟨a, ha, rfl⟩
+      · rintro ⟨a, ha, rfl⟩; exact ⟨a, ha, y, rfl, rfl⟩
+    rw [this]
+    exact (Homeomorph.addRight y).isOpenMap U hU_open
+  · -- F + {y} ⊆ U + {y}
+    intro z hz
+    obtain ⟨a, ha, b, hb, rfl⟩ := Set.mem_add.mp hz
+    exact Set.mem_add.mpr ⟨a, hU_sub ha, b, hb, rfl⟩
+  · -- m*((U + {y}) \ (F + {y})) = m*((U \ F) + {y}) ≤ ε
+    have hdiff : (U + {y}) \ (F + {y}) = (U \ F) + {y} := by
+      ext z
+      simp only [Set.mem_diff, Set.mem_add, Set.mem_singleton_iff]
+      constructor
+      · rintro ⟨⟨a, ha, b, rfl, rfl⟩, hnot⟩
+        refine ⟨a, ⟨ha, ?_⟩, b, rfl, rfl⟩
+        intro haF; exact hnot ⟨a, haF, b, rfl, rfl⟩
+      · rintro ⟨a, ⟨ha, haF⟩, b, rfl, rfl⟩
+        refine ⟨⟨a, ha, b, rfl, rfl⟩, ?_⟩
+        rintro ⟨a', ha'F, b', rfl, hab⟩
+        have : a' = a := by have := hab; simpa using this
+        exact haF (this ▸ ha'F)
+    rw [hdiff, Lebesgue_outer_measure.translate]
+    exact hU_meas
 
 theorem Lebesgue_measure.translate {d:ℕ} {E: Set (EuclideanSpace' d)} (x: EuclideanSpace' d)
    (hE: LebesgueMeasurable E): Lebesgue_measure (E + {x}) = Lebesgue_measure E := by
-  sorry
+  unfold Lebesgue_measure
+  exact Lebesgue_outer_measure.translate E x
 
 /-- Exercise 1.2.21 (Change of variables) -/
 lemma LebesgueMeasurable.linear {d:ℕ} (T: EuclideanSpace' d ≃ₗ[ℝ] EuclideanSpace' d)

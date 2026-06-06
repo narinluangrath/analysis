@@ -1062,14 +1062,101 @@ def ComplexAbsolutelyIntegrableOn {d:ℕ} (f: EuclideanSpace' d → ℂ) (E: Set
 noncomputable def ComplexAbsolutelyIntegrableOn.integ {d:ℕ} {f: EuclideanSpace' d → ℂ} {E: Set (EuclideanSpace' d)} (hf: ComplexAbsolutelyIntegrableOn f E) : ℂ :=
   ComplexAbsolutelyIntegrable.integ hf
 
+private lemma ComplexSimpleFunction.complexMeasurable {d:ℕ} {f: EuclideanSpace' d → ℂ}
+    (hf: ComplexSimpleFunction f) : ComplexMeasurable f := by
+  exact ⟨fun _ => f, fun _ => hf, fun x => tendsto_const_nhds⟩
+
+private lemma Complex.norm_indicator_le {d:ℕ} (F: Set (EuclideanSpace' d)) (x: EuclideanSpace' d) :
+    ‖Complex.indicator F x‖ ≤ 1 := by
+  simp only [Complex.indicator, Real.complex_fun]
+  by_cases hx : x ∈ F
+  · rw [Set.indicator'_of_mem hx]; simp
+  · rw [Set.indicator'_of_notMem hx]; simp
+
+/-- If `g` is absolutely integrable, `h` is measurable, and `‖h‖ ≤ ‖g‖` pointwise, then `h`
+is absolutely integrable. -/
+private lemma ComplexAbsolutelyIntegrable.of_dom {d:ℕ} {g h: EuclideanSpace' d → ℂ}
+    (hg: ComplexAbsolutelyIntegrable g) (hh: ComplexMeasurable h)
+    (hdom: ∀ x, ‖h x‖ ≤ ‖g x‖) : ComplexAbsolutelyIntegrable h := by
+  refine ⟨hh, ?_⟩
+  have hg_abs := ComplexAbsolutelyIntegrable.abs g hg
+  have hh_abs : UnsignedMeasurable (EReal.abs_fun h) := by
+    refine ⟨fun x => EReal.coe_nonneg.mpr (norm_nonneg _), ?_⟩
+    obtain ⟨gn, hgn_simple, hgn_conv⟩ := hh
+    use fun n => EReal.abs_fun (gn n)
+    refine ⟨fun n => (hgn_simple n).abs, ?_⟩
+    intro x
+    simp only [EReal.abs_fun]
+    exact (continuous_coe_real_ereal.comp continuous_norm).continuousAt.tendsto.comp (hgn_conv x)
+  have h_mono : UnsignedLebesgueIntegral (EReal.abs_fun h) ≤
+                UnsignedLebesgueIntegral (EReal.abs_fun g) := by
+    apply LowerUnsignedLebesgueIntegral.mono hh_abs hg_abs.1
+    apply AlmostAlways.ofAlways
+    intro x
+    simp only [EReal.abs_fun]
+    exact EReal.coe_le_coe_iff.mpr (hdom x)
+  exact lt_of_le_of_lt h_mono hg.2
+
+private lemma ComplexAbsolutelyIntegrable.integ_congr {d:ℕ} {g1 g2: EuclideanSpace' d → ℂ}
+    (heq: g1 = g2) {h1: ComplexAbsolutelyIntegrable g1} {h2: ComplexAbsolutelyIntegrable g2} :
+    h1.integ = h2.integ := by
+  subst heq
+  rw [Subsingleton.elim h1 h2]
+
 /-- Exercise 1.3.22 -/
 theorem ComplexAbsolutelyIntegrableOn.glue {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hdisj: Disjoint E F) (hf: ComplexAbsolutelyIntegrableOn f (E ∪ F)) : ∃ hE : ComplexAbsolutelyIntegrableOn f E, ∃ hF: ComplexAbsolutelyIntegrableOn f F, hf.integ = hE.integ + hF.integ := by sorry
 
-def ComplexAbsolutelyIntegrableOn.restrict {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hf: ComplexAbsolutelyIntegrableOn f E) (hF: LebesgueMeasurable F): ComplexAbsolutelyIntegrableOn (f * Complex.indicator F) E := by sorry
+def ComplexAbsolutelyIntegrableOn.restrict {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hf: ComplexAbsolutelyIntegrableOn f E) (hF: LebesgueMeasurable F): ComplexAbsolutelyIntegrableOn (f * Complex.indicator F) E := by
+  unfold ComplexAbsolutelyIntegrableOn at hf ⊢
+  -- target function equals (f * indicator E) * indicator F
+  have h_meas_indF : ComplexMeasurable (Complex.indicator F) :=
+    (ComplexSimpleFunction.indicator hF).complexMeasurable
+  have h_eq : (f * Complex.indicator F) * Complex.indicator E
+            = (f * Complex.indicator E) * Complex.indicator F := by
+    funext x; simp only [Pi.mul_apply]; ring
+  rw [h_eq]
+  apply ComplexAbsolutelyIntegrable.of_dom hf (ComplexMeasurable.mul hf.1 h_meas_indF)
+  intro x
+  simp only [Pi.mul_apply, norm_mul]
+  have h1 : ‖Complex.indicator F x‖ ≤ 1 := Complex.norm_indicator_le F x
+  calc ‖f x‖ * ‖Complex.indicator E x‖ * ‖Complex.indicator F x‖
+      ≤ ‖f x‖ * ‖Complex.indicator E x‖ * 1 := by
+        apply mul_le_mul_of_nonneg_left h1
+        positivity
+    _ = ‖f x‖ * ‖Complex.indicator E x‖ := by ring
 
-def ComplexAbsolutelyIntegrableOn.mono {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hf: ComplexAbsolutelyIntegrableOn f E) (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) (hsub: F ⊆ E): ComplexAbsolutelyIntegrableOn f F := by sorry
+def ComplexAbsolutelyIntegrableOn.mono {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hf: ComplexAbsolutelyIntegrableOn f E) (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) (hsub: F ⊆ E): ComplexAbsolutelyIntegrableOn f F := by
+  unfold ComplexAbsolutelyIntegrableOn at hf ⊢
+  have h_meas_indF : ComplexMeasurable (Complex.indicator F) :=
+    (ComplexSimpleFunction.indicator hF).complexMeasurable
+  -- f * indicator F = (f * indicator E) * indicator F  (since F ⊆ E)
+  have h_eq : f * Complex.indicator F = (f * Complex.indicator E) * Complex.indicator F := by
+    funext x
+    simp only [Pi.mul_apply, Complex.indicator, Real.complex_fun]
+    by_cases hx : x ∈ F
+    · rw [Set.indicator'_of_mem hx, Set.indicator'_of_mem (hsub hx)]; push_cast; ring
+    · rw [Set.indicator'_of_notMem hx]; simp
+  rw [h_eq]
+  apply ComplexAbsolutelyIntegrable.of_dom hf (ComplexMeasurable.mul hf.1 h_meas_indF)
+  intro x
+  simp only [Pi.mul_apply, norm_mul]
+  have h1 : ‖Complex.indicator F x‖ ≤ 1 := Complex.norm_indicator_le F x
+  calc ‖f x‖ * ‖Complex.indicator E x‖ * ‖Complex.indicator F x‖
+      ≤ ‖f x‖ * ‖Complex.indicator E x‖ * 1 := by
+        apply mul_le_mul_of_nonneg_left h1; positivity
+    _ = ‖f x‖ * ‖Complex.indicator E x‖ := by ring
 
-theorem ComplexAbsolutelyIntegrableOn.integ_restrict {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) (hsub: F ⊆ E) (hf: ComplexAbsolutelyIntegrableOn f E) : (hf.mono hE hF hsub).integ = (hf.restrict hF).integ:= by sorry
+theorem ComplexAbsolutelyIntegrableOn.integ_restrict {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) (hsub: F ⊆ E) (hf: ComplexAbsolutelyIntegrableOn f E) : (hf.mono hE hF hsub).integ = (hf.restrict hF).integ:= by
+  -- both sides are `ComplexAbsolutelyIntegrable.integ` of equal functions
+  have h_eq : f * Complex.indicator F = (f * Complex.indicator F) * Complex.indicator E := by
+    funext x
+    simp only [Pi.mul_apply, Complex.indicator, Real.complex_fun]
+    by_cases hx : x ∈ F
+    · rw [Set.indicator'_of_mem hx, Set.indicator'_of_mem (hsub hx)]; push_cast; ring
+    · rw [Set.indicator'_of_notMem hx]; simp
+  show ComplexAbsolutelyIntegrable.integ (hf.mono hE hF hsub)
+     = ComplexAbsolutelyIntegrable.integ (hf.restrict hF)
+  exact ComplexAbsolutelyIntegrable.integ_congr h_eq
 
 /-- Lemma 1.3.19 (Triangle inequality) -/
 
