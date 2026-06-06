@@ -1731,17 +1731,73 @@ theorem UnsignedSimpleFunction.unsignedMeasurable {d:ℕ} {f: EuclideanSpace' d 
     exact mul_nonneg (hcE i).2 (EReal.coe_nonneg.mpr (Set.indicator_nonneg (fun _ _ => zero_le_one) x))
   exact ⟨hnonneg, fun _ => f, fun _ => hf, fun x => tendsto_const_nhds⟩
 
-/-- Exercise 1.3.3(iii) -/
-theorem UnsignedMeasurable.sup {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ iSup (fun n ↦ f n x)) := by sorry
+/-- Bridge: for unsigned `f`, `UnsignedMeasurable f` is equivalent to all super-level sets
+being Lebesgue measurable.  This is `(i) ↔ (v)` of `UnsignedMeasurable.TFAE`. -/
+private lemma UnsignedMeasurable.iff_levelset_gt {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hf: Unsigned f) : UnsignedMeasurable f ↔ ∀ t, LebesgueMeasurable {x | f x > t} :=
+  (UnsignedMeasurable.TFAE hf).out 0 4
+
+/-- Bridge: for unsigned `f`, `UnsignedMeasurable f` is equivalent to all sub-level sets
+being Lebesgue measurable.  This is `(i) ↔ (vii)` of `UnsignedMeasurable.TFAE`. -/
+private lemma UnsignedMeasurable.iff_levelset_lt {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hf: Unsigned f) : UnsignedMeasurable f ↔ ∀ t, LebesgueMeasurable {x | f x < t} :=
+  (UnsignedMeasurable.TFAE hf).out 0 6
+
+private lemma UnsignedMeasurable.levelset_gt {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hf: UnsignedMeasurable f) (t : EReal) : LebesgueMeasurable {x | f x > t} :=
+  (UnsignedMeasurable.iff_levelset_gt hf.1).mp hf t
+
+private lemma UnsignedMeasurable.levelset_lt {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hf: UnsignedMeasurable f) (t : EReal) : LebesgueMeasurable {x | f x < t} :=
+  (UnsignedMeasurable.iff_levelset_lt hf.1).mp hf t
 
 /-- Exercise 1.3.3(iii) -/
-theorem UnsignedMeasurable.inf {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ iInf (fun n ↦ f n x)) := by sorry
+theorem UnsignedMeasurable.sup {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ iSup (fun n ↦ f n x)) := by
+  have huns : Unsigned (fun x ↦ iSup (fun n ↦ f n x)) := by
+    intro x; exact le_iSup_iff.mpr (fun b hb => le_trans ((hf 0).1 x) (hb 0))
+  rw [UnsignedMeasurable.iff_levelset_gt huns]
+  intro t
+  -- {x | ⨆ n, f n x > t} = ⋃ n, {x | f n x > t}
+  have h_eq : {x | iSup (fun n ↦ f n x) > t} = ⋃ n, {x | f n x > t} := by
+    ext x
+    simp only [Set.mem_setOf_eq, Set.mem_iUnion, lt_iSup_iff]
+  rw [h_eq]
+  exact LebesgueMeasurable.countable_union (fun n => (hf n).levelset_gt t)
 
 /-- Exercise 1.3.3(iii) -/
-theorem UnsignedMeasurable.limsup {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ Filter.atTop.limsup (fun n ↦ f n x) ) := by sorry
+theorem UnsignedMeasurable.inf {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ iInf (fun n ↦ f n x)) := by
+  have huns : Unsigned (fun x ↦ iInf (fun n ↦ f n x)) := by
+    intro x; exact le_iInf (fun n => (hf n).1 x)
+  rw [UnsignedMeasurable.iff_levelset_lt huns]
+  intro t
+  -- {x | ⨅ n, f n x < t} = ⋃ n, {x | f n x < t}
+  have h_eq : {x | iInf (fun n ↦ f n x) < t} = ⋃ n, {x | f n x < t} := by
+    ext x
+    simp only [Set.mem_setOf_eq, Set.mem_iUnion, iInf_lt_iff]
+  rw [h_eq]
+  exact LebesgueMeasurable.countable_union (fun n => (hf n).levelset_lt t)
 
 /-- Exercise 1.3.3(iii) -/
-theorem UnsignedMeasurable.liminf {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ Filter.atTop.liminf (fun n ↦ f n x) ) := by sorry
+theorem UnsignedMeasurable.limsup {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ Filter.atTop.limsup (fun n ↦ f n x) ) := by
+  -- limsup u = ⨅ n, ⨆ i, u (i + n)
+  have h_fun : (fun x ↦ Filter.atTop.limsup (fun n ↦ f n x))
+      = (fun x ↦ iInf (fun n ↦ iSup (fun i ↦ f (i + n) x))) := by
+    funext x; rw [Filter.limsup_eq_iInf_iSup_of_nat']
+  rw [h_fun]
+  apply UnsignedMeasurable.inf
+  intro n
+  exact UnsignedMeasurable.sup (fun i => hf (i + n))
+
+/-- Exercise 1.3.3(iii) -/
+theorem UnsignedMeasurable.liminf {d:ℕ} {f: ℕ → EuclideanSpace' d → EReal} (hf: ∀ n, UnsignedMeasurable (f n)) : UnsignedMeasurable (fun x ↦ Filter.atTop.liminf (fun n ↦ f n x) ) := by
+  -- liminf u = ⨆ n, ⨅ i, u (i + n)
+  have h_fun : (fun x ↦ Filter.atTop.liminf (fun n ↦ f n x))
+      = (fun x ↦ iSup (fun n ↦ iInf (fun i ↦ f (i + n) x))) := by
+    funext x; rw [Filter.liminf_eq_iSup_iInf_of_nat']
+  rw [h_fun]
+  apply UnsignedMeasurable.sup
+  intro n
+  exact UnsignedMeasurable.inf (fun i => hf (i + n))
 
 /-- Exercise 1.3.3(iv) -/
 theorem UnsignedMeasurable.aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (heq: AlmostEverywhereEqual f g) : UnsignedMeasurable g := by sorry
@@ -1753,7 +1809,25 @@ theorem UnsignedMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → EReal} (g: 
 theorem UnsignedMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {φ: EReal → EReal} (hφ: Continuous φ)  : UnsignedMeasurable (φ ∘ f) := by sorry
 
 /-- Exercise 1.3.3(vii) -/
-theorem UnsignedMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) : UnsignedMeasurable (f + g) := by sorry
+theorem UnsignedMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) : UnsignedMeasurable (f + g) := by
+  -- Extract approximating simple-function sequences for f and g.
+  obtain ⟨hf_uns, fn, hfn_simple, hfn_conv⟩ := id hf
+  obtain ⟨hg_uns, gn, hgn_simple, hgn_conv⟩ := id hg
+  -- f + g is unsigned.
+  have huns : Unsigned (f + g) := by
+    intro x; simp only [Pi.add_apply]
+    exact add_nonneg (hf_uns x) (hg_uns x)
+  refine ⟨huns, fun n => fn n + gn n, fun n => (hfn_simple n).add (hgn_simple n), ?_⟩
+  intro x
+  simp only [Pi.add_apply]
+  -- f x, g x ≥ 0, so addition is continuous at (f x, g x); pass the limit through.
+  have hf_ne_bot : f x ≠ ⊥ := fun h => by have := hf_uns x; rw [h] at this; exact not_le.mpr EReal.bot_lt_zero this
+  have hg_ne_bot : g x ≠ ⊥ := fun h => by have := hg_uns x; rw [h] at this; exact not_le.mpr EReal.bot_lt_zero this
+  have hcont : ContinuousAt (fun p : EReal × EReal => p.1 + p.2) (f x, g x) :=
+    EReal.continuousAt_add (Or.inr hg_ne_bot) (Or.inl hf_ne_bot)
+  have h_pair : Filter.atTop.Tendsto (fun n => (fn n x, gn n x)) (nhds (f x, g x)) :=
+    (hfn_conv x).prodMk_nhds (hgn_conv x)
+  exact hcont.tendsto.comp h_pair
 
 def UniformConvergesTo {X:Type*} (f: ℕ → X → EReal) (g: X → EReal) : Prop := ∀ ε:NNReal, ε > 0 → ∃ N:ℕ, ∀ n ≥ N, ∀ x, f n x > g x - ε ∧ f n x < g x + ε
 
@@ -3303,10 +3377,144 @@ theorem RealMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → ℝ} (g: ℕ �
 
 theorem ComplexMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → ℂ} (g: ℕ → EuclideanSpace' d → ℂ) (hf: ∀ n, ComplexMeasurable (g n)) (heq: PointwiseAeConvergesTo g f) : ComplexMeasurable f := by sorry
 
-/-- Exercise 1.3.8(v) -/
-theorem RealMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) {φ: ℝ → ℝ} (hφ: Continuous φ)  : RealMeasurable (φ ∘ f) := by sorry
+/-- An arbitrary post-composition of a real simple function is again a real simple function:
+the value of `g` is constant on each "atom" `R_S` (where `x ∈ E i ↔ i ∈ S`), and there are
+finitely many atoms. -/
+private lemma RealSimpleFunction.comp {d:ℕ} {g: EuclideanSpace' d → ℝ}
+    (hg: RealSimpleFunction g) (φ: ℝ → ℝ) : RealSimpleFunction (φ ∘ g) := by
+  classical
+  obtain ⟨k, c, E, hE_meas, heq⟩ := hg
+  -- Atom indexed by S : Finset (Fin k)
+  let R : Finset (Fin k) → Set (EuclideanSpace' d) :=
+    fun S => (⋂ i ∈ S, E i) ∩ (⋂ i ∈ Sᶜ, (E i)ᶜ)
+  have hR_meas : ∀ S, LebesgueMeasurable (R S) := by
+    intro S
+    apply LebesgueMeasurable.inter
+    · apply LebesgueMeasurable.finset_inter; intro i _; exact hE_meas i
+    · apply LebesgueMeasurable.finset_inter; intro i _; exact (hE_meas i).complement
+  -- On R S, g is constant with value ∑_{i ∈ S} c i
+  have hg_const : ∀ S x, x ∈ R S → g x = ∑ i ∈ S, c i := by
+    intro S x hx
+    rw [heq]
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [← Finset.sum_add_sum_compl S]
+    simp only [R, Set.mem_inter_iff, Set.mem_iInter] at hx
+    obtain ⟨hx_in, hx_out⟩ := hx
+    have h_in : ∀ i ∈ S, c i * (E i).indicator' x = c i := by
+      intro i hi; rw [Set.indicator'_of_mem (hx_in i hi), mul_one]
+    have h_out : ∀ i ∈ Sᶜ, c i * (E i).indicator' x = 0 := by
+      intro i hi; rw [Set.indicator'_of_notMem (hx_out i hi), mul_zero]
+    rw [Finset.sum_congr rfl h_in, Finset.sum_congr rfl h_out, Finset.sum_const_zero, add_zero]
+  -- Every x belongs to exactly one atom
+  have h_partition : ∀ x, ∃! S, x ∈ R S := by
+    intro x
+    refine ⟨(Finset.univ : Finset (Fin k)).filter (fun i => x ∈ E i), ?_, ?_⟩
+    · simp only [R, Set.mem_inter_iff, Set.mem_iInter]
+      refine ⟨fun i hi => ?_, fun i hi => ?_⟩
+      · simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hi; exact hi
+      · simp only [Finset.mem_compl, Finset.mem_filter, Finset.mem_univ, true_and] at hi; exact hi
+    · intro T hT
+      simp only [R, Set.mem_inter_iff, Set.mem_iInter] at hT
+      obtain ⟨hT_in, hT_out⟩ := hT
+      ext i
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+      constructor
+      · intro hi; exact hT_in i hi
+      · intro hxi; by_contra hni
+        exact hT_out i (Finset.mem_compl.mpr hni) hxi
+  -- Build the representation indexed by Fin (card of Finset (Fin k)) via an equiv.
+  let e := Fintype.equivFin (Finset (Fin k))
+  refine ⟨Fintype.card (Finset (Fin k)),
+    fun j => φ (∑ i ∈ e.symm j, c i),
+    fun j => R (e.symm j), ?_, ?_⟩
+  · intro j; exact hR_meas _
+  · funext x
+    simp only [Function.comp_apply, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    obtain ⟨S, hxS, hS_uniq⟩ := h_partition x
+    rw [hg_const S x hxS]
+    -- the sum over all atoms collapses to the unique atom containing x
+    rw [Finset.sum_eq_single (e S)]
+    · simp only [Equiv.symm_apply_apply]
+      rw [Set.indicator'_of_mem hxS, mul_one]
+    · intro j _ hj
+      -- j ≠ e S, so e.symm j ≠ S, so x ∉ R (e.symm j)
+      have hne : e.symm j ≠ S := by
+        intro h; apply hj; rw [← h, Equiv.apply_symm_apply]
+      rw [Set.indicator'_of_notMem (fun hx => hne (hS_uniq _ hx)), mul_zero]
+    · intro hjmem; exact absurd (Finset.mem_univ (e S)) hjmem
 
-theorem ComplexMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) {φ: ℂ → ℂ} (hφ: Continuous φ)  : ComplexMeasurable (φ ∘ f) := by sorry
+private lemma ComplexSimpleFunction.comp {d:ℕ} {g: EuclideanSpace' d → ℂ}
+    (hg: ComplexSimpleFunction g) (φ: ℂ → ℂ) : ComplexSimpleFunction (φ ∘ g) := by
+  classical
+  obtain ⟨k, c, E, hE_meas, heq⟩ := hg
+  let R : Finset (Fin k) → Set (EuclideanSpace' d) :=
+    fun S => (⋂ i ∈ S, E i) ∩ (⋂ i ∈ Sᶜ, (E i)ᶜ)
+  have hR_meas : ∀ S, LebesgueMeasurable (R S) := by
+    intro S
+    apply LebesgueMeasurable.inter
+    · apply LebesgueMeasurable.finset_inter; intro i _; exact hE_meas i
+    · apply LebesgueMeasurable.finset_inter; intro i _; exact (hE_meas i).complement
+  have hg_const : ∀ S x, x ∈ R S → g x = ∑ i ∈ S, c i := by
+    intro S x hx
+    rw [heq]
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [← Finset.sum_add_sum_compl S]
+    simp only [R, Set.mem_inter_iff, Set.mem_iInter] at hx
+    obtain ⟨hx_in, hx_out⟩ := hx
+    have h_in : ∀ i ∈ S, c i * Complex.indicator (E i) x = c i := by
+      intro i hi
+      simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_mem (hx_in i hi),
+        Complex.ofReal_one, mul_one]
+    have h_out : ∀ i ∈ Sᶜ, c i * Complex.indicator (E i) x = 0 := by
+      intro i hi
+      simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_notMem (hx_out i hi),
+        Complex.ofReal_zero, mul_zero]
+    rw [Finset.sum_congr rfl h_in, Finset.sum_congr rfl h_out, Finset.sum_const_zero, add_zero]
+  have h_partition : ∀ x, ∃! S, x ∈ R S := by
+    intro x
+    refine ⟨(Finset.univ : Finset (Fin k)).filter (fun i => x ∈ E i), ?_, ?_⟩
+    · simp only [R, Set.mem_inter_iff, Set.mem_iInter]
+      refine ⟨fun i hi => ?_, fun i hi => ?_⟩
+      · simp only [Finset.mem_filter, Finset.mem_univ, true_and] at hi; exact hi
+      · simp only [Finset.mem_compl, Finset.mem_filter, Finset.mem_univ, true_and] at hi; exact hi
+    · intro T hT
+      simp only [R, Set.mem_inter_iff, Set.mem_iInter] at hT
+      obtain ⟨hT_in, hT_out⟩ := hT
+      ext i
+      simp only [Finset.mem_filter, Finset.mem_univ, true_and]
+      constructor
+      · intro hi; exact hT_in i hi
+      · intro hxi; by_contra hni
+        exact hT_out i (Finset.mem_compl.mpr hni) hxi
+  let e := Fintype.equivFin (Finset (Fin k))
+  refine ⟨Fintype.card (Finset (Fin k)),
+    fun j => φ (∑ i ∈ e.symm j, c i),
+    fun j => R (e.symm j), ?_, ?_⟩
+  · intro j; exact hR_meas _
+  · funext x
+    simp only [Function.comp_apply, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    obtain ⟨S, hxS, hS_uniq⟩ := h_partition x
+    rw [hg_const S x hxS]
+    rw [Finset.sum_eq_single (e S)]
+    · simp only [Equiv.symm_apply_apply, Complex.indicator, Real.complex_fun,
+        Set.indicator'_of_mem hxS, Complex.ofReal_one, mul_one]
+    · intro j _ hj
+      have hne : e.symm j ≠ S := by
+        intro h; apply hj; rw [← h, Equiv.apply_symm_apply]
+      simp only [Complex.indicator, Real.complex_fun,
+        Set.indicator'_of_notMem (fun hx => hne (hS_uniq _ hx)), Complex.ofReal_zero, mul_zero]
+    · intro hjmem; exact absurd (Finset.mem_univ (e S)) hjmem
+
+/-- Exercise 1.3.8(v) -/
+theorem RealMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealMeasurable f) {φ: ℝ → ℝ} (hφ: Continuous φ)  : RealMeasurable (φ ∘ f) := by
+  obtain ⟨g, hg_simple, hg_conv⟩ := hf
+  refine ⟨fun n => φ ∘ (g n), fun n => (hg_simple n).comp φ, fun x => ?_⟩
+  exact hφ.continuousAt.tendsto.comp (hg_conv x)
+
+theorem ComplexMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexMeasurable f) {φ: ℂ → ℂ} (hφ: Continuous φ)  : ComplexMeasurable (φ ∘ f) := by
+  obtain ⟨g, hg_simple, hg_conv⟩ := hf
+  refine ⟨fun n => φ ∘ (g n), fun n => (hg_simple n).comp φ, fun x => ?_⟩
+  exact hφ.continuousAt.tendsto.comp (hg_conv x)
 
 private lemma RealSimpleFunction.mul' {d:ℕ} {f g: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f) (hg: RealSimpleFunction g) : RealSimpleFunction (f * g) := by
   obtain ⟨k₁, c₁, E₁, hmes₁, heq₁⟩ := hf

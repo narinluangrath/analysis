@@ -150,9 +150,97 @@ theorem LowerUnsignedLebesgueIntegral.mono {d:ℕ} {f g: EuclideanSpace' d → E
     AlmostAlways.countable (fun i => by fin_cases i <;> simpa using (by assumption : AlmostAlways _))
   exact hboth.mp (fun x hx => le_trans (by simpa using hx 0) (by simpa using hx 1))
 
+/-- The zero function is an unsigned simple function. -/
+private lemma UnsignedSimpleFunction.zero {d:ℕ} : UnsignedSimpleFunction (fun _ : EuclideanSpace' d => (0:EReal)) := by
+  refine ⟨0, Fin.elim0, Fin.elim0, fun i => i.elim0, ?_⟩
+  funext x; simp
+
+/-- The simple integral of an unsigned simple function is nonnegative. -/
+private lemma UnsignedSimpleFunction.integ_nonneg {d:ℕ} {f: EuclideanSpace' d → EReal}
+    (hf: UnsignedSimpleFunction f) : 0 ≤ hf.integ := by
+  unfold UnsignedSimpleFunction.integ
+  apply Finset.sum_nonneg
+  intro i _
+  exact mul_nonneg (hf.choose_spec.choose_spec.choose_spec.1 i).2
+    (Lebesgue_outer_measure.nonneg _)
+
+/-- For a positive EReal scalar, multiplication commutes with `sSup`. -/
+private lemma EReal.mul_sSup_of_pos {b : EReal} (hb : 0 < b) (hbt : b ≠ ⊤) (S : Set EReal) :
+    b * sSup S = sSup ((fun x => b * x) '' S) := by
+  apply le_antisymm
+  · -- b * sSup S ≤ sSup (b·S): show sSup S ≤ sSup(b·S)/b, then rearrange.
+    rw [mul_comm, ← EReal.le_div_iff_mul_le hb hbt]
+    apply sSup_le
+    intro s hs
+    rw [EReal.le_div_iff_mul_le hb hbt, mul_comm]
+    exact le_sSup ⟨s, hs, rfl⟩
+  · -- sSup (b·S) ≤ b * sSup S: each b·s ≤ b·sSup S by monotonicity.
+    apply sSup_le
+    rintro _ ⟨s, hs, rfl⟩
+    exact mul_le_mul_of_nonneg_left (le_sSup hs) hb.le
+
 /-- Exercise 1.3.10(iii) (Homogeneity) -/
 theorem LowerUnsignedLebesgueIntegral.hom {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {c: ℝ} (hc: 0 ≤ c) :
-    LowerUnsignedLebesgueIntegral ((c:EReal) • f) = c * LowerUnsignedLebesgueIntegral f := by sorry
+    LowerUnsignedLebesgueIntegral ((c:EReal) • f) = c * LowerUnsignedLebesgueIntegral f := by
+  rcases eq_or_lt_of_le hc with hc0 | hcpos
+  · -- c = 0: both sides are 0.
+    subst hc0
+    have hfun : ((0:ℝ):EReal) • f = (fun _ => (0:EReal)) := by
+      funext x; simp
+    rw [hfun]
+    rw [show ((0:ℝ):EReal) = (0:EReal) from rfl, zero_mul]
+    -- lower of the zero function is 0.
+    rw [show (fun _ : EuclideanSpace' d => (0:EReal)) = (fun _ => (0:EReal)) from rfl]
+    rw [LowerUnsignedLebesgueIntegral.eq_simpleIntegral (UnsignedSimpleFunction.zero (d := d))]
+    -- integral of the zero function is 0, via the empty representation.
+    rw [(UnsignedSimpleFunction.zero (d := d)).integral_eq (k := 0) (c := Fin.elim0)
+      (E := fun i => i.elim0) (fun i => i.elim0) (fun i => i.elim0) (by funext x; simp)]
+    simp
+  · -- c > 0: scaling bijection on the defining set.
+    have hcE : (0:EReal) < (c:EReal) := by exact_mod_cast hcpos
+    have hcEt : (c:EReal) ≠ ⊤ := by simp
+    unfold LowerUnsignedLebesgueIntegral
+    rw [EReal.mul_sSup_of_pos hcE hcEt]
+    congr 1
+    ext R
+    simp only [Set.mem_image, Set.mem_setOf_eq]
+    constructor
+    · rintro ⟨g, hg, hcond⟩
+      -- g ≤ c•f simple. Let h = c⁻¹ • g ≤ f. Then integ g = c * integ h.
+      haveI : Nonempty (EuclideanSpace' d) := inferInstance
+      have hRg : R = hg.integ := (hcond (Classical.arbitrary _)).2
+      have hcinv_nonneg : ((c⁻¹ : ℝ) : EReal) ≥ 0 := by
+        exact_mod_cast le_of_lt (inv_pos.mpr hcpos)
+      refine ⟨hg.integ / (c:EReal), ⟨((c⁻¹:ℝ):EReal) • g, hg.smul hcinv_nonneg, ?_⟩, ?_⟩
+      · intro x
+        refine ⟨?_, ?_⟩
+        · -- c⁻¹ • g x ≤ f x  from  g x ≤ c * f x
+          have hgle : g x ≤ (c:EReal) * f x := by
+            have := (hcond x).1; simpa using this
+          simp only [Pi.smul_apply, smul_eq_mul]
+          rw [EReal.coe_inv c, ← EReal.div_eq_inv_mul, EReal.div_le_iff_le_mul hcE hcEt]
+          exact hgle
+        · -- integ(c⁻¹•g) = c⁻¹ * integ g  = integ g / c
+          rw [UnsignedSimpleFunction.integral_smul hg hcinv_nonneg]
+          rw [EReal.coe_inv c, ← EReal.div_eq_inv_mul]
+      · -- R = c * (integ g / c)
+        rw [hRg]
+        exact EReal.mul_div_cancel (by simp) (by simp) (ne_of_gt hcE)
+    · rintro ⟨S, ⟨g, hg, hcond⟩, hRS⟩
+      -- g ≤ f simple. Then c•g ≤ c•f simple, integ(c•g) = c*integ g.
+      haveI : Nonempty (EuclideanSpace' d) := inferInstance
+      have hcnonneg : ((c:ℝ):EReal) ≥ 0 := hcE.le
+      have hSg : S = hg.integ := (hcond (Classical.arbitrary _)).2
+      refine ⟨(c:EReal) • g, hg.smul hcnonneg, ?_⟩
+      intro x
+      refine ⟨?_, ?_⟩
+      · -- c • g x ≤ (c•f) x
+        simp only [Pi.smul_apply, smul_eq_mul]
+        exact mul_le_mul_of_nonneg_left (by simpa using (hcond x).1) hcE.le
+      · -- R = c * integ g = integ (c • g)
+        rw [hSg] at hRS
+        rw [UnsignedSimpleFunction.integral_smul hg hcnonneg]
+        exact hRS.symm
 
 /-- Exercise 1.3.10(iv) (Equivalence) -/
 theorem LowerUnsignedLebesgueIntegral.integral_eq_integral_of_aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g)
@@ -162,13 +250,110 @@ theorem LowerUnsignedLebesgueIntegral.integral_eq_integral_of_aeEqual {d:ℕ} {f
   · exact LowerUnsignedLebesgueIntegral.mono hf hg (heq.mp (fun x hx => le_of_eq hx))
   · exact LowerUnsignedLebesgueIntegral.mono hg hf (heq.mp (fun x hx => le_of_eq hx.symm))
 
+
 /-- Exercise 1.3.10(v) (Superadditivity) -/
 theorem LowerUnsignedLebesgueIntegral.superadditive {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) :
-    LowerUnsignedLebesgueIntegral (f + g) ≥ LowerUnsignedLebesgueIntegral f + LowerUnsignedLebesgueIntegral g := by sorry
+    LowerUnsignedLebesgueIntegral (f + g) ≥ LowerUnsignedLebesgueIntegral f + LowerUnsignedLebesgueIntegral g := by
+  -- It suffices to show `lower(f) + lower(g) ≤ lower(f+g)`.
+  -- Key tool: `EReal.add_le_of_forall_lt`, which avoids EReal-addition discontinuity:
+  -- to bound `lower(f) + lower(g)`, bound `a' + b'` for every `a' < lower(f)`, `b' < lower(g)`.
+  rw [ge_iff_le]
+  set Sf := { R | ∃ g' : EuclideanSpace' d → EReal, ∃ hg' : UnsignedSimpleFunction g',
+      ∀ x, g' x ≤ f x ∧ R = hg'.integ } with hSf
+  set Sg := { R | ∃ g' : EuclideanSpace' d → EReal, ∃ hg' : UnsignedSimpleFunction g',
+      ∀ x, g' x ≤ g x ∧ R = hg'.integ } with hSg
+  have hLf : LowerUnsignedLebesgueIntegral f = sSup Sf := rfl
+  have hLg : LowerUnsignedLebesgueIntegral g = sSup Sg := rfl
+  rw [hLf, hLg]
+  apply EReal.add_le_of_forall_lt
+  intro a' ha' b' hb'
+  -- `a' < lower(f)` gives a simple `s ≤ f` with `a' < s.integ`; similarly for `g`.
+  obtain ⟨a, ⟨gs, hgs, hcond_s⟩, ha'a⟩ := exists_lt_of_lt_csSup
+    (s := Sf) ⟨_, _, UnsignedSimpleFunction.zero, fun x => ⟨hf.1 x, rfl⟩⟩ ha'
+  obtain ⟨b, ⟨gt, hgt, hcond_t⟩, hb'b⟩ := exists_lt_of_lt_csSup
+    (s := Sg) ⟨_, _, UnsignedSimpleFunction.zero, fun x => ⟨hg.1 x, rfl⟩⟩ hb'
+  haveI : Nonempty (EuclideanSpace' d) := inferInstance
+  have hgs_le : ∀ x, gs x ≤ f x := fun x => (hcond_s x).1
+  have hgt_le : ∀ x, gt x ≤ g x := fun x => (hcond_t x).1
+  have haR : a = hgs.integ := (hcond_s (Classical.arbitrary _)).2
+  have hbR : b = hgt.integ := (hcond_t (Classical.arbitrary _)).2
+  -- `gs + gt` is simple, ≤ f + g, with integral a + b.
+  have hsum_le : ∀ x, (gs + gt) x ≤ (f + g) x := by
+    intro x; simp only [Pi.add_apply]; exact add_le_add (hgs_le x) (hgt_le x)
+  have hsum_integ : (hgs.add hgt).integ = a + b := by
+    rw [UnsignedSimpleFunction.integral_add, haR, hbR]
+  -- `a + b` is in the set defining `lower(f+g)`, hence ≤ lower(f+g).
+  have hmem : (hgs.add hgt).integ ∈ { R | ∃ g' : EuclideanSpace' d → EReal,
+      ∃ hg' : UnsignedSimpleFunction g', ∀ x, g' x ≤ (f + g) x ∧ R = hg'.integ } :=
+    ⟨gs + gt, hgs.add hgt, fun x => ⟨hsum_le x, rfl⟩⟩
+  calc a' + b' ≤ a + b := add_le_add ha'a.le hb'b.le
+    _ = (hgs.add hgt).integ := hsum_integ.symm
+    _ ≤ LowerUnsignedLebesgueIntegral (f + g) := le_sSup hmem
+
+/-- The constant `⊤` function is an unsigned simple function dominating any function. -/
+private lemma UnsignedSimpleFunction.top {d:ℕ} : UnsignedSimpleFunction (fun _ : EuclideanSpace' d => (⊤:EReal)) := by
+  have huniv : LebesgueMeasurable (Set.univ : Set (EuclideanSpace' d)) := by
+    have := (LebesgueMeasurable.empty (d := d)).complement
+    rwa [Set.compl_empty] at this
+  refine ⟨1, fun _ => ⊤, fun _ => Set.univ, fun _ => ⟨huniv, le_top⟩, ?_⟩
+  funext x
+  simp only [Finset.univ_unique, Finset.sum_const, Finset.card_singleton, one_smul,
+    Pi.smul_apply, smul_eq_mul]
+  rw [EReal.indicator, Real.EReal_fun, Set.indicator'_of_mem (Set.mem_univ x)]
+  simp
+
+/-- The defining set of the upper integral is bounded below by `0`, hence the integral is `≥ 0`. -/
+private lemma UpperUnsignedLebesgueIntegral.nonneg {d:ℕ} {f: EuclideanSpace' d → EReal} :
+    0 ≤ UpperUnsignedLebesgueIntegral f := by
+  unfold UpperUnsignedLebesgueIntegral
+  apply le_csInf
+  · exact ⟨_, _, UnsignedSimpleFunction.top, fun x => ⟨le_top, rfl⟩⟩
+  · rintro R ⟨h, hh, hcond⟩
+    haveI : Nonempty (EuclideanSpace' d) := inferInstance
+    rw [(hcond (Classical.arbitrary _)).2]
+    exact UnsignedSimpleFunction.integ_nonneg hh
 
 /-- Exercise 1.3.10(vi) (Subadditivity of upper integral)-/
 theorem UpperUnsignedLebesgueIntegral.subadditive {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) :
-    UpperUnsignedLebesgueIntegral (f + g) ≤ UpperUnsignedLebesgueIntegral f + UpperUnsignedLebesgueIntegral g := by sorry
+    UpperUnsignedLebesgueIntegral (f + g) ≤ UpperUnsignedLebesgueIntegral f + UpperUnsignedLebesgueIntegral g := by
+  set Sf := { R | ∃ g' : EuclideanSpace' d → EReal, ∃ hg' : UnsignedSimpleFunction g',
+      ∀ x, g' x ≥ f x ∧ R = hg'.integ } with hSf
+  set Sg := { R | ∃ g' : EuclideanSpace' d → EReal, ∃ hg' : UnsignedSimpleFunction g',
+      ∀ x, g' x ≥ g x ∧ R = hg'.integ } with hSg
+  have hUf : UpperUnsignedLebesgueIntegral f = sInf Sf := rfl
+  have hUg : UpperUnsignedLebesgueIntegral g = sInf Sg := rfl
+  rw [hUf, hUg]
+  -- Side conditions for `le_add_of_forall_gt`: both upper integrals are `≥ 0`, hence `≠ ⊥`.
+  have hbot_f : sInf Sf ≠ ⊥ := by
+    have := @UpperUnsignedLebesgueIntegral.nonneg d f; rw [hUf] at this
+    exact fun h => by rw [h] at this; exact (not_le.mpr (by decide : (⊥:EReal) < 0)) this
+  have hbot_g : sInf Sg ≠ ⊥ := by
+    have := @UpperUnsignedLebesgueIntegral.nonneg d g; rw [hUg] at this
+    exact fun h => by rw [h] at this; exact (not_le.mpr (by decide : (⊥:EReal) < 0)) this
+  apply EReal.le_add_of_forall_gt (Or.inl hbot_f) (Or.inr hbot_g)
+  intro a' ha' b' hb'
+  -- `a' > upper(f)` gives a simple `s ≥ f` with `s.integ < a'`; similarly for `g`.
+  obtain ⟨a, ⟨gs, hgs, hcond_s⟩, hsa'⟩ := exists_lt_of_csInf_lt
+    (s := Sf) ⟨_, _, UnsignedSimpleFunction.top, fun x => ⟨le_top, rfl⟩⟩ ha'
+  obtain ⟨b, ⟨gt, hgt, hcond_t⟩, htb'⟩ := exists_lt_of_csInf_lt
+    (s := Sg) ⟨_, _, UnsignedSimpleFunction.top, fun x => ⟨le_top, rfl⟩⟩ hb'
+  haveI : Nonempty (EuclideanSpace' d) := inferInstance
+  have hgs_ge : ∀ x, gs x ≥ f x := fun x => (hcond_s x).1
+  have hgt_ge : ∀ x, gt x ≥ g x := fun x => (hcond_t x).1
+  have haR : a = hgs.integ := (hcond_s (Classical.arbitrary _)).2
+  have hbR : b = hgt.integ := (hcond_t (Classical.arbitrary _)).2
+  have hsum_ge : ∀ x, (gs + gt) x ≥ (f + g) x := by
+    intro x; simp only [Pi.add_apply]; exact add_le_add (hgs_ge x) (hgt_ge x)
+  have hsum_integ : (hgs.add hgt).integ = a + b := by
+    rw [UnsignedSimpleFunction.integral_add, haR, hbR]
+  have hmem : (hgs.add hgt).integ ∈ { R | ∃ g' : EuclideanSpace' d → EReal,
+      ∃ hg' : UnsignedSimpleFunction g', ∀ x, g' x ≥ (f + g) x ∧ R = hg'.integ } :=
+    ⟨gs + gt, hgs.add hgt, fun x => ⟨hsum_ge x, rfl⟩⟩
+  calc UpperUnsignedLebesgueIntegral (f + g) ≤ (hgs.add hgt).integ := csInf_le ⟨0, by
+        rintro R ⟨h, hh, hc⟩; rw [(hc (Classical.arbitrary _)).2]
+        exact UnsignedSimpleFunction.integ_nonneg hh⟩ hmem
+    _ = a + b := hsum_integ
+    _ ≤ a' + b' := add_le_add hsa'.le htb'.le
 
 /-- Exercise 1.3.10(vii) (Divisibility) -/
 theorem LowerUnsignedLebesgueIntegral.eq_add {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {E: Set (EuclideanSpace' d)} (hE: MeasurableSet E) :

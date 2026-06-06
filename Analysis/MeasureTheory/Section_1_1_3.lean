@@ -752,16 +752,239 @@ def PiecewiseConstantOn (f: ℝ → ℝ) (I: BoundedInterval) : Prop := ∃ F: P
 def PiecewiseConstantFunction.integral {I: BoundedInterval} (g: PiecewiseConstantFunction I) : ℝ :=
   ∑ J : g.T, g.c J * |J|ₗ
 
+/-- The lattice sampling set of multiples of `1/N`. -/
+private noncomputable def latticeSet (N : ℕ) : Set ℝ := Set.range (fun n:ℤ ↦ (N:ℝ)⁻¹ * n)
+
+/-- Length depends only on the underlying set: equal sets have equal length. -/
+private lemma length_congr_of_toSet_eq {I₁ I₂ : BoundedInterval} (h : I₁.toSet = I₂.toSet) :
+    |I₁|ₗ = |I₂|ₗ := by
+  have h1 := BoundedInterval.length_eq I₁
+  have h2 := BoundedInterval.length_eq I₂
+  rw [h] at h1
+  exact tendsto_nhds_unique h1 h2
+
+/-- An interval with empty underlying set has length zero. -/
+private lemma length_eq_zero_of_empty {I : BoundedInterval} (h : I.toSet = ∅) : |I|ₗ = 0 := by
+  have h_le : I.b ≤ I.a := by
+    match I, h with
+    | Ioo a b, h => simp only [BoundedInterval.set_Ioo] at h; simp only [BoundedInterval.a, BoundedInterval.b]; exact le_of_not_gt (Set.Ioo_eq_empty_iff.1 h)
+    | Icc a b, h => simp only [BoundedInterval.set_Icc] at h; simp only [BoundedInterval.a, BoundedInterval.b]; exact le_of_not_ge (Set.Icc_eq_empty_iff.1 h)
+    | Ioc a b, h => simp only [BoundedInterval.set_Ioc] at h; simp only [BoundedInterval.a, BoundedInterval.b]; exact le_of_not_gt (Set.Ioc_eq_empty_iff.1 h)
+    | Ico a b, h => simp only [BoundedInterval.set_Ico] at h; simp only [BoundedInterval.a, BoundedInterval.b]; exact le_of_not_gt (Set.Ico_eq_empty_iff.1 h)
+  simp [BoundedInterval.length, max_eq_right (sub_nonpos.2 h_le)]
+
+/-- Lattice points are additive over a finset of pairwise-disjoint intervals covering `J`. -/
+private lemma latticeCard_sum_of_partition {J : BoundedInterval} {S : Finset BoundedInterval}
+    (hdisj : (S : Set BoundedInterval).PairwiseDisjoint BoundedInterval.toSet)
+    (hcover : J.toSet = ⋃ K ∈ S, K.toSet) {N : ℕ} (hN : N ≠ 0) :
+    Nat.card ↥(J.toSet ∩ latticeSet N) = ∑ K ∈ S, Nat.card ↥(K.toSet ∩ latticeSet N) := by
+  classical
+  -- Each K.toSet ∩ latticeSet N is finite.
+  have hfin : ∀ K : BoundedInterval, (K.toSet ∩ latticeSet N).Finite := by
+    intro K
+    have := BoundedInterval.sample_finite K hN
+    rw [Set.finite_coe_iff] at this
+    exact this
+  -- Rewrite J.toSet ∩ latticeSet N as a biUnion.
+  have hbig : J.toSet ∩ latticeSet N = ⋃ K ∈ S, (K.toSet ∩ latticeSet N) := by
+    rw [hcover, Set.iUnion₂_inter]
+  simp only [Nat.card_coe_set_eq]
+  rw [hbig]
+  -- Now prove ncard of disjoint biUnion = sum of ncards, by induction on S.
+  clear hbig hcover
+  induction S using Finset.induction with
+  | empty => simp
+  | @insert K S hKS ih =>
+    rw [Finset.set_biUnion_insert, Finset.sum_insert hKS]
+    have hdisj' : (S : Set BoundedInterval).PairwiseDisjoint BoundedInterval.toSet :=
+      hdisj.subset (by simp [Finset.subset_insert])
+    have hdisjoint : Disjoint (K.toSet ∩ latticeSet N) (⋃ K' ∈ S, (K'.toSet ∩ latticeSet N)) := by
+      rw [Set.disjoint_left]
+      rintro x ⟨hxK, _⟩ hxU
+      simp only [Set.mem_iUnion] at hxU
+      obtain ⟨K', hK', hxK', _⟩ := hxU
+      have hKne : K ≠ K' := by rintro rfl; exact hKS hK'
+      have hd := hdisj (by simp) (by simp [hK']) hKne
+      rw [Function.onFun, Set.disjoint_left] at hd
+      exact hd hxK hxK'
+    rw [Set.ncard_union_eq hdisjoint (hfin K) (Set.Finite.biUnion (S.finite_toSet) (fun i _ => hfin i))]
+    rw [ih hdisj']
+
+/-- Length is additive over a finset of pairwise-disjoint intervals covering `J`. -/
+private lemma length_sum_of_partition {J : BoundedInterval} {S : Finset BoundedInterval}
+    (hdisj : (S : Set BoundedInterval).PairwiseDisjoint BoundedInterval.toSet)
+    (hcover : J.toSet = ⋃ K ∈ S, K.toSet) :
+    ∑ K ∈ S, |K|ₗ = |J|ₗ := by
+  classical
+  -- The sequence g N := (1/N) * (lattice card) for an interval, tends to its length.
+  set g : BoundedInterval → ℕ → ℝ :=
+    fun K N => (N:ℝ)⁻¹ * Nat.card ↥(K.toSet ∩ latticeSet N) with hg
+  have htend : ∀ K : BoundedInterval, Filter.atTop.Tendsto (g K) (nhds |K|ₗ) := by
+    intro K; exact BoundedInterval.length_eq K
+  -- For N ≠ 0, ∑_{K∈S} g K N = g J N.
+  have hsum_eq : ∀ᶠ N in Filter.atTop, (∑ K ∈ S, g K N) = g J N := by
+    rw [Filter.eventually_atTop]
+    refine ⟨1, fun N hN => ?_⟩
+    have hN0 : N ≠ 0 := by omega
+    simp only [hg]
+    rw [← Finset.mul_sum]
+    congr 1
+    rw [← Nat.cast_sum, ← latticeCard_sum_of_partition hdisj hcover hN0]
+  -- LHS sum tends to ∑ |K|ₗ.
+  have hlhs : Filter.atTop.Tendsto (fun N => ∑ K ∈ S, g K N) (nhds (∑ K ∈ S, |K|ₗ)) := by
+    apply tendsto_finset_sum
+    intro K _
+    exact htend K
+  -- RHS tends to |J|ₗ.
+  have hrhs : Filter.atTop.Tendsto (fun N => g J N) (nhds |J|ₗ) := htend J
+  -- The two functions are eventually equal, so the limits coincide.
+  have hlhs' : Filter.atTop.Tendsto (fun N => g J N) (nhds (∑ K ∈ S, |K|ₗ)) :=
+    hlhs.congr' hsum_eq
+  exact tendsto_nhds_unique hlhs' hrhs
+
+/-- Lattice-point count, function-indexed additivity over a disjoint cover. -/
+private lemma latticeCard_sum_of_indexed_partition {ι : Type*} [DecidableEq ι]
+    {J : BoundedInterval} {S : Finset ι} {K : ι → BoundedInterval}
+    (hdisj : ∀ i ∈ S, ∀ j ∈ S, i ≠ j → Disjoint (K i).toSet (K j).toSet)
+    (hcover : J.toSet = ⋃ i ∈ S, (K i).toSet) {N : ℕ} (hN : N ≠ 0) :
+    Nat.card ↥(J.toSet ∩ latticeSet N) = ∑ i ∈ S, Nat.card ↥((K i).toSet ∩ latticeSet N) := by
+  classical
+  have hfin : ∀ i : ι, ((K i).toSet ∩ latticeSet N).Finite := by
+    intro i
+    have := BoundedInterval.sample_finite (K i) hN
+    rw [Set.finite_coe_iff] at this; exact this
+  have hbig : J.toSet ∩ latticeSet N = ⋃ i ∈ S, ((K i).toSet ∩ latticeSet N) := by
+    rw [hcover, Set.iUnion₂_inter]
+  simp only [Nat.card_coe_set_eq]
+  rw [hbig]
+  clear hbig hcover
+  induction S using Finset.induction with
+  | empty => simp
+  | @insert a S haS ih =>
+    rw [Finset.set_biUnion_insert, Finset.sum_insert haS]
+    have hdisj' : ∀ i ∈ S, ∀ j ∈ S, i ≠ j → Disjoint (K i).toSet (K j).toSet :=
+      fun i hi j hj hij => hdisj i (by simp [hi]) j (by simp [hj]) hij
+    have hdisjoint : Disjoint ((K a).toSet ∩ latticeSet N)
+        (⋃ i ∈ S, ((K i).toSet ∩ latticeSet N)) := by
+      rw [Set.disjoint_left]
+      rintro x ⟨hxa, _⟩ hxU
+      simp only [Set.mem_iUnion] at hxU
+      obtain ⟨i, hi, hxi, _⟩ := hxU
+      have hane : a ≠ i := by rintro rfl; exact haS hi
+      have hd := hdisj a (by simp) i (by simp [hi]) hane
+      rw [Set.disjoint_left] at hd
+      exact hd hxa hxi
+    rw [Set.ncard_union_eq hdisjoint (hfin a)
+      (Set.Finite.biUnion (S.finite_toSet) (fun i _ => hfin i))]
+    rw [ih hdisj']
+
+/-- Length additivity, function-indexed form. -/
+private lemma length_sum_of_indexed_partition {ι : Type*} [DecidableEq ι] {J : BoundedInterval}
+    {S : Finset ι} {K : ι → BoundedInterval}
+    (hdisj : ∀ i ∈ S, ∀ j ∈ S, i ≠ j → Disjoint (K i).toSet (K j).toSet)
+    (hcover : J.toSet = ⋃ i ∈ S, (K i).toSet) :
+    ∑ i ∈ S, |K i|ₗ = |J|ₗ := by
+  classical
+  set g : BoundedInterval → ℕ → ℝ :=
+    fun K' N => (N:ℝ)⁻¹ * Nat.card ↥(K'.toSet ∩ latticeSet N) with hg
+  have htend : ∀ K' : BoundedInterval, Filter.atTop.Tendsto (g K') (nhds |K'|ₗ) :=
+    fun K' => BoundedInterval.length_eq K'
+  have hsum_eq : ∀ᶠ N in Filter.atTop, (∑ i ∈ S, g (K i) N) = g J N := by
+    rw [Filter.eventually_atTop]
+    refine ⟨1, fun N hN => ?_⟩
+    have hN0 : N ≠ 0 := by omega
+    simp only [hg]
+    rw [← Finset.mul_sum]
+    congr 1
+    rw [← Nat.cast_sum, ← latticeCard_sum_of_indexed_partition hdisj hcover hN0]
+  have hlhs : Filter.atTop.Tendsto (fun N => ∑ i ∈ S, g (K i) N)
+      (nhds (∑ i ∈ S, |K i|ₗ)) := by
+    apply tendsto_finset_sum
+    intro i _; exact htend (K i)
+  exact tendsto_nhds_unique (hlhs.congr' hsum_eq) (htend J)
+
+/-- Refining `F` against the partition of `F'` expresses its integral as a double sum over
+the common refinement cells `J ∩ K`. -/
+private lemma PiecewiseConstantFunction.integral_eq_double {I: BoundedInterval}
+    (F F': PiecewiseConstantFunction I) :
+    F.integral = ∑ J : F.T, ∑ K : F'.T, F.c J * |(J.val ∩ K.val)|ₗ := by
+  classical
+  unfold PiecewiseConstantFunction.integral
+  apply Finset.sum_congr rfl
+  intro J _
+  rw [← Finset.mul_sum]
+  congr 1
+  -- |J|ₗ = ∑ K∈F'.T, |J ∩ K|ₗ
+  have hcover : J.val.toSet = ⋃ K ∈ F'.T, ((fun K : BoundedInterval => J.val ∩ K) K).toSet := by
+    have hJsub : J.val.toSet ⊆ I.toSet := by
+      rw [F.cover]; intro y hy; simp only [Set.mem_iUnion]; exact ⟨J.val, J.property, hy⟩
+    apply Set.eq_of_subset_of_subset
+    · intro x hx
+      have hxI : x ∈ I.toSet := hJsub hx
+      rw [F'.cover] at hxI
+      simp only [Set.mem_iUnion] at hxI ⊢
+      obtain ⟨K, hK, hxK⟩ := hxI
+      exact ⟨K, hK, by rw [BoundedInterval.inter_eq]; exact ⟨hx, hxK⟩⟩
+    · intro x hx
+      simp only [Set.mem_iUnion] at hx
+      obtain ⟨K, _, hxK⟩ := hx
+      rw [BoundedInterval.inter_eq] at hxK
+      exact hxK.1
+  have hdisj : ∀ K₁ ∈ F'.T, ∀ K₂ ∈ F'.T, K₁ ≠ K₂ →
+      Disjoint ((fun K : BoundedInterval => J.val ∩ K) K₁).toSet
+        ((fun K : BoundedInterval => J.val ∩ K) K₂).toSet := by
+    intro K₁ _ K₂ _ hne
+    rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq]
+    have hd := F'.disjoint (by simp_all) (by simp_all) hne
+    rw [Function.onFun] at hd
+    exact Set.disjoint_of_subset (Set.inter_subset_right) (Set.inter_subset_right) hd
+  have hkey := length_sum_of_indexed_partition (ι := BoundedInterval) (S := F'.T)
+    (K := fun K => J.val ∩ K) hdisj hcover
+  rw [← hkey, ← Finset.sum_attach F'.T (fun K => |(J.val ∩ K)|ₗ)]
+  rfl
+
 /-- Exercise 1.1.20 (Piecewise constant functions) -/
 -- The integral is well-defined: different representations of the same piecewise constant function have the same integral.
-theorem PiecewiseConstantFunction.integral_eq (f: ℝ → ℝ) {I: BoundedInterval} (F F': PiecewiseConstantFunction I) (hF: F.agreesWith f) (hF': F'.agreesWith f) : F.integral = F'.integral := by sorry
+theorem PiecewiseConstantFunction.integral_eq (f: ℝ → ℝ) {I: BoundedInterval} (F F': PiecewiseConstantFunction I) (hF: F.agreesWith f) (hF': F'.agreesWith f) : F.integral = F'.integral := by
+  classical
+  rw [F.integral_eq_double F', F'.integral_eq_double F]
+  -- Swap order of summation on the RHS.
+  conv_rhs => rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl
+  intro J _
+  apply Finset.sum_congr rfl
+  intro K _
+  -- On cell J ∩ K: if empty, length 0; else F.c J = f x = F'.c K.
+  by_cases hne : (J.val ∩ K.val).toSet.Nonempty
+  · obtain ⟨x, hx⟩ := hne
+    rw [BoundedInterval.inter_eq] at hx
+    obtain ⟨hxJ, hxK⟩ := hx
+    have hxI : x ∈ I.toSet := by
+      rw [F.cover]; exact Set.mem_biUnion J.property hxJ
+    have e1 : F.c J = f x := by
+      have := F.const J x hxJ; rw [← this]; exact (hF hxI).symm
+    have e2 : F'.c K = f x := by
+      have := F'.const K x hxK; rw [← this]; exact (hF' hxI).symm
+    have hcomm : |(K.val ∩ J.val)|ₗ = |(J.val ∩ K.val)|ₗ := by
+      apply length_congr_of_toSet_eq
+      rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq, Set.inter_comm]
+    rw [e1, e2, hcomm]
+  · -- Empty cell: length is 0.
+    rw [Set.not_nonempty_iff_eq_empty] at hne
+    have hlen : |(J.val ∩ K.val)|ₗ = 0 := length_eq_zero_of_empty hne
+    have hlen' : |(K.val ∩ J.val)|ₗ = 0 := by
+      apply length_eq_zero_of_empty
+      rw [BoundedInterval.inter_eq, Set.inter_comm, ← BoundedInterval.inter_eq]; exact hne
+    rw [hlen, hlen', mul_zero, mul_zero]
 
 -- The integral of a piecewise constant function on I.
 noncomputable def PiecewiseConstantOn.integral (f: ℝ → ℝ) {I: BoundedInterval} (h: PiecewiseConstantOn f I) : ℝ := h.choose.integral
 
 /-- Exercise 1.1.20 (Piecewise constant functions) -/
 -- The integral of a piecewise constant function equals the integral of any of its representations.
-theorem PiecewiseConstantOn.integral_eq (f: ℝ → ℝ) {I: BoundedInterval} (h: PiecewiseConstantOn f I) (F: PiecewiseConstantFunction I) (hF: F.agreesWith f) : h.integral = F.integral := by sorry
+theorem PiecewiseConstantOn.integral_eq (f: ℝ → ℝ) {I: BoundedInterval} (h: PiecewiseConstantOn f I) (F: PiecewiseConstantFunction I) (hF: F.agreesWith f) : h.integral = F.integral := by
+  unfold PiecewiseConstantOn.integral
+  exact PiecewiseConstantFunction.integral_eq f h.choose F h.choose_spec hF
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- A scalar multiple of a piecewise constant function is piecewise constant.
@@ -865,13 +1088,175 @@ theorem PiecewiseConstantOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: Pie
   simp only [Pi.add_apply]
   rw [hF hx, hG hx]
 
+/-- For any interval `A` whose set is contained in `I`, refining over a partition `F` of `I`:
+`|A|ₗ = ∑_{J ∈ F.T} |A ∩ J|ₗ`. -/
+private lemma length_refine_one {I : BoundedInterval} (F : PiecewiseConstantFunction I)
+    {A : BoundedInterval} (hA : A.toSet ⊆ I.toSet) :
+    |A|ₗ = ∑ J : F.T, |(A ∩ J.val)|ₗ := by
+  classical
+  have hcover : A.toSet = ⋃ J ∈ F.T, ((fun J : BoundedInterval => A ∩ J) J).toSet := by
+    apply Set.eq_of_subset_of_subset
+    · intro x hx
+      have hxI : x ∈ I.toSet := hA hx
+      rw [F.cover] at hxI
+      simp only [Set.mem_iUnion] at hxI ⊢
+      obtain ⟨J, hJ, hxJ⟩ := hxI
+      exact ⟨J, hJ, by rw [BoundedInterval.inter_eq]; exact ⟨hx, hxJ⟩⟩
+    · intro x hx
+      simp only [Set.mem_iUnion] at hx
+      obtain ⟨J, _, hxJ⟩ := hx
+      rw [BoundedInterval.inter_eq] at hxJ; exact hxJ.1
+  have hdisj : ∀ J₁ ∈ F.T, ∀ J₂ ∈ F.T, J₁ ≠ J₂ →
+      Disjoint ((fun J : BoundedInterval => A ∩ J) J₁).toSet ((fun J : BoundedInterval => A ∩ J) J₂).toSet := by
+    intro J₁ hJ₁ J₂ hJ₂ hne
+    rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq]
+    have hd := F.disjoint (Finset.mem_coe.2 hJ₁) (Finset.mem_coe.2 hJ₂) hne
+    rw [Function.onFun] at hd
+    exact Set.disjoint_of_subset Set.inter_subset_right Set.inter_subset_right hd
+  rw [← length_sum_of_indexed_partition (ι := BoundedInterval) (S := F.T)
+    (K := fun J => A ∩ J) hdisj hcover, ← Finset.sum_attach F.T (fun J => |(A ∩ J)|ₗ)]
+  rfl
+
+/-- A representation `G` of `f + g` has integral equal to the double sum over the common
+refinement cells `J ∩ K` of the partitions of `f` and `g`. -/
+private lemma PiecewiseConstantFunction.integral_eq_doubleProd_add {I: BoundedInterval}
+    {f g : ℝ → ℝ} (G Ff Fg : PiecewiseConstantFunction I)
+    (hG : G.agreesWith (f + g)) (hFf : Ff.agreesWith f) (hFg : Fg.agreesWith g) :
+    G.integral = ∑ J : Ff.T, ∑ K : Fg.T, (Ff.c J + Fg.c K) * |(J.val ∩ K.val)|ₗ := by
+  classical
+  -- subset facts
+  have subI : ∀ (B : BoundedInterval), (∃ J' : G.T, B = J'.val) → B.toSet ⊆ I.toSet := by
+    rintro B ⟨J', rfl⟩ y hy; rw [G.cover]; exact Set.mem_biUnion J'.property hy
+  -- Step A: G.integral = ∑_{J':G.T} ∑_{J:Ff.T} ∑_{K:Fg.T} G.c J' · |(J'∩J)∩K|
+  have hA : G.integral = ∑ J' : G.T, ∑ J : Ff.T, ∑ K : Fg.T,
+      G.c J' * |((J'.val ∩ J.val) ∩ K.val)|ₗ := by
+    unfold PiecewiseConstantFunction.integral
+    apply Finset.sum_congr rfl; intro J' _
+    have hJ'I : J'.val.toSet ⊆ I.toSet := subI _ ⟨J', rfl⟩
+    rw [length_refine_one Ff hJ'I, Finset.mul_sum]
+    apply Finset.sum_congr rfl; intro J _
+    have hcellI : (J'.val ∩ J.val).toSet ⊆ I.toSet := by
+      rw [BoundedInterval.inter_eq]; exact (Set.inter_subset_left).trans hJ'I
+    rw [length_refine_one Fg hcellI, Finset.mul_sum]
+  -- Step B: swap so J' is innermost; replace G.c J' by Ff.c J + Fg.c K on nonempty cells; collapse.
+  rw [hA]
+  -- reorder: ∑ J' ∑ J ∑ K  →  ∑ J ∑ J' ∑ K  →  ∑ J ∑ K ∑ J'
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl; intro J _
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl; intro K _
+  -- inner: ∑ J':G.T, G.c J' · |(J'∩J)∩K| = (Ff.c J + Fg.c K) · |J∩K|
+  by_cases hne : (J.val ∩ K.val).toSet.Nonempty
+  · -- value of G.c J' on a nonempty triple cell is Ff.c J + Fg.c K
+    have hval : ∀ J' : G.T, ((J'.val ∩ J.val) ∩ K.val).toSet.Nonempty →
+        G.c J' = Ff.c J + Fg.c K := by
+      intro J' hcellne
+      obtain ⟨x, hx⟩ := hcellne
+      rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq] at hx
+      obtain ⟨⟨hxJ', hxJ⟩, hxK⟩ := hx
+      have hxI : x ∈ I.toSet := by rw [G.cover]; exact Set.mem_biUnion J'.property hxJ'
+      have eG : G.c J' = f x + g x := by
+        have := G.const J' x hxJ'; rw [← this]
+        have := hG hxI; simp only [Pi.add_apply] at this; exact this.symm
+      have eF : Ff.c J = f x := by have := Ff.const J x hxJ; rw [← this]; exact (hFf hxI).symm
+      have eK : Fg.c K = g x := by have := Fg.const K x hxK; rw [← this]; exact (hFg hxI).symm
+      rw [eG, eF, eK]
+    -- ∑ J', G.c J' · |cell| = (Ff.c J + Fg.c K) · ∑ J', |cell|  on nonempty cells (empty contribute 0)
+    have : ∑ J' : G.T, G.c J' * |((J'.val ∩ J.val) ∩ K.val)|ₗ
+        = ∑ J' : G.T, (Ff.c J + Fg.c K) * |((J'.val ∩ J.val) ∩ K.val)|ₗ := by
+      apply Finset.sum_congr rfl; intro J' _
+      by_cases hc : ((J'.val ∩ J.val) ∩ K.val).toSet.Nonempty
+      · rw [hval J' hc]
+      · rw [Set.not_nonempty_iff_eq_empty] at hc
+        rw [length_eq_zero_of_empty hc, mul_zero, mul_zero]
+    rw [show (∑ J' : G.T, G.c J' * |((J'.val ∩ J.val) ∩ K.val)|ₗ) = _ from this,
+      ← Finset.mul_sum]
+    congr 1
+    -- ∑ J':G.T, |(J'∩J)∩K| = |J∩K|
+    have hsub : (J.val ∩ K.val).toSet ⊆ I.toSet := by
+      rw [BoundedInterval.inter_eq]
+      obtain ⟨x, hx⟩ := hne; rw [BoundedInterval.inter_eq] at hx
+      intro y hy; rw [Ff.cover]; exact Set.mem_biUnion J.property hy.1
+    rw [length_refine_one G hsub]
+    apply Finset.sum_congr rfl; intro J' _
+    apply length_congr_of_toSet_eq
+    rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq, BoundedInterval.inter_eq,
+      BoundedInterval.inter_eq]
+    rw [Set.inter_comm (J.val.toSet ∩ K.val.toSet) J'.val.toSet, Set.inter_assoc]
+  · -- empty J∩K cell: both sides 0
+    rw [Set.not_nonempty_iff_eq_empty] at hne
+    rw [length_eq_zero_of_empty hne, mul_zero]
+    apply Finset.sum_eq_zero; intro J' _
+    have : ((J'.val ∩ J.val) ∩ K.val).toSet = ∅ := by
+      rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq]
+      have : (J.val ∩ K.val).toSet = ∅ := hne
+      rw [BoundedInterval.inter_eq] at this
+      rw [Set.inter_assoc]; rw [this]; simp
+    rw [length_eq_zero_of_empty this, mul_zero]
+
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The integral is linear: integral(f + g) = integral(f) + integral(g).
-theorem PiecewiseConstantFunction.integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : (hf.add hg).integral = hf.integral + hg.integral := by sorry
+theorem PiecewiseConstantFunction.integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) : (hf.add hg).integral = hf.integral + hg.integral := by
+  classical
+  set Ff := hf.choose with hFf
+  set Fg := hg.choose with hFg
+  have hFfa : Ff.agreesWith f := hf.choose_spec
+  have hFga : Fg.agreesWith g := hg.choose_spec
+  -- LHS: (hf.add hg).integral = G.integral for G a representation of f+g.
+  set G := (hf.add hg).choose with hG
+  have hGa : G.agreesWith (f + g) := (hf.add hg).choose_spec
+  have hLHS : (hf.add hg).integral = G.integral := rfl
+  rw [hLHS, G.integral_eq_doubleProd_add Ff Fg hGa hFfa hFga]
+  -- RHS: hf.integral + hg.integral via integral_eq_double, distribute.
+  have hfi : hf.integral = ∑ J : Ff.T, ∑ K : Fg.T, Ff.c J * |(J.val ∩ K.val)|ₗ :=
+    Ff.integral_eq_double Fg
+  have hgi : hg.integral = ∑ J : Ff.T, ∑ K : Fg.T, Fg.c K * |(J.val ∩ K.val)|ₗ := by
+    show Fg.integral = _
+    rw [Fg.integral_eq_double Ff, Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro J _
+    apply Finset.sum_congr rfl; intro K _
+    congr 1
+    apply length_congr_of_toSet_eq
+    rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq, Set.inter_comm]
+  rw [hfi, hgi, ← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl; intro J _
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl; intro K _
+  ring
 
 /-- Exercise 1.1.21 (b) (Monotonicity of the piecewise constant integral) -/
 -- The integral is monotone: if f ≤ g pointwise, then integral(f) ≤ integral(g).
-theorem PiecewiseConstantFunction.integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): hf.integral ≤ hg.integral := by sorry
+theorem PiecewiseConstantFunction.integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: PiecewiseConstantOn f I) (hg: PiecewiseConstantOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): hf.integral ≤ hg.integral := by
+  classical
+  set Ff := hf.choose with hFf
+  set Fg := hg.choose with hFg
+  have hFfa : Ff.agreesWith f := hf.choose_spec
+  have hFga : Fg.agreesWith g := hg.choose_spec
+  have hfi : hf.integral = ∑ J : Ff.T, ∑ K : Fg.T, Ff.c J * |(J.val ∩ K.val)|ₗ := by
+    show Ff.integral = _
+    exact Ff.integral_eq_double Fg
+  have hgi : hg.integral = ∑ J : Ff.T, ∑ K : Fg.T, Fg.c K * |(J.val ∩ K.val)|ₗ := by
+    show Fg.integral = _
+    rw [Fg.integral_eq_double Ff, Finset.sum_comm]
+    apply Finset.sum_congr rfl; intro J _
+    apply Finset.sum_congr rfl; intro K _
+    congr 1
+    apply length_congr_of_toSet_eq
+    rw [BoundedInterval.inter_eq, BoundedInterval.inter_eq, Set.inter_comm]
+  rw [hfi, hgi]
+  apply Finset.sum_le_sum; intro J _
+  apply Finset.sum_le_sum; intro K _
+  by_cases hne : (J.val ∩ K.val).toSet.Nonempty
+  · obtain ⟨x, hx⟩ := hne
+    rw [BoundedInterval.inter_eq] at hx
+    obtain ⟨hxJ, hxK⟩ := hx
+    have hxI : x ∈ I.toSet := by rw [Ff.cover]; exact Set.mem_biUnion J.property hxJ
+    have e1 : Ff.c J = f x := by have := Ff.const J x hxJ; rw [← this]; exact (hFfa hxI).symm
+    have e2 : Fg.c K = g x := by have := Fg.const K x hxK; rw [← this]; exact (hFga hxI).symm
+    rw [e1, e2]
+    exact mul_le_mul_of_nonneg_right (hmono x hxI) (BoundedInterval.length_nonneg _)
+  · rw [Set.not_nonempty_iff_eq_empty] at hne
+    rw [length_eq_zero_of_empty hne, mul_zero, mul_zero]
 
 /-- Exercise 1.1.21 (c) (Piecewise constant integral of indicator functions) -/
 -- The indicator function of an elementary set is piecewise constant.
