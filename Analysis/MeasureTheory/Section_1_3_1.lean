@@ -1261,15 +1261,308 @@ lemma UnsignedSimpleFunction.integral_smul {d:ℕ} {f: EuclideanSpace' d → ERe
       (fun i => mul_nonneg (hmn i).2 (Lebesgue_outer_measure.nonneg _))]
   apply Finset.sum_congr rfl; intro i _; rw [mul_assoc]
 
+/-- A finite sum of nonnegative EReals is `< ⊤` iff each term is `< ⊤`. -/
+private lemma sum_lt_top_iff_forall_nonneg {k:ℕ} (a : Fin k → EReal) (ha : ∀ i, 0 ≤ a i) :
+    (∑ i, a i) < ⊤ ↔ ∀ i, a i < ⊤ := by
+  constructor
+  · intro h i
+    refine Ne.lt_top (fun hi => ?_)
+    have hle : a i ≤ ∑ j, a j := Finset.single_le_sum (fun j _ => ha j) (Finset.mem_univ i)
+    rw [hi] at hle
+    exact h.ne (le_antisymm le_top hle)
+  · intro h
+    refine Ne.lt_top (?_ : (∑ i, a i) ≠ ⊤)
+    classical
+    induction' (Finset.univ : Finset (Fin k)) using Finset.induction with i s his ih
+    · simp
+    · rw [Finset.sum_insert his]
+      exact _root_.EReal.add_ne_top (h i).ne ih
+
 /-- Exercise 1.3.1 (ii) (Finiteness) -/
 lemma UnsignedSimpleFunction.integral_finite_iff {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) :
   (hf.integ < ⊤) ↔ (AlmostAlways (fun x ↦ f x < ⊤)) ∧ (Lebesgue_measure (Support f)) < ⊤ := by
-  sorry
+  classical
+  open UnsignedSimpleFunction.IntegralWellDef in
+  -- Canonical representation, converted to disjoint singleAtoms.
+  obtain ⟨k, c, E, hmn, heq⟩ := id hf
+  set A : Fin (2^k) → Set (EuclideanSpace' d) := singleAtom E with hA
+  set V : Fin (2^k) → EReal := fun n => ∑ i : Fin k, if n.val.testBit i.val then c i else 0 with hV
+  -- atom values are nonnegative
+  have hV_nonneg : ∀ n, 0 ≤ V n := by
+    intro n; rw [hV]; apply Finset.sum_nonneg; intro i _; split_ifs
+    · exact (hmn i).2
+    · exact le_refl 0
+  -- atoms are measurable
+  have hA_meas : ∀ n, LebesgueMeasurable (A n) := by
+    intro n
+    simp only [hA, singleAtom]
+    exact atom_measurable (fun i => (hmn i).1) (fun i => Fin.elim0 i)
+      ⟨n.val, by simp only [add_zero]; exact n.isLt⟩
+  -- atoms are disjoint
+  have hA_disj : Set.univ.PairwiseDisjoint A := singleAtom_pairwiseDisjoint E
+  -- f x = V n when x ∈ A n
+  have hfx : ∀ n, ∀ x ∈ A n, f x = V n := by
+    intro n x hx
+    rw [heq]
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [hV]
+    apply Finset.sum_congr rfl
+    intro i _
+    have hmem := (mem_singleAtom_iff E n x).mp hx i
+    by_cases hbit : n.val.testBit i.val
+    · simp only [hbit, if_true]
+      rw [EReal.indicator_of_mem (hmem.mp hbit), mul_one]
+    · simp only [hbit, Bool.false_eq_true, if_false]
+      have hxout : x ∉ E i := fun h => hbit (hmem.mpr h)
+      rw [EReal.indicator_of_notMem hxout, mul_zero]
+  -- disjoint representation of f
+  have hfeq2 : f = ∑ n, (V n) • (EReal.indicator (A n)) := by
+    ext x
+    obtain ⟨n, hn_mem, hn_uniq⟩ := exists_unique_singleAtom E x
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [hfx n x hn_mem]
+    rw [Finset.sum_eq_single n]
+    · rw [EReal.indicator_of_mem hn_mem, mul_one]
+    · intro m _ hm
+      have : x ∉ A m := fun h => hm (hn_uniq m h)
+      rw [EReal.indicator_of_notMem this, mul_zero]
+    · intro h; exact absurd (Finset.mem_univ n) h
+  -- integral = ∑ V n * μ(A n)
+  have hinteg : hf.integ = ∑ n, (V n) * Lebesgue_measure (A n) :=
+    hf.integral_eq hA_meas hV_nonneg hfeq2
+  -- finiteness of integral ↔ each term finite
+  rw [hinteg, sum_lt_top_iff_forall_nonneg (fun n => V n * Lebesgue_measure (A n))
+    (fun n => mul_nonneg (hV_nonneg n) (Lebesgue_outer_measure.nonneg _))]
+  -- μ(Support f) = ∑ n, if V n ≠ 0 then μ(A n) else 0
+  have hsuppmeas : Lebesgue_measure (Support f) = ∑ n, if V n ≠ 0 then Lebesgue_measure (A n) else 0 := by
+    let A' : Fin (2^k) → Set (EuclideanSpace' d) := fun n => if V n ≠ 0 then A n else ∅
+    have hA'_eq : Support f = ⋃ n, A' n := by
+      ext x
+      simp only [Support, Set.mem_setOf_eq, Set.mem_iUnion, A']
+      obtain ⟨n, hn_mem, hn_uniq⟩ := exists_unique_singleAtom E x
+      constructor
+      · intro hne
+        refine ⟨n, ?_⟩
+        have hVne : V n ≠ 0 := by rw [← hfx n x hn_mem]; exact hne
+        rw [if_pos hVne]; exact hn_mem
+      · intro ⟨m, hx⟩
+        by_cases hVm : V m ≠ 0
+        · rw [if_pos hVm] at hx
+          rw [hfx m x hx]; exact hVm
+        · rw [if_neg hVm] at hx; exact absurd hx (Set.notMem_empty x)
+    have hA'_meas : ∀ n, LebesgueMeasurable (A' n) := by
+      intro n; simp only [A']; split_ifs
+      · exact hA_meas n
+      · exact LebesgueMeasurable.empty
+    have hA'_disj : Set.univ.PairwiseDisjoint A' := by
+      intro i _ j _ hij
+      simp only [Function.onFun, A']
+      by_cases h1 : V i ≠ 0 <;> by_cases h2 : V j ≠ 0
+      · rw [if_pos h1, if_pos h2]; exact hA_disj (Set.mem_univ i) (Set.mem_univ j) hij
+      · rw [if_pos h1, if_neg h2]; rw [Set.disjoint_left]; intro _ _; simp
+      · rw [if_neg h1, if_pos h2]; rw [Set.disjoint_left]; simp
+      · rw [if_neg h1, if_neg h2]; rw [Set.disjoint_left]; simp
+    calc Lebesgue_measure (Support f) = Lebesgue_measure (⋃ n, A' n) := by rw [hA'_eq]
+      _ = ∑' n, Lebesgue_measure (A' n) := Lebesgue_measure.finite_union hA'_meas hA'_disj
+      _ = ∑ n, Lebesgue_measure (A' n) := tsum_fintype _
+      _ = ∑ n, if V n ≠ 0 then Lebesgue_measure (A n) else 0 := by
+          apply Finset.sum_congr rfl; intro n _; show Lebesgue_measure (A' n) = _
+          simp only [A']; split_ifs
+          · rfl
+          · exact Lebesgue_measure.empty
+  rw [hsuppmeas, sum_lt_top_iff_forall_nonneg
+    (fun n => if V n ≠ 0 then Lebesgue_measure (A n) else 0) (by
+    intro n; dsimp only; split_ifs
+    · exact Lebesgue_outer_measure.nonneg _
+    · exact le_refl 0)]
+  -- AlmostAlways (f < ⊤) ↔ ∀ n, V n = ⊤ → μ(A n) = 0
+  have hae : AlmostAlways (fun x ↦ f x < ⊤) ↔ ∀ n, V n = ⊤ → Lebesgue_measure (A n) = 0 := by
+    constructor
+    · intro hall n hVtop
+      -- the null set {x | ¬ f x < ⊤}; A n ⊆ it when V n = ⊤
+      have hsub : A n ⊆ {x | ¬ f x < ⊤} := by
+        intro x hx
+        simp only [Set.mem_setOf_eq, not_lt]
+        rw [hfx n x hx, hVtop]
+      have hnull : IsNull (A n) := le_antisymm
+        (le_trans (Lebesgue_outer_measure.mono hsub) (le_of_eq hall))
+        (Lebesgue_outer_measure.nonneg _)
+      exact hnull
+    · intro hall
+      -- {x | ¬ f x < ⊤} = ⋃ n, (if V n = ⊤ then A n else ∅), each null
+      have hset : {x | ¬ (fun x ↦ f x < ⊤) x} = ⋃ n, (if V n = ⊤ then A n else ∅) := by
+        ext x
+        simp only [Set.mem_setOf_eq, not_lt, Set.mem_iUnion]
+        obtain ⟨n, hn_mem, hn_uniq⟩ := exists_unique_singleAtom E x
+        constructor
+        · intro hge
+          refine ⟨n, ?_⟩
+          have hVtop : V n = ⊤ := by rw [hfx n x hn_mem] at hge; exact le_antisymm le_top hge
+          rw [if_pos hVtop]; exact hn_mem
+        · intro ⟨m, hx⟩
+          by_cases hVm : V m = ⊤
+          · rw [if_pos hVm] at hx
+            rw [hfx m x hx, hVm]
+          · rw [if_neg hVm] at hx; exact absurd hx (Set.notMem_empty x)
+      show IsNull {x | ¬ (fun x ↦ f x < ⊤) x}
+      rw [hset]
+      have hnull_each : ∀ n, IsNull (if V n = ⊤ then A n else ∅) := by
+        intro n; split_ifs with h
+        · exact hall n h
+        · exact Lebesgue_outer_measure.of_empty d
+      -- countable (finite) union of null
+      have := AlmostAlways.countable (P := fun n x => x ∉ (if V n = ⊤ then A n else ∅))
+        (fun n => by
+          show IsNull {x | ¬ x ∉ _}
+          have : {x | ¬ x ∉ (if V n = ⊤ then A n else ∅)} = (if V n = ⊤ then A n else ∅) := by
+            ext x; simp
+          rw [this]; exact hnull_each n)
+      show IsNull (⋃ n, (if V n = ⊤ then A n else ∅))
+      have heq2 : (⋃ n, (if V n = ⊤ then A n else ∅)) = {x | ¬ ∀ n, x ∉ (if V n = ⊤ then A n else ∅)} := by
+        ext x; simp only [Set.mem_iUnion, Set.mem_setOf_eq, not_forall, not_not]
+      exact heq2 ▸ this
+  rw [hae]
+  -- Final: combine. ∀n (V n * μ(A n) < ⊤) ↔ (∀n, V n=⊤→μ(A n)=0) ∧ (∀n, V n≠0 → μ(A n)<⊤)
+  constructor
+  · intro h
+    refine ⟨?_, ?_⟩
+    · intro n hVtop
+      by_contra hμ
+      have hμpos : 0 < Lebesgue_measure (A n) :=
+        lt_of_le_of_ne (Lebesgue_outer_measure.nonneg _) (fun he => hμ he.symm)
+      have : V n * Lebesgue_measure (A n) = ⊤ := by
+        rw [EReal.mul_eq_top]; right; right; left; exact ⟨hVtop, hμpos⟩
+      have hn := h n; rw [this] at hn; exact (lt_irrefl ⊤) hn
+    · intro n
+      split_ifs with hVne
+      swap
+      · exact EReal.zero_lt_top
+      -- V n ≠ 0; show μ(A n) < ⊤
+      refine Ne.lt_top (fun hμtop' => ?_)
+      by_cases hVtop : V n = ⊤
+      · have : V n * Lebesgue_measure (A n) = ⊤ := by
+          rw [EReal.mul_eq_top]; right; right; left
+          exact ⟨hVtop, by rw [hμtop']; exact EReal.zero_lt_top⟩
+        have hn := h n; rw [this] at hn; exact (lt_irrefl ⊤) hn
+      · have hVpos : 0 < V n := lt_of_le_of_ne (hV_nonneg n) (fun he => hVne he.symm)
+        have : V n * Lebesgue_measure (A n) = ⊤ := by
+          rw [EReal.mul_eq_top]; right; right; right
+          exact ⟨hVpos, hμtop'⟩
+        have hn := h n; rw [this] at hn; exact (lt_irrefl ⊤) hn
+  · intro ⟨h1, h2⟩ n
+    refine Ne.lt_top (?_ : V n * Lebesgue_measure (A n) ≠ ⊤)
+    rw [Ne, EReal.mul_eq_top]
+    push_neg
+    refine ⟨?_, ?_, ?_, ?_⟩
+    · intro _; exact Lebesgue_outer_measure.nonneg _
+    · intro hneg; exact absurd hneg (not_lt.mpr (hV_nonneg n))
+    · intro hVtop
+      simp [h1 n hVtop]
+    · intro hVpos
+      have hVne : V n ≠ 0 := fun he => by rw [he] at hVpos; exact absurd hVpos (lt_irrefl 0)
+      have := h2 n
+      rw [if_pos hVne] at this
+      exact this.ne
 
 /-- Exercise 1.3.1 (iii) (Vanishing) -/
 lemma UnsignedSimpleFunction.integral_eq_zero_iff {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) :
   (hf.integ = 0) ↔ AlmostAlways (fun x ↦ f x = 0) := by
-  sorry
+  classical
+  open UnsignedSimpleFunction.IntegralWellDef in
+  obtain ⟨k, c, E, hmn, heq⟩ := id hf
+  set A : Fin (2^k) → Set (EuclideanSpace' d) := singleAtom E with hA
+  set V : Fin (2^k) → EReal := fun n => ∑ i : Fin k, if n.val.testBit i.val then c i else 0 with hV
+  have hV_nonneg : ∀ n, 0 ≤ V n := by
+    intro n; rw [hV]; apply Finset.sum_nonneg; intro i _; split_ifs
+    · exact (hmn i).2
+    · exact le_refl 0
+  have hA_meas : ∀ n, LebesgueMeasurable (A n) := by
+    intro n
+    simp only [hA, singleAtom]
+    exact atom_measurable (fun i => (hmn i).1) (fun i => Fin.elim0 i)
+      ⟨n.val, by simp only [add_zero]; exact n.isLt⟩
+  have hfx : ∀ n, ∀ x ∈ A n, f x = V n := by
+    intro n x hx
+    rw [heq]
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [hV]
+    apply Finset.sum_congr rfl
+    intro i _
+    have hmem := (mem_singleAtom_iff E n x).mp hx i
+    by_cases hbit : n.val.testBit i.val
+    · simp only [hbit, if_true]
+      rw [EReal.indicator_of_mem (hmem.mp hbit), mul_one]
+    · simp only [hbit, Bool.false_eq_true, if_false]
+      rw [EReal.indicator_of_notMem (fun h => hbit (hmem.mpr h)), mul_zero]
+  have hfeq2 : f = ∑ n, (V n) • (EReal.indicator (A n)) := by
+    ext x
+    obtain ⟨n, hn_mem, hn_uniq⟩ := exists_unique_singleAtom E x
+    simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    rw [hfx n x hn_mem]
+    rw [Finset.sum_eq_single n]
+    · rw [EReal.indicator_of_mem hn_mem, mul_one]
+    · intro m _ hm
+      rw [EReal.indicator_of_notMem (fun h => hm (hn_uniq m h)), mul_zero]
+    · intro h; exact absurd (Finset.mem_univ n) h
+  have hinteg : hf.integ = ∑ n, (V n) * Lebesgue_measure (A n) :=
+    hf.integral_eq hA_meas hV_nonneg hfeq2
+  -- integral = 0 iff each term = 0 iff each (V n = 0 ∨ μ(A n) = 0)
+  have hsumzero : (∑ n, (V n) * Lebesgue_measure (A n) = 0) ↔ ∀ n, V n = 0 ∨ Lebesgue_measure (A n) = 0 := by
+    have hkey := Finset.sum_eq_zero_iff_of_nonneg
+      (s := (Finset.univ : Finset (Fin (2^k))))
+      (f := fun n => (V n) * Lebesgue_measure (A n))
+      (fun n (_ : n ∈ Finset.univ) => mul_nonneg (hV_nonneg n) (Lebesgue_outer_measure.nonneg (A n)))
+    rw [hkey]
+    constructor
+    · intro h n; exact mul_eq_zero.mp (h n (Finset.mem_univ n))
+    · intro h n _; exact mul_eq_zero.mpr (h n)
+  rw [hinteg, hsumzero]
+  -- AlmostAlways (f = 0) iff Support f null iff ∀ n, V n = 0 ∨ μ(A n) = 0
+  constructor
+  · intro hall
+    -- {x | ¬ f x = 0} = ⋃ n, (if V n ≠ 0 then A n else ∅), each null
+    show IsNull {x | ¬ (fun x ↦ f x = 0) x}
+    have hset : {x | ¬ (fun x ↦ f x = 0) x} = ⋃ n, (if V n ≠ 0 then A n else ∅) := by
+      ext x
+      simp only [Set.mem_setOf_eq, Set.mem_iUnion]
+      obtain ⟨n, hn_mem, hn_uniq⟩ := exists_unique_singleAtom E x
+      constructor
+      · intro hne
+        refine ⟨n, ?_⟩
+        have hVne : V n ≠ 0 := by rw [← hfx n x hn_mem]; exact hne
+        rw [if_pos hVne]; exact hn_mem
+      · intro ⟨m, hx⟩
+        by_cases hVm : V m ≠ 0
+        · rw [if_pos hVm] at hx; rw [hfx m x hx]; exact hVm
+        · rw [if_neg hVm] at hx; exact absurd hx (Set.notMem_empty x)
+    rw [hset]
+    have hnull_each : ∀ n, IsNull (if V n ≠ 0 then A n else ∅) := by
+      intro n; split_ifs with h
+      · rcases hall n with hV0 | hμ0
+        · exact absurd hV0 h
+        · exact hμ0
+      · exact Lebesgue_outer_measure.of_empty d
+    have hcount := AlmostAlways.countable (P := fun n x => x ∉ (if V n ≠ 0 then A n else ∅))
+      (fun n => by
+        show IsNull {x | ¬ x ∉ _}
+        have : {x | ¬ x ∉ (if V n ≠ 0 then A n else ∅)} = (if V n ≠ 0 then A n else ∅) := by
+          ext x; simp
+        rw [this]; exact hnull_each n)
+    have heq3 : (⋃ n, (if V n ≠ 0 then A n else ∅)) = {x | ¬ ∀ n, x ∉ (if V n ≠ 0 then A n else ∅)} := by
+      ext x; simp only [Set.mem_iUnion, Set.mem_setOf_eq, not_forall, not_not]
+    exact heq3 ▸ hcount
+  · intro hall n
+    -- if V n ≠ 0 then A n ⊆ {x | f x ≠ 0} (null), so μ(A n) = 0
+    by_cases hVn : V n = 0
+    · left; exact hVn
+    · right
+      have hsub : A n ⊆ {x | ¬ f x = 0} := by
+        intro x hx
+        simp only [Set.mem_setOf_eq]
+        rw [hfx n x hx]; exact hVn
+      exact le_antisymm
+        (le_trans (Lebesgue_outer_measure.mono hsub) (le_of_eq hall))
+        (Lebesgue_outer_measure.nonneg _)
 
 /-- Exercise 1.3.1 (v) (Monotonicity) -/
 lemma UnsignedSimpleFunction.integral_le_integral_of_aeLe {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedSimpleFunction f) (hg: UnsignedSimpleFunction g)
@@ -1592,17 +1885,89 @@ def ComplexSimpleFunction.im {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: Complex
 noncomputable def ComplexSimpleFunction.integ {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexSimpleFunction f) : ℂ :=
   hf.re.integ + Complex.I * hf.im.integ
 
+/-- The support of `|f|` equals the support of `f`, for any normed-space-valued `f`. -/
+private lemma support_abs_fun_eq {d:ℕ} {Y:Type*} [RCLike Y] (f: EuclideanSpace' d → Y) :
+    Support (EReal.abs_fun f) = Support f := by
+  ext x
+  simp only [Support, Set.mem_setOf_eq, EReal.abs_fun, ne_eq, EReal.coe_eq_zero, norm_eq_zero]
+
+/-- `|f x| < ⊤` everywhere, for normed-space-valued `f`. -/
+private lemma abs_fun_lt_top {d:ℕ} {Y:Type*} [RCLike Y] (f: EuclideanSpace' d → Y) (x : EuclideanSpace' d) :
+    EReal.abs_fun f x < ⊤ := by
+  simp only [EReal.abs_fun]
+  exact EReal.coe_lt_top _
+
 lemma RealSimpleFunction.absolutelyIntegrable_iff {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f) : hf.AbsolutelyIntegrable ↔ Lebesgue_measure (Support f) < ⊤ := by
-  sorry
+  unfold RealSimpleFunction.AbsolutelyIntegrable
+  rw [hf.abs.integral_finite_iff, support_abs_fun_eq]
+  constructor
+  · exact fun h => h.2
+  · exact fun h => ⟨AlmostAlways.ofAlways (fun x => abs_fun_lt_top f x), h⟩
 
 lemma ComplexSimpleFunction.absolutelyIntegrable_iff {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexSimpleFunction f) : hf.AbsolutelyIntegrable ↔ Lebesgue_measure (Support f) < ⊤ := by
-  sorry
+  unfold ComplexSimpleFunction.AbsolutelyIntegrable
+  rw [hf.abs.integral_finite_iff, support_abs_fun_eq]
+  constructor
+  · exact fun h => h.2
+  · exact fun h => ⟨AlmostAlways.ofAlways (fun x => abs_fun_lt_top f x), h⟩
+
+/-- Binary subadditivity of Lebesgue measure. -/
+private lemma measure_union_le {d:ℕ} (A B : Set (EuclideanSpace' d)) :
+    Lebesgue_measure (A ∪ B) ≤ Lebesgue_measure A + Lebesgue_measure B := by
+  let E : ℕ → Set (EuclideanSpace' d) := fun n => match n with | 0 => A | 1 => B | _ => ∅
+  have hunion : A ∪ B = ⋃ n, E n := by
+    ext x; simp only [Set.mem_union, Set.mem_iUnion, E]
+    constructor
+    · intro hx; rcases hx with h | h
+      · exact ⟨0, h⟩
+      · exact ⟨1, h⟩
+    · intro ⟨n, hn⟩
+      match n with
+      | 0 => exact Or.inl hn
+      | 1 => exact Or.inr hn
+      | n + 2 => exact absurd hn (Set.notMem_empty x)
+  have hsum : ∑' n, Lebesgue_outer_measure (E n) = Lebesgue_measure A + Lebesgue_measure B := by
+    rw [tsum_eq_sum (s := {0, 1})]
+    · rw [Finset.sum_pair (by norm_num : (0:ℕ) ≠ 1)]; rfl
+    · intro n hn
+      match n with
+      | 0 => simp at hn
+      | 1 => simp at hn
+      | n + 2 => exact Lebesgue_outer_measure.of_empty d
+  rw [hunion]
+  calc Lebesgue_measure (⋃ n, E n) ≤ ∑' n, Lebesgue_outer_measure (E n) := Lebesgue_outer_measure.union_le E
+    _ = Lebesgue_measure A + Lebesgue_measure B := hsum
+
+/-- If `f + g ≠ 0` at a point, then `f ≠ 0` or `g ≠ 0` there. -/
+private lemma support_add_subset {d:ℕ} {Y:Type*} [AddGroup Y] (f g : EuclideanSpace' d → Y) :
+    Support (f + g) ⊆ Support f ∪ Support g := by
+  intro x hx
+  simp only [Support, Set.mem_setOf_eq, Set.mem_union, Pi.add_apply] at *
+  by_contra hc
+  push_neg at hc
+  exact hx (by rw [hc.1, hc.2, add_zero])
 
 lemma RealSimpleFunction.AbsolutelyIntegrable.add {d:ℕ} {f g: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} {hg: RealSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) :
-  (hf.add hg).AbsolutelyIntegrable := by sorry
+  (hf.add hg).AbsolutelyIntegrable := by
+  rw [(hf.add hg).absolutelyIntegrable_iff]
+  rw [hf.absolutelyIntegrable_iff] at hf_integ
+  rw [hg.absolutelyIntegrable_iff] at hg_integ
+  calc Lebesgue_measure (Support (f + g))
+      ≤ Lebesgue_measure (Support f ∪ Support g) :=
+        Lebesgue_outer_measure.mono (support_add_subset f g)
+    _ ≤ Lebesgue_measure (Support f) + Lebesgue_measure (Support g) := measure_union_le _ _
+    _ < ⊤ := EReal.add_lt_top (ne_of_lt hf_integ) (ne_of_lt hg_integ)
 
 lemma ComplexSimpleFunction.AbsolutelyIntegrable.add {d:ℕ} {f g: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} {hg: ComplexSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) :
-  (hf.add hg).AbsolutelyIntegrable := by sorry
+  (hf.add hg).AbsolutelyIntegrable := by
+  rw [(hf.add hg).absolutelyIntegrable_iff]
+  rw [hf.absolutelyIntegrable_iff] at hf_integ
+  rw [hg.absolutelyIntegrable_iff] at hg_integ
+  calc Lebesgue_measure (Support (f + g))
+      ≤ Lebesgue_measure (Support f ∪ Support g) :=
+        Lebesgue_outer_measure.mono (support_add_subset f g)
+    _ ≤ Lebesgue_measure (Support f) + Lebesgue_measure (Support g) := measure_union_le _ _
+    _ < ⊤ := EReal.add_lt_top (ne_of_lt hf_integ) (ne_of_lt hg_integ)
 
 lemma RealSimpleFunction.AbsolutelyIntegrable.smul {d:ℕ} {f: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) (a: ℝ) :
   (hf.smul a).AbsolutelyIntegrable := by
@@ -1647,18 +2012,276 @@ lemma ComplexSimpleFunction.AbsolutelyIntegrable.conj {d:ℕ} {f: EuclideanSpace
   rw [UnsignedSimpleFunction.integ_congr (hf.conj).abs hf.abs hfun]
   exact hf_integ
 
+/-- The positive part is dominated by the absolute value (pointwise). -/
+private lemma pos_fun_le_abs_fun {d:ℕ} (f: EuclideanSpace' d → ℝ) :
+    ∀ x, EReal.pos_fun f x ≤ EReal.abs_fun f x := by
+  intro x
+  simp only [EReal.pos_fun, EReal.abs_fun, Real.norm_eq_abs, EReal.coe_le_coe_iff]
+  rcases le_total 0 (f x) with h | h
+  · rw [max_eq_left h, abs_of_nonneg h]
+  · rw [max_eq_right h]; exact abs_nonneg _
+
+private lemma neg_fun_le_abs_fun {d:ℕ} (f: EuclideanSpace' d → ℝ) :
+    ∀ x, EReal.neg_fun f x ≤ EReal.abs_fun f x := by
+  intro x
+  simp only [EReal.neg_fun, EReal.abs_fun, Real.norm_eq_abs, EReal.coe_le_coe_iff]
+  rcases le_total 0 (f x) with h | h
+  · rw [max_eq_right (by linarith : -f x ≤ 0)]; exact abs_nonneg _
+  · rw [max_eq_left (by linarith : 0 ≤ -f x), abs_of_nonpos h]
+
+/-- The positive and negative parts of an absolutely integrable real simple function
+have finite integrals. -/
+private lemma RealSimpleFunction.pos_integ_lt_top {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f)
+    (hf_integ: hf.AbsolutelyIntegrable) : hf.pos.integ < ⊤ :=
+  lt_of_le_of_lt
+    (UnsignedSimpleFunction.integral_le_integral_of_aeLe hf.pos hf.abs
+      (AlmostAlways.ofAlways (pos_fun_le_abs_fun f))) hf_integ
+
+private lemma RealSimpleFunction.neg_integ_lt_top {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f)
+    (hf_integ: hf.AbsolutelyIntegrable) : hf.neg.integ < ⊤ :=
+  lt_of_le_of_lt
+    (UnsignedSimpleFunction.integral_le_integral_of_aeLe hf.neg hf.abs
+      (AlmostAlways.ofAlways (neg_fun_le_abs_fun f))) hf_integ
+
 /-- Exercise 1.3.2 (i) ({lit}`*`-linearity) -/
-lemma RealSimpleFunction.integ_add {d:ℕ} {f g: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} {hg: RealSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) : (hf.add hg).integ = hf.integ + hg.integ := by sorry
+lemma RealSimpleFunction.integ_add {d:ℕ} {f g: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} {hg: RealSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) : (hf.add hg).integ = hf.integ + hg.integ := by
+  -- Abbreviations for the six unsigned integrals (all finite).
+  set Pfg := (hf.add hg).pos.integ with hPfg
+  set Mfg := (hf.add hg).neg.integ with hMfg
+  set Pf := hf.pos.integ with hPf
+  set Mf := hf.neg.integ with hMf
+  set Pg := hg.pos.integ with hPg
+  set Mg := hg.neg.integ with hMg
+  -- Pointwise identity: pos(f+g) + (neg f + neg g) = neg(f+g) + (pos f + pos g).
+  have hpt : EReal.pos_fun (f + g) + (EReal.neg_fun f + EReal.neg_fun g)
+      = EReal.neg_fun (f + g) + (EReal.pos_fun f + EReal.pos_fun g) := by
+    ext x
+    show (EReal.pos_fun (f+g) x) + (EReal.neg_fun f x + EReal.neg_fun g x)
+       = (EReal.neg_fun (f+g) x) + (EReal.pos_fun f x + EReal.pos_fun g x)
+    have hreal : max (f x + g x) 0 + (max (-f x) 0 + max (-g x) 0)
+        = max (-(f x + g x)) 0 + (max (f x) 0 + max (g x) 0) := by
+      rcases le_total 0 (f x) with ha | ha <;> rcases le_total 0 (g x) with hb | hb <;>
+      rcases le_total 0 (f x + g x) with hab | hab <;>
+      simp_all only [max_eq_left, max_eq_right, neg_nonneg, neg_nonpos] <;> ring_nf
+    simp only [Pi.add_apply, EReal.pos_fun, EReal.neg_fun]
+    exact_mod_cast hreal
+  -- Take integrals of both sides via unsigned additivity.
+  have hL : (hf.add hg).pos.integ + (hf.neg.integ + hg.neg.integ)
+      = (hf.add hg).neg.integ + (hf.pos.integ + hg.pos.integ) := by
+    have e1 : ((hf.add hg).pos.add (hf.neg.add hg.neg)).integ
+        = ((hf.add hg).neg.add (hf.pos.add hg.pos)).integ :=
+      UnsignedSimpleFunction.integ_congr ((hf.add hg).pos.add (hf.neg.add hg.neg))
+        ((hf.add hg).neg.add (hf.pos.add hg.pos)) hpt
+    have eL : ((hf.add hg).pos.add (hf.neg.add hg.neg)).integ
+        = (hf.add hg).pos.integ + (hf.neg.integ + hg.neg.integ) := by
+      rw [UnsignedSimpleFunction.integral_add (hf.add hg).pos (hf.neg.add hg.neg),
+          UnsignedSimpleFunction.integral_add hf.neg hg.neg]
+    have eR : ((hf.add hg).neg.add (hf.pos.add hg.pos)).integ
+        = (hf.add hg).neg.integ + (hf.pos.integ + hg.pos.integ) := by
+      rw [UnsignedSimpleFunction.integral_add (hf.add hg).neg (hf.pos.add hg.pos),
+          UnsignedSimpleFunction.integral_add hf.pos hg.pos]
+    rw [eL, eR] at e1
+    exact e1
+  -- All six integrals are finite; pass to reals.
+  have fPfg := (hf.add hg).pos_integ_lt_top (hf_integ.add hg_integ)
+  have fMfg := (hf.add hg).neg_integ_lt_top (hf_integ.add hg_integ)
+  have fPf := hf.pos_integ_lt_top hf_integ
+  have fMf := hf.neg_integ_lt_top hf_integ
+  have fPg := hg.pos_integ_lt_top hg_integ
+  have fMg := hg.neg_integ_lt_top hg_integ
+  -- nonnegativity of each integral
+  have nP : ∀ {h : EuclideanSpace' d → EReal} (hh : UnsignedSimpleFunction h), 0 ≤ hh.integ := by
+    intro h hh
+    apply Finset.sum_nonneg; intro i _
+    exact mul_nonneg (hh.choose_spec.choose_spec.choose_spec.1 i).2 (Lebesgue_outer_measure.nonneg _)
+  have nb : ∀ (a : EReal), 0 ≤ a → a ≠ ⊥ := fun a ha he => by rw [he] at ha; exact absurd ha (by simp)
+  -- ne_bot/ne_top facts for the six integrals
+  have bPfg := nb _ (nP (hf.add hg).pos); have bMfg := nb _ (nP (hf.add hg).neg)
+  have bPf := nb _ (nP hf.pos); have bMf := nb _ (nP hf.neg)
+  have bPg := nb _ (nP hg.pos); have bMg := nb _ (nP hg.neg)
+  -- convert hL to a real equation
+  have toR : Pfg.toReal + (Mf.toReal + Mg.toReal) = Mfg.toReal + (Pf.toReal + Pg.toReal) := by
+    have := congrArg EReal.toReal hL
+    rw [EReal.toReal_add (ne_of_lt fPfg) bPfg
+          (EReal.add_ne_top (ne_of_lt fMf) (ne_of_lt fMg))
+          (nb _ (add_nonneg (nP hf.neg) (nP hg.neg))),
+        EReal.toReal_add (ne_of_lt fMfg) bMfg
+          (EReal.add_ne_top (ne_of_lt fPf) (ne_of_lt fPg))
+          (nb _ (add_nonneg (nP hf.pos) (nP hg.pos))),
+        EReal.toReal_add (ne_of_lt fMf) bMf (ne_of_lt fMg) bMg,
+        EReal.toReal_add (ne_of_lt fPf) bPf (ne_of_lt fPg) bPg] at this
+    exact this
+  simp only [RealSimpleFunction.integ, ← hPfg, ← hMfg, ← hPf, ← hMf, ← hPg, ← hMg]
+  linarith [toR]
+
+/-- `RealSimpleFunction.integ` depends only on the function, not the membership proof,
+and respects equality of functions. -/
+private lemma RealSimpleFunction.integ_congr {d:ℕ} {f f': EuclideanSpace' d → ℝ}
+    (hf : RealSimpleFunction f) (hf' : RealSimpleFunction f') (h : f = f') : hf.integ = hf'.integ := by
+  simp only [RealSimpleFunction.integ]
+  rw [UnsignedSimpleFunction.integ_congr hf.pos hf'.pos (by rw [h]),
+      UnsignedSimpleFunction.integ_congr hf.neg hf'.neg (by rw [h])]
+
+/-- Re/Im of a sum split additively (as real simple functions, up to the function). -/
+private lemma ComplexSimpleFunction.re_fun_add {d:ℕ} (f g: EuclideanSpace' d → ℂ) :
+    Complex.re_fun (f + g) = Complex.re_fun f + Complex.re_fun g := by
+  ext x; simp only [Complex.re_fun, Pi.add_apply, Complex.add_re]
+
+private lemma ComplexSimpleFunction.im_fun_add {d:ℕ} (f g: EuclideanSpace' d → ℂ) :
+    Complex.im_fun (f + g) = Complex.im_fun f + Complex.im_fun g := by
+  ext x; simp only [Complex.im_fun, Pi.add_apply, Complex.add_im]
 
 lemma ComplexSimpleFunction.integ_add {d:ℕ} {f g: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} {hg: ComplexSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) : (hf.add hg).integ = hf.integ + hg.integ := by
-  sorry
+  -- absolute integrability of real/imag parts
+  have hre_ai : ∀ {h : EuclideanSpace' d → ℂ} (hh : ComplexSimpleFunction h),
+      hh.AbsolutelyIntegrable → hh.re.AbsolutelyIntegrable := by
+    intro h hh hai
+    rw [RealSimpleFunction.absolutelyIntegrable_iff]
+    rw [hh.absolutelyIntegrable_iff] at hai
+    refine lt_of_le_of_lt (Lebesgue_outer_measure.mono ?_) hai
+    intro x hx
+    simp only [Support, Set.mem_setOf_eq, Complex.re_fun] at *
+    intro hc; exact hx (by rw [hc]; simp)
+  have him_ai : ∀ {h : EuclideanSpace' d → ℂ} (hh : ComplexSimpleFunction h),
+      hh.AbsolutelyIntegrable → hh.im.AbsolutelyIntegrable := by
+    intro h hh hai
+    rw [RealSimpleFunction.absolutelyIntegrable_iff]
+    rw [hh.absolutelyIntegrable_iff] at hai
+    refine lt_of_le_of_lt (Lebesgue_outer_measure.mono ?_) hai
+    intro x hx
+    simp only [Support, Set.mem_setOf_eq, Complex.im_fun] at *
+    intro hc; exact hx (by rw [hc]; simp)
+  -- re/im of f+g equal sums; reduce via Real integ_add and integ_congr
+  have hre : (hf.add hg).re.integ = hf.re.integ + hg.re.integ := by
+    rw [RealSimpleFunction.integ_congr (hf.add hg).re (hf.re.add hg.re)
+        (ComplexSimpleFunction.re_fun_add f g),
+        RealSimpleFunction.integ_add (hre_ai hf hf_integ) (hre_ai hg hg_integ)]
+  have him : (hf.add hg).im.integ = hf.im.integ + hg.im.integ := by
+    rw [RealSimpleFunction.integ_congr (hf.add hg).im (hf.im.add hg.im)
+        (ComplexSimpleFunction.im_fun_add f g),
+        RealSimpleFunction.integ_add (him_ai hf hf_integ) (him_ai hg hg_integ)]
+  simp only [ComplexSimpleFunction.integ, hre, him]
+  push_cast
+  ring
 
 /-- Exercise 1.3.2 (i) ({lit}`*`-linearity) -/
 lemma RealSimpleFunction.integ_smul {d:ℕ} {f: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) (a: ℝ) : (hf.smul a).integ = a * hf.integ := by
-  sorry
+  -- finiteness and nonnegativity of f's pos/neg integrals
+  have nb : ∀ (b : EReal), 0 ≤ b → b ≠ ⊥ := fun b hb he => by rw [he] at hb; exact absurd hb (by simp)
+  have nP : ∀ {h : EuclideanSpace' d → EReal} (hh : UnsignedSimpleFunction h), 0 ≤ hh.integ := by
+    intro h hh
+    apply Finset.sum_nonneg; intro i _
+    exact mul_nonneg (hh.choose_spec.choose_spec.choose_spec.1 i).2 (Lebesgue_outer_measure.nonneg _)
+  have fPf := hf.pos_integ_lt_top hf_integ
+  have fMf := hf.neg_integ_lt_top hf_integ
+  -- helper: (↑c * X).toReal = c * X.toReal for finite nonneg X, c ≥ 0
+  have hmul : ∀ (c : ℝ) (X : EReal), 0 ≤ c → 0 ≤ X → X < ⊤ → ((c : EReal) * X).toReal = c * X.toReal := by
+    intro c X hc hX hXtop
+    obtain ⟨r, hr⟩ : ∃ r : ℝ, X = (r : EReal) :=
+      ⟨X.toReal, (EReal.coe_toReal (ne_of_lt hXtop) (nb X hX)).symm⟩
+    rw [hr, ← EReal.coe_mul, EReal.toReal_coe, EReal.toReal_coe]
+  rcases le_total 0 a with ha | ha
+  · -- a ≥ 0: pos(a•f)=↑a•pos f, neg(a•f)=↑a•neg f
+    have hpos : EReal.pos_fun (a • f) = (a : EReal) • EReal.pos_fun f := by
+      ext x
+      have hr : max (a * f x) 0 = a * max (f x) 0 := by rw [mul_max_of_nonneg _ _ ha, mul_zero]
+      show EReal.pos_fun (a • f) x = (a : EReal) * EReal.pos_fun f x
+      simp only [EReal.pos_fun, Pi.smul_apply, smul_eq_mul]
+      rw [hr]; exact_mod_cast rfl
+    have hneg : EReal.neg_fun (a • f) = (a : EReal) • EReal.neg_fun f := by
+      ext x
+      have hr : max (-(a * f x)) 0 = a * max (-f x) 0 := by
+        rw [← mul_neg, mul_max_of_nonneg _ _ ha, mul_zero]
+      show EReal.neg_fun (a • f) x = (a : EReal) * EReal.neg_fun f x
+      simp only [EReal.neg_fun, Pi.smul_apply, smul_eq_mul]
+      rw [hr]; exact_mod_cast rfl
+    have ePos : (hf.smul a).pos.integ = (a : EReal) * hf.pos.integ := by
+      rw [UnsignedSimpleFunction.integ_congr (hf.smul a).pos (hf.pos.smul (EReal.coe_nonneg.mpr ha)) hpos,
+          UnsignedSimpleFunction.integral_smul hf.pos (EReal.coe_nonneg.mpr ha)]
+    have eNeg : (hf.smul a).neg.integ = (a : EReal) * hf.neg.integ := by
+      rw [UnsignedSimpleFunction.integ_congr (hf.smul a).neg (hf.neg.smul (EReal.coe_nonneg.mpr ha)) hneg,
+          UnsignedSimpleFunction.integral_smul hf.neg (EReal.coe_nonneg.mpr ha)]
+    simp only [RealSimpleFunction.integ, ePos, eNeg]
+    rw [hmul a _ ha (nP hf.pos) fPf, hmul a _ ha (nP hf.neg) fMf]
+    ring
+  · -- a ≤ 0: write a = -b with b ≥ 0; pos(a•f)=↑b•neg f, neg(a•f)=↑b•pos f
+    obtain ⟨b, hb, rfl⟩ : ∃ b, 0 ≤ b ∧ a = -b := ⟨-a, by linarith, by ring⟩
+    have hpos : EReal.pos_fun ((-b) • f) = (b : EReal) • EReal.neg_fun f := by
+      ext x
+      have hr : max (-b * f x) 0 = b * max (-f x) 0 := by
+        rw [mul_max_of_nonneg _ _ hb, mul_zero, mul_neg, neg_mul]
+      show EReal.pos_fun ((-b) • f) x = (b : EReal) * EReal.neg_fun f x
+      simp only [EReal.pos_fun, EReal.neg_fun, Pi.smul_apply, smul_eq_mul]
+      rw [hr]; exact_mod_cast rfl
+    have hneg : EReal.neg_fun ((-b) • f) = (b : EReal) • EReal.pos_fun f := by
+      ext x
+      have hr : max (-(-b * f x)) 0 = b * max (f x) 0 := by
+        rw [mul_max_of_nonneg _ _ hb, mul_zero, neg_mul, neg_neg]
+      show EReal.neg_fun ((-b) • f) x = (b : EReal) * EReal.pos_fun f x
+      simp only [EReal.pos_fun, EReal.neg_fun, Pi.smul_apply, smul_eq_mul]
+      rw [hr]; exact_mod_cast rfl
+    have ePos : (hf.smul (-b)).pos.integ = (b : EReal) * hf.neg.integ := by
+      rw [UnsignedSimpleFunction.integ_congr (hf.smul (-b)).pos (hf.neg.smul (EReal.coe_nonneg.mpr hb)) hpos,
+          UnsignedSimpleFunction.integral_smul hf.neg (EReal.coe_nonneg.mpr hb)]
+    have eNeg : (hf.smul (-b)).neg.integ = (b : EReal) * hf.pos.integ := by
+      rw [UnsignedSimpleFunction.integ_congr (hf.smul (-b)).neg (hf.pos.smul (EReal.coe_nonneg.mpr hb)) hneg,
+          UnsignedSimpleFunction.integral_smul hf.pos (EReal.coe_nonneg.mpr hb)]
+    simp only [RealSimpleFunction.integ, ePos, eNeg]
+    rw [hmul b _ hb (nP hf.neg) fMf, hmul b _ hb (nP hf.pos) fPf]
+    ring
+
+/-- AbsolutelyIntegrability of the real part of a complex simple function. -/
+private lemma ComplexSimpleFunction.re_ai {d:ℕ} {h : EuclideanSpace' d → ℂ} (hh : ComplexSimpleFunction h)
+    (hai : hh.AbsolutelyIntegrable) : hh.re.AbsolutelyIntegrable := by
+  rw [RealSimpleFunction.absolutelyIntegrable_iff]
+  rw [hh.absolutelyIntegrable_iff] at hai
+  refine lt_of_le_of_lt (Lebesgue_outer_measure.mono ?_) hai
+  intro x hx
+  simp only [Support, Set.mem_setOf_eq, Complex.re_fun] at *
+  intro hc; exact hx (by rw [hc]; simp)
+
+private lemma ComplexSimpleFunction.im_ai {d:ℕ} {h : EuclideanSpace' d → ℂ} (hh : ComplexSimpleFunction h)
+    (hai : hh.AbsolutelyIntegrable) : hh.im.AbsolutelyIntegrable := by
+  rw [RealSimpleFunction.absolutelyIntegrable_iff]
+  rw [hh.absolutelyIntegrable_iff] at hai
+  refine lt_of_le_of_lt (Lebesgue_outer_measure.mono ?_) hai
+  intro x hx
+  simp only [Support, Set.mem_setOf_eq, Complex.im_fun] at *
+  intro hc; exact hx (by rw [hc]; simp)
 
 lemma ComplexSimpleFunction.integ_smul {d:ℕ} {f: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) (a: ℂ) : (hf.smul a).integ = a * hf.integ := by
-  sorry
+  -- real-simple-function pieces
+  have hRf := hf.re; have hIf := hf.im
+  have hRf_ai := hf.re_ai hf_integ; have hIf_ai := hf.im_ai hf_integ
+  -- re_fun(a•f) = a.re • re_fun f + (-a.im) • im_fun f, pointwise
+  have hre : Complex.re_fun (a • f) = a.re • Complex.re_fun f + (-a.im) • Complex.im_fun f := by
+    ext x
+    simp only [Complex.re_fun, Complex.im_fun, Pi.add_apply, Pi.smul_apply, smul_eq_mul,
+      Pi.neg_apply]
+    rw [Complex.mul_re]; ring
+  have him : Complex.im_fun (a • f) = a.re • Complex.im_fun f + a.im • Complex.re_fun f := by
+    ext x
+    simp only [Complex.im_fun, Complex.re_fun, Pi.add_apply, Pi.smul_apply, smul_eq_mul]
+    rw [Complex.mul_im]
+  -- integ of re(a•f)
+  have eRe : (hf.smul a).re.integ = a.re * hf.re.integ + (-a.im) * hf.im.integ := by
+    rw [RealSimpleFunction.integ_congr (hf.smul a).re
+        ((hRf.smul a.re).add (hIf.smul (-a.im))) hre,
+        RealSimpleFunction.integ_add (hRf_ai.smul a.re) (hIf_ai.smul (-a.im)),
+        RealSimpleFunction.integ_smul hRf_ai, RealSimpleFunction.integ_smul hIf_ai]
+  have eIm : (hf.smul a).im.integ = a.re * hf.im.integ + a.im * hf.re.integ := by
+    rw [RealSimpleFunction.integ_congr (hf.smul a).im
+        ((hIf.smul a.re).add (hRf.smul a.im)) him,
+        RealSimpleFunction.integ_add (hIf_ai.smul a.re) (hRf_ai.smul a.im),
+        RealSimpleFunction.integ_smul hIf_ai, RealSimpleFunction.integ_smul hRf_ai]
+  simp only [ComplexSimpleFunction.integ, eRe, eIm]
+  rw [Complex.ext_iff]
+  refine ⟨?_, ?_⟩ <;>
+  · push_cast
+    simp only [Complex.add_re, Complex.add_im, Complex.mul_re, Complex.mul_im, Complex.ofReal_re,
+      Complex.ofReal_im, Complex.I_re, Complex.I_im, Complex.sub_re, Complex.sub_im,
+      Complex.neg_re, Complex.neg_im]
+    ring
 
 /-- Exercise 1.3.2 (i) ({lit}`*`-linearity) -/
 lemma ComplexSimpleFunction.integral_conj {d:ℕ} {f: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) : (hf.conj).integ = (starRingEnd ℂ) hf.integ := by

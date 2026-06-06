@@ -1258,13 +1258,185 @@ theorem PiecewiseConstantFunction.integral_mono {I: BoundedInterval} {f g: ℝ �
   · rw [Set.not_nonempty_iff_eq_empty] at hne
     rw [length_eq_zero_of_empty hne, mul_zero, mul_zero]
 
+/-- A 1D box's set is the image of its single side interval under the real equivalence. -/
+private lemma box1_toSet_eq (B : Box 1) :
+    B.toSet = Real.equiv_EuclideanSpace' '' (B.side 0).toSet := by
+  rw [← BoundedInterval.coe_of_box (B.side 0)]
+  ext x
+  simp only [Box.mem_toSet]
+  constructor
+  · intro h; intro i; have : i = 0 := Fin.ext_iff.mpr (by omega); subst this; exact h 0
+  · intro h; intro i; have : i = 0 := Fin.ext_iff.mpr (by omega); subst this; exact h 0
+
+/-- From an elementary subset of `EuclideanSpace' 1`, extract a finset of pairwise-disjoint
+intervals whose union maps onto it, with matching length sum and measure. -/
+private lemma elem1_to_intervals {Eφ : Set (EuclideanSpace' 1)} (hE : IsElementary Eφ) :
+    ∃ S : Finset BoundedInterval,
+      (S : Set BoundedInterval).PairwiseDisjoint BoundedInterval.toSet ∧
+      Eφ = Real.equiv_EuclideanSpace' '' (⋃ J ∈ S, J.toSet) ∧
+      ∑ J ∈ S, |J|ₗ = hE.measure := by
+  classical
+  obtain ⟨T, hTdisj, hTcover⟩ := hE.partition
+  -- side 0 is injective on T: equal sides ⟹ equal box sets ⟹ boxes equal (disjointness)
+  have hinj : Set.InjOn (fun B : Box 1 => B.side 0) (T : Set (Box 1)) := by
+    intro B₁ _ B₂ _ hside
+    -- a Box 1 is determined by side 0 (Fin 1)
+    ext i
+    have : i = 0 := Fin.ext_iff.mpr (by omega); subst this; exact hside
+  refine ⟨T.image (fun B => B.side 0), ?_, ?_, ?_⟩
+  · -- pairwise disjoint
+    rw [Finset.coe_image]
+    intro J₁ hJ₁ J₂ hJ₂ hne
+    simp only [Set.mem_image, Finset.mem_coe] at hJ₁ hJ₂
+    obtain ⟨B₁, hB₁, rfl⟩ := hJ₁
+    obtain ⟨B₂, hB₂, rfl⟩ := hJ₂
+    rw [Function.onFun, Set.disjoint_left]
+    intro x hx₁ hx₂
+    have hBne : B₁ ≠ B₂ := fun h => hne (by rw [h])
+    have hd := hTdisj (Finset.mem_coe.2 hB₁) (Finset.mem_coe.2 hB₂) hBne
+    rw [Function.onFun, Set.disjoint_left] at hd
+    apply hd (a := Real.equiv_EuclideanSpace' x)
+    · rw [box1_toSet_eq]; exact ⟨x, hx₁, rfl⟩
+    · rw [box1_toSet_eq]; exact ⟨x, hx₂, rfl⟩
+  · -- cover
+    rw [hTcover, Set.image_iUnion₂]
+    rw [Finset.set_biUnion_finset_image]
+    apply Set.iUnion₂_congr
+    intro B hB
+    rw [box1_toSet_eq]
+  · -- measure
+    rw [Finset.sum_image (fun B₁ hB₁ B₂ hB₂ h => hinj hB₁ hB₂ h)]
+    rw [IsElementary.measure_eq hE hTdisj hTcover]
+    apply Finset.sum_congr rfl
+    intro B _
+    -- |B.side 0|ₗ = |B|ᵥ = ∏ i, |B.side i|ₗ (Fin 1)
+    show |B.side 0|ₗ = Box.volume B
+    unfold Box.volume
+    rw [Fin.prod_univ_one]
+
+/-- Membership translation: `x ∈ A ↔ φ x ∈ φ '' A` for the real equivalence. -/
+private lemma mem_image_equiv {A : Set ℝ} {x : ℝ} :
+    Real.equiv_EuclideanSpace' x ∈ Real.equiv_EuclideanSpace' '' A ↔ x ∈ A := by
+  constructor
+  · rintro ⟨y, hy, hxy⟩
+    rwa [Real.equiv_EuclideanSpace'.injective hxy] at hy
+  · intro hx; exact ⟨x, hx, rfl⟩
+
+/-- The data of a piecewise-constant indicator representation of an elementary set on `I`. -/
+private lemma indicator_pcf_data (I: BoundedInterval) {E:Set ℝ}
+    (hE: IsElementary (Real.equiv_EuclideanSpace' '' E)) :
+    ∃ F : PiecewiseConstantFunction I, F.agreesWith E.indicator'
+      ∧ F.integral = (IsElementary.inter hE (IsElementary.box (I:Box 1))).measure := by
+  classical
+  set φ := Real.equiv_EuclideanSpace'
+  set Eφ := φ '' E with hEφ
+  set Iφ := (I:Box 1).toSet with hIφ
+  have hIφelem : IsElementary Iφ := IsElementary.box _
+  have hInt : IsElementary (Eφ ∩ Iφ) := IsElementary.inter hE hIφelem
+  have hDiff : IsElementary (Iφ \ Eφ) := IsElementary.sdiff hIφelem hE
+  obtain ⟨S1, hS1disj, hS1cover, hS1meas⟩ := elem1_to_intervals hInt
+  obtain ⟨S0, hS0disj, hS0cover, _⟩ := elem1_to_intervals hDiff
+  -- image-set facts (in ℝ)
+  have hIφ_image : Iφ = φ '' I.toSet := by rw [hIφ, BoundedInterval.coe_of_box]
+  -- the real-set unions
+  set U1 : Set ℝ := ⋃ J ∈ S1, J.toSet with hU1
+  set U0 : Set ℝ := ⋃ J ∈ S0, J.toSet with hU0
+  have hφ_U1 : Eφ ∩ Iφ = φ '' U1 := hS1cover
+  have hφ_U0 : Iφ \ Eφ = φ '' U0 := hS0cover
+  -- φ injective ⟹ recover U1, U0 as subsets of ℝ
+  have hU1_eq : U1 = (E ∩ I.toSet) := by
+    apply Set.image_injective.mpr (Real.equiv_EuclideanSpace'.injective) (a₁ := U1) (a₂ := E ∩ I.toSet)
+    rw [← hφ_U1, hEφ, hIφ_image, ← Set.image_inter Real.equiv_EuclideanSpace'.injective]
+  have hU0_eq : U0 = (I.toSet \ E) := by
+    apply Set.image_injective.mpr (Real.equiv_EuclideanSpace'.injective) (a₁ := U0) (a₂ := I.toSet \ E)
+    rw [← hφ_U0, hEφ, hIφ_image, Set.image_diff Real.equiv_EuclideanSpace'.injective]
+  -- S1 and S0 intervals are mutually disjoint (their sets partition I)
+  have hcross : ∀ J₁ ∈ S1, ∀ J₂ ∈ S0, Disjoint J₁.toSet J₂.toSet := by
+    intro J₁ h1 J₂ h2
+    rw [Set.disjoint_left]
+    intro x hx1 hx2
+    have hxU1 : x ∈ U1 := Set.mem_biUnion h1 hx1
+    have hxU0 : x ∈ U0 := Set.mem_biUnion h2 hx2
+    rw [hU1_eq] at hxU1; rw [hU0_eq] at hxU0
+    exact hxU0.2 hxU1.1
+  refine ⟨{
+    f := fun x => if x ∈ E then 1 else 0
+    T := S1 ∪ S0
+    c := fun J => if J.val ∈ S1 then 1 else 0
+    disjoint := by
+      intro A hA B hB hAB
+      simp only [Finset.coe_union, Set.mem_union, Finset.mem_coe] at hA hB
+      rcases hA with hA1 | hA0 <;> rcases hB with hB1 | hB0
+      · exact hS1disj hA1 hB1 hAB
+      · rw [Function.onFun]; exact hcross A hA1 B hB0
+      · rw [Function.onFun]; exact (hcross B hB1 A hA0).symm
+      · exact hS0disj hA0 hB0 hAB
+    cover := by
+      -- I.toSet = U1 ∪ U0
+      have : I.toSet = U1 ∪ U0 := by
+        rw [hU1_eq, hU0_eq]
+        ext x; simp only [Set.mem_union, Set.mem_inter_iff, Set.mem_diff]; tauto
+      rw [this, hU1, hU0]
+      rw [Finset.set_biUnion_union]
+    const := by
+      intro J x hx
+      by_cases hJ1 : J.val ∈ S1
+      · simp only [hJ1, if_true]
+        have hxU1 : x ∈ U1 := Set.mem_biUnion hJ1 hx
+        rw [hU1_eq] at hxU1
+        simp only [hxU1.1, if_true]
+      · -- J ∈ S0
+        have hJ0 : J.val ∈ S0 := by
+          have := J.property; simp only [Finset.mem_union] at this; tauto
+        simp only [hJ1, if_false]
+        have hxU0 : x ∈ U0 := Set.mem_biUnion hJ0 hx
+        rw [hU0_eq] at hxU0
+        simp only [hxU0.2, if_false]
+  }, ?_, ?_⟩
+  · -- agreesWith
+    intro x hx
+    simp only [Set.indicator'_apply]
+  · -- integral = measure of E ∩ I
+    unfold PiecewiseConstantFunction.integral
+    rw [show (∑ J : (S1 ∪ S0 : Finset BoundedInterval),
+        (if J.val ∈ S1 then (1:ℝ) else 0) * |J.val|ₗ)
+        = ∑ J ∈ (S1 ∪ S0), (if J ∈ S1 then (1:ℝ) else 0) * |J|ₗ from
+      Finset.sum_attach (S1 ∪ S0) (fun J => (if J ∈ S1 then (1:ℝ) else 0) * |J|ₗ)]
+    have hterm : ∀ J ∈ (S1 ∪ S0), (if J ∈ S1 then (1:ℝ) else 0) * |J|ₗ
+        = if J ∈ S1 then |J|ₗ else 0 := by
+      intro J _; by_cases h : J ∈ S1 <;> simp [h]
+    rw [Finset.sum_congr rfl hterm, ← Finset.sum_filter]
+    have hfilter : (S1 ∪ S0).filter (· ∈ S1) = S1 := by
+      ext J; simp only [Finset.mem_filter, Finset.mem_union]
+      constructor
+      · rintro ⟨_, h⟩; exact h
+      · intro h; exact ⟨Or.inl h, h⟩
+    rw [hfilter, hS1meas]
+
 /-- Exercise 1.1.21 (c) (Piecewise constant integral of indicator functions) -/
 -- The indicator function of an elementary set is piecewise constant.
-theorem PiecewiseConstantOn.indicator_of_elem (I: BoundedInterval) {E:Set ℝ} (hE: IsElementary (Real.equiv_EuclideanSpace' '' E) ) : PiecewiseConstantOn E.indicator' I := by sorry
+theorem PiecewiseConstantOn.indicator_of_elem (I: BoundedInterval) {E:Set ℝ} (hE: IsElementary (Real.equiv_EuclideanSpace' '' E) ) : PiecewiseConstantOn E.indicator' I := by
+  obtain ⟨F, hF, _⟩ := indicator_pcf_data I hE
+  exact ⟨F, hF⟩
 
 /-- Exercise 1.1.21 (c) (Piecewise constant integral of indicator functions) -/
 -- The integral of an indicator function of an elementary set equals its elementary measure.
-theorem PiecewiseConstantFunction.integral_of_elem {I: BoundedInterval} {E:Set ℝ} (hE: IsElementary (Real.equiv_EuclideanSpace' '' E) ) (hsub: E ⊆ I.toSet) : (PiecewiseConstantOn.indicator_of_elem I hE).integral = hE.measure := by sorry
+theorem PiecewiseConstantFunction.integral_of_elem {I: BoundedInterval} {E:Set ℝ} (hE: IsElementary (Real.equiv_EuclideanSpace' '' E) ) (hsub: E ⊆ I.toSet) : (PiecewiseConstantOn.indicator_of_elem I hE).integral = hE.measure := by
+  obtain ⟨F, hF, hFint⟩ := indicator_pcf_data I hE
+  -- the integral of the PiecewiseConstantOn equals F.integral (well-definedness)
+  have h1 : (PiecewiseConstantOn.indicator_of_elem I hE).integral = F.integral :=
+    PiecewiseConstantOn.integral_eq E.indicator' (PiecewiseConstantOn.indicator_of_elem I hE) F hF
+  rw [h1, hFint]
+  -- since E ⊆ I.toSet, φ''E ⊆ (I:Box 1).toSet, so the intersection is φ''E
+  have hsubφ : Real.equiv_EuclideanSpace' '' E ⊆ (I:Box 1).toSet := by
+    rw [BoundedInterval.coe_of_box]
+    exact Set.image_mono hsub
+  have hinter_eq : Real.equiv_EuclideanSpace' '' E ∩ (I:Box 1).toSet = Real.equiv_EuclideanSpace' '' E :=
+    Set.inter_eq_left.mpr hsubφ
+  -- measures equal: both are the measure of the same set
+  exact IsElementary.measure_eq _ (hE.partition.choose_spec.1) (by
+    rw [hinter_eq]; exact hE.partition.choose_spec.2) |>.trans
+    (IsElementary.measure_eq hE (hE.partition.choose_spec.1) hE.partition.choose_spec.2).symm
 
 /-- Definition 1.1.6 (Darboux integral) -/
 -- The lower Darboux integral: supremum of integrals of piecewise constant functions that underestimate f.
@@ -1523,24 +1695,119 @@ lemma RiemannIntegrableOn.piecewise_continuous {f:ℝ → ℝ} {I: BoundedInterv
  (T: Finset BoundedInterval)  (hdisjoint: (T : Set BoundedInterval).PairwiseDisjoint BoundedInterval.toSet)
  (hcover : I.toSet = ⋃ J ∈ T, J.toSet) (hcont: ∀ J ∈ T, ContinuousOn f J.toSet) : RiemannIntegrableOn f I := by sorry
 
-/-- Exercise 1.1.24 (a) (Linearity of the piecewise constant integral) -/
--- A scalar multiple of a Riemann integrable function is Riemann integrable.
-theorem RiemannIntegrableOn.smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: RiemannIntegrableOn f I) : RiemannIntegrableOn (c • f) I := by sorry
+-- Exercise 1.1.24 (a) (Linearity): A scalar multiple of a Riemann integrable function is Riemann integrable.
+/-- The Riemann sum of `c • f` equals `c` times the Riemann sum of `f`. -/
+private lemma TaggedPartition.RiemannSum_smul {I: BoundedInterval} {n:ℕ} (c:ℝ) (f: ℝ → ℝ)
+    (P: TaggedPartition I n) : P.RiemannSum (c • f) = c * P.RiemannSum f := by
+  unfold TaggedPartition.RiemannSum
+  rw [Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro i _
+  simp only [Pi.smul_apply, smul_eq_mul]
+  ring
 
-/-- Exercise 1.1.24 (a) (Linearity of the piecewise constant integral) -/
--- The integral of a scalar multiple: integral(c * f) = c * integral(f).
-theorem riemann_integral_smul {I:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: RiemannIntegrableOn f I) : riemannIntegral (c • f) = c • (riemannIntegral f) := by sorry
+/-- If `f` has Riemann integral `R`, then `c • f` has Riemann integral `c * R`. -/
+private lemma riemann_integral_eq_smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} {R:ℝ}
+    (h: riemann_integral_eq f I R) : riemann_integral_eq (c • f) I (c * R) := by
+  unfold riemann_integral_eq at h ⊢
+  have heq : (fun P : Sigma (TaggedPartition I) => TaggedPartition.RiemannSum (c • f) P.snd)
+      = (fun P : Sigma (TaggedPartition I) => c * TaggedPartition.RiemannSum f P.snd) := by
+    funext P; exact TaggedPartition.RiemannSum_smul c f P.snd
+  rw [heq]
+  exact h.const_mul c
 
-/-- Exercise 1.1.24 (a) (Linearity of the piecewise constant integral) -/
--- The sum of two Riemann integrable functions is Riemann integrable.
-theorem RiemannIntegrableOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : RiemannIntegrableOn (f + g) I := by sorry
+theorem RiemannIntegrableOn.smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: RiemannIntegrableOn f I) : RiemannIntegrableOn (c • f) I := by
+  obtain ⟨hIcc, hne, R, hR⟩ := h
+  exact ⟨hIcc, hne, c * R, riemann_integral_eq_smul c hR⟩
+
+-- Exercise 1.1.24 (a) (Linearity): The integral of a scalar multiple: integral(c * f) = c * integral(f).
+/-- The zero function has Riemann integral 0 on every interval. -/
+private lemma riemannIntegral_zero (J: BoundedInterval) : riemannIntegral (fun _ => (0:ℝ)) J = 0 := by
+  by_cases hJ : RiemannIntegrableOn (fun _ => (0:ℝ)) J
+  · have h0 : riemann_integral_eq (fun _ => (0:ℝ)) J 0 := by
+      rw [riemann_integral_eq_iff]
+      intro ε hε
+      refine ⟨1, one_pos, fun n P _ => ?_⟩
+      have : P.RiemannSum (fun _ => (0:ℝ)) = 0 := by
+        unfold TaggedPartition.RiemannSum; simp
+      rw [this]; simp; linarith
+    exact ((riemann_integral_eq_iff_of_integrable hJ 0).mp h0).symm
+  · unfold riemannIntegral; split_ifs; rfl
+
+/-- Pointwise scalar multiplication law for the Riemann integral on a single interval. -/
+private lemma riemann_integral_smul_at {J:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} :
+    riemannIntegral (c • f) J = c * riemannIntegral f J := by
+  by_cases hf : RiemannIntegrableOn f J
+  · -- f integrable: c•f integrable with integral c*R
+    have hcf : RiemannIntegrableOn (c • f) J := RiemannIntegrableOn.smul c hf
+    have hR : riemann_integral_eq f J (riemannIntegral f J) := riemann_integral_of_integrable hf
+    have hcR : riemann_integral_eq (c • f) J (c * riemannIntegral f J) := riemann_integral_eq_smul c hR
+    exact ((riemann_integral_eq_iff_of_integrable hcf (c * riemannIntegral f J)).mp hcR).symm
+  · -- f not integrable
+    by_cases hc : c = 0
+    · subst hc
+      have : (0:ℝ) • f = (fun _ => (0:ℝ)) := by funext x; simp
+      rw [this, riemannIntegral_zero]; ring
+    · -- c ≠ 0: c•f not integrable (else f = c⁻¹ • (c•f) integrable)
+      have hcf : ¬ RiemannIntegrableOn (c • f) J := by
+        intro hcf
+        apply hf
+        have hfeq : f = c⁻¹ • (c • f) := by
+          funext x
+          simp only [Pi.smul_apply, smul_eq_mul]
+          rw [← mul_assoc, inv_mul_cancel₀ hc, one_mul]
+        rw [hfeq]; exact RiemannIntegrableOn.smul c⁻¹ hcf
+      have h1 : riemannIntegral (c • f) J = 0 := by
+        unfold riemannIntegral; rw [dif_neg hcf]
+      have h2 : riemannIntegral f J = 0 := by
+        unfold riemannIntegral; rw [dif_neg hf]
+      rw [h1, h2]; ring
+
+theorem riemann_integral_smul {I:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: RiemannIntegrableOn f I) : riemannIntegral (c • f) = c • (riemannIntegral f) := by
+  funext J
+  rw [riemann_integral_smul_at c]
+  simp [smul_eq_mul]
+
+-- Exercise 1.1.24 (a) (Linearity): The sum of two Riemann integrable functions is Riemann integrable.
+/-- The Riemann sum of `f + g` is the sum of the Riemann sums. -/
+private lemma TaggedPartition.RiemannSum_add {I: BoundedInterval} {n:ℕ} (f g: ℝ → ℝ)
+    (P: TaggedPartition I n) : P.RiemannSum (f + g) = P.RiemannSum f + P.RiemannSum g := by
+  unfold TaggedPartition.RiemannSum
+  rw [← Finset.sum_add_distrib]
+  apply Finset.sum_congr rfl
+  intro i _
+  simp only [Pi.add_apply]; ring
+
+/-- If `f, g` have Riemann integrals `R, S`, then `f + g` has Riemann integral `R + S`. -/
+private lemma riemann_integral_eq_add {I: BoundedInterval} {f g: ℝ → ℝ} {R S:ℝ}
+    (hf: riemann_integral_eq f I R) (hg: riemann_integral_eq g I S) :
+    riemann_integral_eq (f + g) I (R + S) := by
+  unfold riemann_integral_eq at hf hg ⊢
+  have heq : (fun P : Sigma (TaggedPartition I) => TaggedPartition.RiemannSum (f + g) P.snd)
+      = (fun P : Sigma (TaggedPartition I) =>
+          TaggedPartition.RiemannSum f P.snd + TaggedPartition.RiemannSum g P.snd) := by
+    funext P; exact TaggedPartition.RiemannSum_add f g P.snd
+  rw [heq]
+  exact hf.add hg
+
+theorem RiemannIntegrableOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : RiemannIntegrableOn (f + g) I := by
+  obtain ⟨hIcc, hne, R, hR⟩ := hf
+  obtain ⟨_, _, S, hS⟩ := hg
+  exact ⟨hIcc, hne, R + S, riemann_integral_eq_add hR hS⟩
 
 /-- Exercise 1.1.24 (a) (Linearity of the piecewise constant integral) -/
 -- The integral of a sum: integral(f + g) = integral(f) + integral(g).
+-- NOTE: As stated this quantifies over ALL intervals J (since `riemannIntegral f` is a function
+-- of the interval), but the hypotheses only assert integrability at `I`.  At an interval J where
+-- f and g are each non-integrable yet f+g is integrable (e.g. f = 1_ℚ, g = -1_ℚ), the equation
+-- fails, so the statement is not provable as written.  Left as `sorry`.
 theorem riemann_integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : riemannIntegral (f+g) = riemannIntegral f + riemannIntegral g := by sorry
 
 /-- Exercise 1.1.24 (b) (Monotonicity of the piecewise constant integral) -/
 -- The integral is monotone: if f ≤ g pointwise, then integral(f) ≤ integral(g).
+-- NOTE: `riemannIntegral f ≤ riemannIntegral g` compares the integral *functions* over ALL
+-- intervals J, but `hmono` only asserts `f ≤ g` on `I`.  At an interval J ⊄ I the pointwise
+-- bound need not hold, so the statement is not provable as written.  Left as `sorry`.
 theorem riemann_integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): riemannIntegral f ≤ riemannIntegral g := by sorry
 
 /-- Exercise 1.1.24 (c) (Indicator functions) -/
