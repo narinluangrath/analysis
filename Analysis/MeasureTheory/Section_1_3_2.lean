@@ -1800,13 +1800,13 @@ theorem UnsignedMeasurable.liminf {d:ℕ} {f: ℕ → EuclideanSpace' d → ERea
   exact UnsignedMeasurable.inf (fun i => hf (i + n))
 
 /-- Exercise 1.3.3(iv) -/
-theorem UnsignedMeasurable.aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (heq: AlmostEverywhereEqual f g) : UnsignedMeasurable g := by sorry
+theorem UnsignedMeasurable.aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg : Unsigned g) (heq: AlmostEverywhereEqual f g) : UnsignedMeasurable g := by sorry
 
 /-- Exercise 1.3.3(v) -/
-theorem UnsignedMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → EReal} (g: ℕ → EuclideanSpace' d → EReal) (hf: ∀ n, UnsignedMeasurable (g n)) (heq: PointwiseAeConvergesTo g f) : UnsignedMeasurable f := by sorry
+theorem UnsignedMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → EReal} (g: ℕ → EuclideanSpace' d → EReal) (hf: ∀ n, UnsignedMeasurable (g n)) (hfn : Unsigned f) (heq: PointwiseAeConvergesTo g f) : UnsignedMeasurable f := by sorry
 
 /-- Exercise 1.3.3(vi) -/
-theorem UnsignedMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {φ: EReal → EReal} (hφ: Continuous φ)  : UnsignedMeasurable (φ ∘ f) := by sorry
+theorem UnsignedMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {φ: EReal → EReal} (hφ: Continuous φ) (hφnn : ∀ x ≥ 0, φ x ≥ 0) : UnsignedMeasurable (φ ∘ f) := by sorry
 
 /-- Exercise 1.3.3(vii) -/
 theorem UnsignedMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) : UnsignedMeasurable (f + g) := by
@@ -3343,8 +3343,8 @@ theorem RealMeasurable.TFAE {d:ℕ} {f: EuclideanSpace' d → ℝ}:
       RealMeasurable f,
       ∃ (g: ℕ → EuclideanSpace' d → ℝ), (∀ n, RealSimpleFunction (g n)) ∧ (PointwiseAeConvergesTo g f),
       UnsignedMeasurable (EReal.pos_fun f) ∧ UnsignedMeasurable (EReal.neg_fun f),
-      ∀ U: Set ℝ, IsOpen U → MeasurableSet (f⁻¹' U),
-      ∀ K: Set ℝ, IsClosed K → MeasurableSet (f⁻¹' K)
+      ∀ U: Set ℝ, IsOpen U → LebesgueMeasurable (f⁻¹' U),
+      ∀ K: Set ℝ, IsClosed K → LebesgueMeasurable (f⁻¹' K)
     ].TFAE
   := by sorry
 
@@ -3354,8 +3354,8 @@ theorem ComplexMeasurable.TFAE {d:ℕ} {f: EuclideanSpace' d → ℂ}:
       ∃ (g: ℕ → EuclideanSpace' d → ℂ), (∀ n, ComplexSimpleFunction (g n)) ∧ (PointwiseAeConvergesTo g f),
       RealMeasurable (Complex.re_fun f) ∧ RealMeasurable (Complex.im_fun f),
       UnsignedMeasurable (EReal.pos_fun (Complex.re_fun f)) ∧ UnsignedMeasurable (EReal.neg_fun (Complex.im_fun f)) ∧ UnsignedMeasurable (EReal.pos_fun (Complex.im_fun f)) ∧ UnsignedMeasurable (EReal.neg_fun (Complex.re_fun f)),
-      ∀ U: Set ℂ, IsOpen U → MeasurableSet (f⁻¹' U),
-      ∀ K: Set ℂ, IsClosed K → MeasurableSet (f⁻¹' K)
+      ∀ U: Set ℂ, IsOpen U → LebesgueMeasurable (f⁻¹' U),
+      ∀ K: Set ℂ, IsClosed K → LebesgueMeasurable (f⁻¹' K)
     ].TFAE
   := by sorry
 

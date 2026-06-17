@@ -1006,7 +1006,7 @@ theorem PiecewiseConstantOn.smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The integral is linear: integral(c * f) = c * integral(f).
-theorem PiecewiseConstantFunction.integral_smul {I:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) : (h.smul c).integral = h.integral := by sorry
+theorem PiecewiseConstantFunction.integral_smul {I:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) : (h.smul c).integral = c • h.integral := by sorry
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The sum of two piecewise constant functions is piecewise constant.
@@ -1797,18 +1797,11 @@ theorem RiemannIntegrableOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: Rie
 
 /-- Exercise 1.1.24 (a) (Linearity of the piecewise constant integral) -/
 -- The integral of a sum: integral(f + g) = integral(f) + integral(g).
--- NOTE: As stated this quantifies over ALL intervals J (since `riemannIntegral f` is a function
--- of the interval), but the hypotheses only assert integrability at `I`.  At an interval J where
--- f and g are each non-integrable yet f+g is integrable (e.g. f = 1_ℚ, g = -1_ℚ), the equation
--- fails, so the statement is not provable as written.  Left as `sorry`.
-theorem riemann_integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : riemannIntegral (f+g) = riemannIntegral f + riemannIntegral g := by sorry
+theorem riemann_integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : riemannIntegral (f+g) I = riemannIntegral f I + riemannIntegral g I := by sorry
 
 /-- Exercise 1.1.24 (b) (Monotonicity of the piecewise constant integral) -/
 -- The integral is monotone: if f ≤ g pointwise, then integral(f) ≤ integral(g).
--- NOTE: `riemannIntegral f ≤ riemannIntegral g` compares the integral *functions* over ALL
--- intervals J, but `hmono` only asserts `f ≤ g` on `I`.  At an interval J ⊄ I the pointwise
--- bound need not hold, so the statement is not provable as written.  Left as `sorry`.
-theorem riemann_integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): riemannIntegral f ≤ riemannIntegral g := by sorry
+theorem riemann_integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): riemannIntegral f I ≤ riemannIntegral g I := by sorry
 
 /-- Exercise 1.1.24 (c) (Indicator functions) -/
 -- The indicator function of a Jordan measurable set is Riemann integrable.
