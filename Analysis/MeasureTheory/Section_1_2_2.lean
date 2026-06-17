@@ -1699,9 +1699,96 @@ example {d:ℕ} (m: Set (EuclideanSpace' d) → EReal) (h_empty: m ∅ = 0) (h_p
   calc m E = m E + 0 := by rw [add_zero]
     _ ≤ m E + m (F \ E) := by gcongr; exact h_pos _
 
+/-- For nonnegative EReal-valued families, `tsum` is monotone under pointwise `≤`. -/
+private lemma EReal.tsum_le_tsum_of_nonneg_le {f g : ℕ → EReal}
+    (hf : ∀ n, 0 ≤ f n) (h : ∀ n, f n ≤ g n) : ∑' n, f n ≤ ∑' n, g n := by
+  have hg : ∀ n, 0 ≤ g n := fun n => le_trans (hf n) (h n)
+  -- Route through ENNReal via `toENNReal`.
+  set f' : ℕ → ENNReal := fun n => (f n).toENNReal with hf'
+  set g' : ℕ → ENNReal := fun n => (g n).toENNReal with hg'
+  have hfc : ∀ n, ((f' n : EReal)) = f n := fun n => EReal.coe_toENNReal (hf n)
+  have hgc : ∀ n, ((g' n : EReal)) = g n := fun n => EReal.coe_toENNReal (hg n)
+  let φ : ENNReal →+ EReal :=
+    { toFun := fun x => (↑x : EReal), map_zero' := by simp, map_add' := EReal.coe_ennreal_add }
+  have hf_tsum : ∑' n, f n = ((∑' n, f' n : ENNReal) : EReal) := by
+    rw [← tsum_congr hfc]
+    exact ((ENNReal.summable (f := f')).hasSum.map φ continuous_coe_ennreal_ereal).tsum_eq
+  have hg_tsum : ∑' n, g n = ((∑' n, g' n : ENNReal) : EReal) := by
+    rw [← tsum_congr hgc]
+    exact ((ENNReal.summable (f := g')).hasSum.map φ continuous_coe_ennreal_ereal).tsum_eq
+  rw [hf_tsum, hg_tsum, EReal.coe_ennreal_le_coe_ennreal_iff]
+  apply ENNReal.tsum_le_tsum
+  intro n
+  simp only [hf', hg']
+  exact EReal.toENNReal_le_toENNReal (h n)
+
 /-- Exercise 1.2.12 -/
 example {d:ℕ} (m: Set (EuclideanSpace' d) → EReal) (h_empty: m ∅ = 0) (h_pos: ∀ E, 0 ≤ m E) (hadd: ∀ E: ℕ → Set (EuclideanSpace' d), (Set.univ.PairwiseDisjoint E) → (∀ n, LebesgueMeasurable (E n)) → m (⋃ n, E n) = ∑' n, m (E n)) {E: ℕ → Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)):  m (⋃ n, E n) ≤ ∑' n, m (E n) := by
-  sorry
+  classical
+  -- Local monotonicity: for measurable A ⊆ B, m A ≤ m B (same proof as Exercise 1.2.12 above).
+  have mono : ∀ {A B : Set (EuclideanSpace' d)}, A ⊆ B → LebesgueMeasurable A → LebesgueMeasurable B → m A ≤ m B := by
+    intro A B hAB hAm hBm
+    let G : ℕ → Set (EuclideanSpace' d) := fun n => if n = 0 then A else if n = 1 then B \ A else ∅
+    have hG_meas : ∀ n, LebesgueMeasurable (G n) := fun n => by
+      simp only [G]; split_ifs
+      · exact hAm
+      · rw [Set.diff_eq]; exact hBm.inter hAm.complement
+      · exact LebesgueMeasurable.empty
+    have hG_disj : Set.univ.PairwiseDisjoint G := by
+      intro i _ j _ hij
+      simp only [Function.onFun, G]
+      rcases Nat.lt_or_ge i 2 with hi | hi <;> rcases Nat.lt_or_ge j 2 with hj | hj
+      · interval_cases i <;> interval_cases j <;> simp_all [Set.disjoint_left] <;>
+          intro x hx <;> simp_all [Set.mem_diff]
+      · interval_cases i <;>
+          simp only [show ¬ j = 0 by omega, show ¬ j = 1 by omega, if_false, if_neg] <;>
+          simp [Set.disjoint_left]
+      · interval_cases j <;>
+          simp only [show ¬ i = 0 by omega, show ¬ i = 1 by omega, if_false, if_neg] <;>
+          simp [Set.disjoint_right]
+      · simp only [show ¬ i = 0 by omega, show ¬ i = 1 by omega, show ¬ j = 0 by omega,
+          show ¬ j = 1 by omega, if_false, if_neg]
+        simp
+    have hG_union : (⋃ n, G n) = B := by
+      apply Set.Subset.antisymm
+      · apply Set.iUnion_subset; intro n; simp only [G]; split_ifs
+        · exact hAB
+        · exact Set.diff_subset
+        · exact Set.empty_subset _
+      · intro x hx
+        by_cases hxA : x ∈ A
+        · exact Set.mem_iUnion.mpr ⟨0, by simp [G, hxA]⟩
+        · exact Set.mem_iUnion.mpr ⟨1, by simp [G, hx, hxA]⟩
+    have hmB : m B = ∑' n, m (G n) := by rw [← hG_union]; exact hadd G hG_disj hG_meas
+    rw [hmB]
+    have h_tsum_eq : ∑' n, m (G n) = ∑ n ∈ ({0, 1} : Finset ℕ), m (G n) := by
+      apply tsum_eq_sum
+      intro n hn
+      have hn0 : n ≠ 0 := by simp only [Finset.mem_insert, Finset.mem_singleton] at hn; tauto
+      have hn1 : n ≠ 1 := by simp only [Finset.mem_insert, Finset.mem_singleton] at hn; tauto
+      simp only [G, if_neg hn0, if_neg hn1, h_empty]
+    rw [h_tsum_eq, Finset.sum_insert (by simp), Finset.sum_singleton]
+    have hG0 : m (G 0) = m A := by simp only [G]; norm_num
+    have hG1 : m (G 1) = m (B \ A) := by simp only [G]; norm_num
+    rw [hG0, hG1]
+    calc m A = m A + 0 := by rw [add_zero]
+      _ ≤ m A + m (B \ A) := by gcongr; exact h_pos _
+  -- Disjointify: G n = E n \ ⋃_{k<n} E k.
+  set G : ℕ → Set (EuclideanSpace' d) := disjointed E with hGdef
+  have hG_meas : ∀ n, LebesgueMeasurable (G n) := by
+    intro n
+    apply disjointedRec (p := LebesgueMeasurable) (f := E) ?_ (hE n)
+    intro t i ht
+    rw [Set.diff_eq]
+    exact ht.inter (hE i).complement
+  have hG_sub : ∀ n, G n ⊆ E n := fun n => disjointed_le E n
+  have hG_disj : Set.univ.PairwiseDisjoint G := by
+    have hd := disjoint_disjointed E
+    intro i _ j _ hij; exact hd hij
+  have hG_union : (⋃ n, G n) = ⋃ n, E n := iUnion_disjointed
+  rw [← hG_union, hadd G hG_disj hG_meas]
+  -- ∑ m (G n) ≤ ∑ m (E n) since G n ⊆ E n.
+  exact EReal.tsum_le_tsum_of_nonneg_le (fun n => h_pos _) (fun n => mono (hG_sub n) (hG_meas n) (hE n))
 
 /-- Exercise 1.2.13(i) -/
 example {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} {E₀: Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)) (hpoint: ∀ x, Filter.atTop.Tendsto (fun n ↦ (E n).indicator' x) (nhds (E₀.indicator' x))) : LebesgueMeasurable E₀ := by sorry
