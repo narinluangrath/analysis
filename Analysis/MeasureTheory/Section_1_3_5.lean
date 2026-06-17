@@ -1488,10 +1488,58 @@ def UniformlyConvergesToOn {X Y:Type*} [PseudoMetricSpace Y] (f: ℕ → X → Y
 def LocallyUniformlyConvergesTo {X Y:Type*} [PseudoMetricSpace X] [PseudoMetricSpace Y] (f: ℕ → X → Y) (g: X → Y) : Prop :=
   ∀ (K: Set X), Bornology.IsBounded K → UniformlyConvergesToOn f g K
 
+/-- Helper: `UniformlyConvergesToOn` reduces to a plain ∀ x ∈ S statement. -/
+private lemma uniformlyConvergesToOn_iff {X Y:Type*} [PseudoMetricSpace Y]
+    (f: ℕ → X → Y) (g: X → Y) (S: Set X) :
+    UniformlyConvergesToOn f g S ↔ ∀ ε>0, ∃ N, ∀ n ≥ N, ∀ x ∈ S, dist (f n x) (g x) ≤ ε := by
+  unfold UniformlyConvergesToOn UniformlyConvergesTo
+  constructor
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    exact ⟨N, fun n hn x hx => hN n hn ⟨x, hx⟩⟩
+  · intro h ε hε
+    obtain ⟨N, hN⟩ := h ε hε
+    exact ⟨N, fun n hn x => hN n hn x.val x.property⟩
+
+/-- Helper: uniform convergence is monotone in the set. -/
+private lemma uniformlyConvergesToOn_mono {X Y:Type*} [PseudoMetricSpace Y]
+    {f: ℕ → X → Y} {g: X → Y} {S T: Set X} (hST: S ⊆ T)
+    (h: UniformlyConvergesToOn f g T) : UniformlyConvergesToOn f g S := by
+  rw [uniformlyConvergesToOn_iff] at h ⊢
+  intro ε hε
+  obtain ⟨N, hN⟩ := h ε hε
+  exact ⟨N, fun n hn x hx => hN n hn x (hST hx)⟩
+
 /-- Remark 1.3.22 -/
 theorem LocallyUniformlyConvergesTo.iff {d:ℕ} {Y:Type*} [PseudoMetricSpace Y] (f: ℕ → EuclideanSpace' d → Y) (g: EuclideanSpace' d → Y) :
   LocallyUniformlyConvergesTo f g ↔
-  ∀ x₀, ∃ U: Set (EuclideanSpace' d), x₀ ∈ U ∧ IsOpen U ∧ UniformlyConvergesToOn f g U := by sorry
+  ∀ x₀, ∃ U: Set (EuclideanSpace' d), x₀ ∈ U ∧ IsOpen U ∧ UniformlyConvergesToOn f g U := by
+  constructor
+  · -- local uniform convergence ⇒ neighborhood version (use an open ball, which is bounded)
+    intro h x₀
+    refine ⟨Metric.ball x₀ 1, Metric.mem_ball_self one_pos, Metric.isOpen_ball, ?_⟩
+    exact h (Metric.ball x₀ 1) Metric.isBounded_ball
+  · -- neighborhood version ⇒ local uniform convergence (compactness of bounded sets)
+    intro h K hK
+    -- the closure of K is compact in finite dimensions
+    have hcl_cpt : IsCompact (closure K) := hK.isCompact_closure
+    -- cover closure K by neighborhoods with uniform convergence
+    choose U hxU hUopen hUconv using h
+    have hcover : closure K ⊆ ⋃ x, U x := fun x _ => Set.mem_iUnion.mpr ⟨x, hxU x⟩
+    obtain ⟨t, ht⟩ := hcl_cpt.elim_finite_subcover U hUopen hcover
+    -- K is covered by finitely many U x, x ∈ t
+    have hKcover : K ⊆ ⋃ x ∈ t, U x := subset_trans subset_closure ht
+    rw [uniformlyConvergesToOn_iff]
+    intro ε hε
+    -- for each x ∈ t pick the N from uniform convergence on U x
+    have hN : ∀ x : EuclideanSpace' d, ∃ N, ∀ n ≥ N, ∀ y ∈ U x, dist (f n y) (g y) ≤ ε := by
+      intro x
+      exact (uniformlyConvergesToOn_iff f g (U x)).mp (hUconv x) ε hε
+    choose Nf hNf using hN
+    -- take the max over the finite set t
+    refine ⟨t.sup Nf, fun n hn y hy => ?_⟩
+    obtain ⟨x, hxt, hyU⟩ := Set.mem_iUnion₂.mp (hKcover hy)
+    exact hNf x n (le_trans (Finset.le_sup hxt) hn) y hyU
 
 def LocallyUniformlyConvergesToOn {X Y:Type*} [PseudoMetricSpace X] [PseudoMetricSpace Y] (f: ℕ → X → Y) (g: X → Y) (S: Set X): Prop :=
   LocallyUniformlyConvergesTo (fun n (x:S) ↦ f n x.val) (fun x ↦ g x.val)
