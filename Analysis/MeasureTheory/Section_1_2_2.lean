@@ -1126,9 +1126,67 @@ theorem LebesgueMeasurable.TFAE {d:ℕ} (E: Set (EuclideanSpace' d)) :
 
 end TFAEsection
 
+/-- A box is a Borel-measurable set: it is the intersection over coordinates of the
+preimages of measurable intervals under the (continuous) coordinate projections. -/
+private lemma Box.measurableSet {d:ℕ} (B: Box d) : MeasurableSet B.toSet := by
+  have : B.toSet = ⋂ i, (fun x : EuclideanSpace' d => x i) ⁻¹' (B.side i : Set ℝ) := by
+    ext x; simp [Box.toSet]
+  rw [this]
+  apply MeasurableSet.iInter
+  intro i
+  have hcont : Continuous (fun x : EuclideanSpace' d => x i) :=
+    (EuclideanSpace.proj i).continuous
+  have hint : MeasurableSet (B.side i : Set ℝ) := by
+    match B.side i with
+    | .Ioo a b => show MeasurableSet (Set.Ioo a b); exact measurableSet_Ioo
+    | .Icc a b => show MeasurableSet (Set.Icc a b); exact measurableSet_Icc
+    | .Ioc a b => show MeasurableSet (Set.Ioc a b); exact measurableSet_Ioc
+    | .Ico a b => show MeasurableSet (Set.Ico a b); exact measurableSet_Ico
+  exact hcont.measurable hint
+
+/-- Every elementary set is Borel-measurable (a finite union of boxes). -/
+private lemma IsElementary.measurableSet {d:ℕ} {E: Set (EuclideanSpace' d)}
+    (hE: IsElementary E) : MeasurableSet E := by
+  obtain ⟨S, rfl⟩ := hE
+  exact S.measurableSet_biUnion (fun B _ => Box.measurableSet B)
+
   /-- Exercise 1.2.8 -/
 theorem Jordan_measurable.lebesgue {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: JordanMeasurable E) : LebesgueMeasurable E := by
-  sorry
+  -- Use the criterion: E is Lebesgue measurable iff for every ε > 0 there is a
+  -- Lebesgue-measurable set E' with outer-measure of the symmetric difference ≤ ε.
+  refine ((LebesgueMeasurable.TFAE E).out 0 5).mpr ?_
+  intro ε hε
+  -- It suffices to find a *real* δ > 0 with outer(symmDiff B E) ≤ δ ≤ ε.
+  -- Choose any positive real ε' below ε (handle ε = ⊤ as well).
+  obtain ⟨ε', hε'pos, hε'le⟩ : ∃ ε' : ℝ, 0 < ε' ∧ (ε' : EReal) ≤ ε := by
+    rcases eq_top_or_lt_top ε with htop | hlt
+    · exact ⟨1, one_pos, htop ▸ le_top⟩
+    · -- ε is a finite positive EReal; it equals some positive real
+      lift ε to ℝ using ⟨ne_of_lt hlt, by
+        intro h; rw [h] at hε; exact absurd hε (by simp)⟩ with r hr
+      refine ⟨r, ?_, le_refl _⟩
+      exact_mod_cast hε
+  -- From Jordan measurability, get elementary A ⊆ E ⊆ B with (B \ A).measure ≤ ε'.
+  have hbdd := hE.1
+  have hequiv := (JordanMeasurable.equiv hbdd).out 0 1
+  obtain ⟨A, B, hA, hB, hAE, hEB, hBA⟩ := hequiv.mp hE ε' hε'pos
+  -- The witness is the elementary (hence measurable) set B.
+  refine ⟨B, hB.measurableSet.lebesgueMeasurable, ?_⟩
+  -- symmDiff B E = B \ E  (since E ⊆ B), and B \ E ⊆ B \ A.
+  have hsymm : symmDiff B E = B \ E := by
+    ext x; simp only [Set.mem_symmDiff, Set.mem_diff]
+    constructor
+    · rintro (⟨hb, hne⟩ | ⟨he, hnb⟩)
+      · exact ⟨hb, hne⟩
+      · exact absurd (hEB he) hnb
+    · rintro ⟨hb, hne⟩; exact Or.inl ⟨hb, hne⟩
+  have hsub : B \ E ⊆ B \ A := fun x ⟨hb, hne⟩ => ⟨hb, fun ha => hne (hAE ha)⟩
+  rw [hsymm]
+  calc Lebesgue_outer_measure (B \ E)
+      ≤ Lebesgue_outer_measure (B \ A) := Lebesgue_outer_measure.mono hsub
+    _ = ((hB.sdiff hA).measure : EReal) := Lebesgue_outer_measure.elementary _ (hB.sdiff hA)
+    _ ≤ (ε' : EReal) := by exact_mod_cast hBA
+    _ ≤ ε := hε'le
 
 open BoundedInterval
 
