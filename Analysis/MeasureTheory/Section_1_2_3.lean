@@ -357,5 +357,79 @@ theorem LebesgueMeasurable.nonmeasurable : ∃ E : Set (EuclideanSpace' 1), E �
 example : ∃ E F : Set (EuclideanSpace' 1), E ∩ F = ∅ ∧ Bornology.IsBounded E ∧ Bornology.IsBounded F ∧ Lebesgue_outer_measure (E ∪ F) ≠ Lebesgue_outer_measure E + Lebesgue_outer_measure F := by
   sorry
 
+/-- The 2D "lift" of the Vitali set onto the line `x 1 = 0`. -/
+private noncomputable def VitaliSet2D : Set (EuclideanSpace' 2) :=
+  { p : EuclideanSpace' 2 | p 0 ∈ VitaliSet ∧ p 1 = 0 }
+
+/-- A box in `EuclideanSpace' 2` covering `VitaliSet2D` with height `2/(n+1)`. -/
+private noncomputable def slabBox (n : ℕ) : Box 2 :=
+  ⟨![BoundedInterval.Icc 0 1, BoundedInterval.Icc (-(1/(n+1))) (1/(n+1))]⟩
+
+private lemma VitaliSet2D_subset_slab (n : ℕ) :
+    VitaliSet2D ⊆ (slabBox n).toSet := by
+  intro p hp
+  obtain ⟨hp0, hp1⟩ := hp
+  intro i
+  fin_cases i
+  · -- coordinate 0 ∈ [0,1]
+    have := VitaliSet_subset_unit_interval hp0
+    simpa [slabBox, Box.side] using this
+  · -- coordinate 1 = 0 ∈ [-1/(n+1), 1/(n+1)]
+    have hpos : (0:ℝ) ≤ 1/(n+1) := by positivity
+    simp only [slabBox, Box.side, Matrix.cons_val_one, Matrix.head_cons,
+      BoundedInterval.set_Icc, Set.mem_Icc]
+    rw [show p ⟨1, by omega⟩ = p 1 from rfl, hp1]
+    constructor <;> linarith
+
+private lemma slabBox_volume (n : ℕ) : (slabBox n).volume = 2/(n+1) := by
+  have hpos : (0:ℝ) ≤ 1/(n+1) := by positivity
+  simp only [slabBox, Box.volume, Fin.prod_univ_two, Box.side,
+    Matrix.cons_val_zero, Matrix.cons_val_one, Matrix.head_cons,
+    BoundedInterval.length, BoundedInterval.a, BoundedInterval.b]
+  rw [max_eq_left (by norm_num : (1:ℝ) - 0 ≥ 0), max_eq_left (by linarith : (1/(n+1) - (-(1/(n+1))) : ℝ) ≥ 0)]
+  ring
+
+private lemma VitaliSet2D_null : IsNull VitaliSet2D := by
+  apply le_antisymm _ (Lebesgue_outer_measure.nonneg _)
+  -- outer measure ≤ 2/(n+1) for every n
+  have hbound : ∀ n : ℕ, Lebesgue_outer_measure VitaliSet2D ≤ ((2/(n+1) : ℝ) : EReal) := by
+    intro n
+    calc Lebesgue_outer_measure VitaliSet2D
+        ≤ Lebesgue_outer_measure (slabBox n).toSet :=
+          Lebesgue_outer_measure.mono (VitaliSet2D_subset_slab n)
+      _ = ((slabBox n).volume : EReal) := by
+          rw [Lebesgue_outer_measure.elementary _ (IsElementary.box _),
+              IsElementary.measure_of_box]
+      _ = ((2/(n+1) : ℝ) : EReal) := by rw [slabBox_volume]
+  -- 2/(n+1) → 0, so outer measure ≤ 0
+  have htend_real : Filter.Tendsto (fun n : ℕ => (2/(n+1) : ℝ)) Filter.atTop (nhds 0) := by
+    have h : Filter.Tendsto (fun n : ℕ => (1/((n:ℝ)+1))) Filter.atTop (nhds 0) :=
+      tendsto_one_div_add_atTop_nhds_zero_nat
+    have heq : (fun n : ℕ => (2/(n+1) : ℝ)) = (fun n : ℕ => (1/((n:ℝ)+1)) * 2) := by
+      funext n; ring
+    rw [heq, show (0:ℝ) = 0 * 2 by ring]
+    exact h.mul_const (2:ℝ)
+  have htend : Filter.Tendsto (fun n : ℕ => ((2/(n+1) : ℝ) : EReal)) Filter.atTop (nhds 0) := by
+    rw [show (0 : EReal) = ((0:ℝ) : EReal) from rfl]
+    exact (continuous_coe_real_ereal.tendsto 0).comp htend_real
+  exact ge_of_tendsto htend (Filter.Eventually.of_forall hbound)
+
 /-- Exercise 1.2.27 (Projections of measurable sets need not be measurable) -/
-example : ∃ E : Set (EuclideanSpace' 2), LebesgueMeasurable E ∧ ¬ LebesgueMeasurable ((fun x ↦ Real.equiv_EuclideanSpace' (x 0: ℝ)) '' E) := by sorry
+example : ∃ E : Set (EuclideanSpace' 2), LebesgueMeasurable E ∧ ¬ LebesgueMeasurable ((fun x ↦ Real.equiv_EuclideanSpace' (x 0: ℝ)) '' E) := by
+  refine ⟨VitaliSet2D, VitaliSet2D_null.measurable, ?_⟩
+  -- The projection of VitaliSet2D equals the (non-measurable) lift of VitaliSet.
+  have hproj : (fun x ↦ Real.equiv_EuclideanSpace' (x 0 : ℝ)) '' VitaliSet2D
+      = Real.equiv_EuclideanSpace' '' VitaliSet := by
+    ext z
+    constructor
+    · rintro ⟨p, ⟨hp0, _⟩, rfl⟩
+      exact ⟨p 0, hp0, rfl⟩
+    · rintro ⟨v, hv, rfl⟩
+      -- build the 2D point with coord0 = v, coord1 = 0
+      refine ⟨EuclideanSpace.equiv (Fin 2) ℝ |>.symm ![v, 0], ?_, ?_⟩
+      · constructor
+        · simpa using hv
+        · simp
+      · simp
+  rw [hproj]
+  exact VitaliSet.nonmeasurable
