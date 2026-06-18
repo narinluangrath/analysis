@@ -2595,18 +2595,132 @@ lemma Lebesgue_measure.linear {d:ℕ} (A: Matrix (Fin d) (Fin d) ℝ) [Invertibl
   -- (ENNReal.ofReal |A.det| * volume E).toEReal = |A.det| * (volume E).toEReal
   rw [EReal.coe_ennreal_mul, EReal.coe_ennreal_ofReal, max_eq_left (abs_nonneg _)]
 
+open MeasureTheory
+
+/-- The product equivalence as a `MeasurableEquiv`, built as a composition of standard
+Mathlib measure-preserving equivalences. -/
+noncomputable def EuclideanSpace'.prod_measurableEquiv (d₁ d₂:ℕ) :
+    EuclideanSpace' (d₁ + d₂) ≃ᵐ EuclideanSpace' d₁ × EuclideanSpace' d₂ :=
+  -- EuclideanSpace' (d₁+d₂) ≃ᵐ (Fin (d₁+d₂) → ℝ)
+  (MeasurableEquiv.toLp 2 (Fin (d₁+d₂) → ℝ)).symm.trans <|
+  -- (Fin (d₁+d₂) → ℝ) ≃ᵐ (Fin d₁ ⊕ Fin d₂ → ℝ)
+  (MeasurableEquiv.piCongrLeft (fun _ : Fin (d₁+d₂) => ℝ) finSumFinEquiv).symm.trans <|
+  -- (Fin d₁ ⊕ Fin d₂ → ℝ) ≃ᵐ (Fin d₁ → ℝ) × (Fin d₂ → ℝ)
+  (MeasurableEquiv.sumPiEquivProdPi (fun _ : Fin d₁ ⊕ Fin d₂ => ℝ)).trans <|
+  -- (Fin d₁ → ℝ) × (Fin d₂ → ℝ) ≃ᵐ EuclideanSpace' d₁ × EuclideanSpace' d₂
+  (MeasurableEquiv.prodCongr (MeasurableEquiv.toLp 2 (Fin d₁ → ℝ))
+                             (MeasurableEquiv.toLp 2 (Fin d₂ → ℝ)))
+
+/-- The `MeasurableEquiv` agrees with `prod_equiv` as a function. -/
+lemma EuclideanSpace'.prod_measurableEquiv_eq (d₁ d₂:ℕ) :
+    ⇑(EuclideanSpace'.prod_measurableEquiv d₁ d₂) = ⇑(EuclideanSpace'.prod_equiv d₁ d₂) := by
+  funext x
+  have hstep : ∀ a : Fin d₁ ⊕ Fin d₂,
+      (MeasurableEquiv.piCongrLeft (fun _ : Fin (d₁+d₂) => ℝ) finSumFinEquiv).symm
+        (WithLp.ofLp x) a
+        = x (finSumFinEquiv a) := fun a => by
+    rw [MeasurableEquiv.piCongrLeft, MeasurableEquiv.symm, MeasurableEquiv.coe_mk,
+        Equiv.coe_fn_symm_mk]
+    exact @Equiv.piCongrLeft_symm_apply _ _ (fun _ => ℝ) finSumFinEquiv x.ofLp a
+  apply Prod.ext
+  · apply PiLp.ext; intro ⟨i, hi⟩
+    rw [EuclideanSpace'.prod_equiv]
+    simp only [EuclideanSpace'.prod_measurableEquiv, MeasurableEquiv.trans_apply,
+      MeasurableEquiv.prodCongr, MeasurableEquiv.coe_mk, Equiv.prodCongr_apply, Prod.map_fst,
+      MeasurableEquiv.coe_sumPiEquivProdPi, Equiv.sumPiEquivProdPi_apply,
+      MeasurableEquiv.coe_piCongrLeft, MeasurableEquiv.coe_toEquiv, MeasurableEquiv.coe_toLp,
+      MeasurableEquiv.coe_toLp_symm, WithLp.ofLp_toLp, Equiv.coe_fn_mk, PiLp.toLp_apply]
+    rw [hstep (Sum.inl ⟨i, hi⟩)]
+    rw [finSumFinEquiv_apply_left]; rfl
+  · apply PiLp.ext; intro ⟨i, hi⟩
+    rw [EuclideanSpace'.prod_equiv]
+    simp only [EuclideanSpace'.prod_measurableEquiv, MeasurableEquiv.trans_apply,
+      MeasurableEquiv.prodCongr, MeasurableEquiv.coe_mk, Equiv.prodCongr_apply, Prod.map_snd,
+      MeasurableEquiv.coe_sumPiEquivProdPi, Equiv.sumPiEquivProdPi_apply,
+      MeasurableEquiv.coe_piCongrLeft, MeasurableEquiv.coe_toEquiv, MeasurableEquiv.coe_toLp,
+      MeasurableEquiv.coe_toLp_symm, WithLp.ofLp_toLp, Equiv.coe_fn_mk, PiLp.toLp_apply]
+    have hidx : Fin.natAdd d₁ (⟨i, hi⟩ : Fin d₂) = (⟨i + d₁, by omega⟩ : Fin (d₁ + d₂)) := by
+      apply Fin.ext; simp only [Fin.natAdd]; omega
+    rw [hstep (Sum.inr ⟨i, hi⟩), finSumFinEquiv_apply_right, hidx]
+
+/-- The product equivalence is volume preserving. -/
+lemma EuclideanSpace'.prod_measurePreserving (d₁ d₂:ℕ) :
+    MeasureTheory.MeasurePreserving (EuclideanSpace'.prod_measurableEquiv d₁ d₂)
+      (volume : Measure (EuclideanSpace' (d₁ + d₂)))
+      (volume : Measure (EuclideanSpace' d₁ × EuclideanSpace' d₂)) := by
+  unfold EuclideanSpace'.prod_measurableEquiv
+  refine (EuclideanSpace.volume_preserving_symm_measurableEquiv_toLp _).trans ?_
+  refine (MeasureTheory.volume_measurePreserving_piCongrLeft _ finSumFinEquiv).symm.trans ?_
+  refine (MeasureTheory.volume_measurePreserving_sumPiEquivProdPi (fun _ : Fin d₁ ⊕ Fin d₂ => ℝ)).trans ?_
+  rw [show (volume : Measure (EuclideanSpace' d₁ × EuclideanSpace' d₂))
+        = (volume : Measure (EuclideanSpace' d₁)).prod volume from (Measure.volume_eq_prod _ _)]
+  exact ((EuclideanSpace.volume_preserving_symm_measurableEquiv_toLp _).symm).prod
+    ((EuclideanSpace.volume_preserving_symm_measurableEquiv_toLp _).symm)
+
+/-- volume of a product image, in terms of the product of volumes. -/
+lemma EuclideanSpace'.prod_eq_preimage {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)} :
+    EuclideanSpace'.prod E₁ E₂ = (EuclideanSpace'.prod_measurableEquiv d₁ d₂) ⁻¹' (E₁ ×ˢ E₂) := by
+  rw [EuclideanSpace'.prod, Equiv.image_eq_preimage_symm,
+      Equiv.symm_symm, ← EuclideanSpace'.prod_measurableEquiv_eq]
+
+lemma EuclideanSpace'.volume_prod_image {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)} :
+    volume (EuclideanSpace'.prod E₁ E₂) = volume E₁ * volume E₂ := by
+  rw [EuclideanSpace'.prod_eq_preimage,
+      (EuclideanSpace'.prod_measurePreserving d₁ d₂).measure_preimage_equiv,
+      Measure.volume_eq_prod, MeasureTheory.Measure.prod_prod]
+
 /-- Exercise 1.2.22 -/
 theorem Lebesgue_outer_measure.prod {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)}
-  : Lebesgue_outer_measure (EuclideanSpace'.prod E₁ E₂) ≤ Lebesgue_outer_measure E₁ * Lebesgue_outer_measure E₂ := by sorry
+  : Lebesgue_outer_measure (EuclideanSpace'.prod E₁ E₂) ≤ Lebesgue_outer_measure E₁ * Lebesgue_outer_measure E₂ := by
+  rw [Lebesgue_outer_measure_eq_volume, Lebesgue_outer_measure_eq_volume,
+      Lebesgue_outer_measure_eq_volume, EuclideanSpace'.volume_prod_image,
+      EReal.coe_ennreal_mul]
 
 /-- Exercise 1.2.22 -/
 theorem LebesgueMeasurable.prod {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)}
-  (hE₁: LebesgueMeasurable E₁) (hE₂: LebesgueMeasurable E₂) : LebesgueMeasurable (EuclideanSpace'.prod E₁ E₂) := by sorry
+  (hE₁: LebesgueMeasurable E₁) (hE₂: LebesgueMeasurable E₂) : LebesgueMeasurable (EuclideanSpace'.prod E₁ E₂) := by
+  -- E₁, E₂ are NullMeasurable; so is their product `s ×ˢ t`; transport across the volume-preserving equiv.
+  have h₁ := hE₁.nullMeasurableSet
+  have h₂ := hE₂.nullMeasurableSet
+  have hprod : MeasureTheory.NullMeasurableSet (E₁ ×ˢ E₂)
+      ((volume : Measure (EuclideanSpace' d₁)).prod volume) := h₁.prod h₂
+  -- pull back along the measure-preserving equiv
+  have hpre : MeasureTheory.NullMeasurableSet
+      (EuclideanSpace'.prod E₁ E₂)
+      (volume : Measure (EuclideanSpace' (d₁+d₂))) := by
+    rw [EuclideanSpace'.prod_eq_preimage]
+    refine hprod.preimage ?_
+    exact (EuclideanSpace'.prod_measurePreserving d₁ d₂).quasiMeasurePreserving
+  -- NullMeasurableSet ⇒ LebesgueMeasurable, via the Gδ-decomposition / measurable hull.
+  obtain ⟨F, hFmeas, hFae⟩ := hpre
+  -- E = F up to null; F measurable ⇒ LebesgueMeasurable; null sets are LebesgueMeasurable; combine.
+  have hFL : LebesgueMeasurable F := hFmeas.lebesgueMeasurable
+  have hsymm : (EuclideanSpace'.prod E₁ E₂) =ᵐ[volume] F := hFae
+  -- symmetric difference is null
+  rw [ae_eq_set] at hsymm
+  obtain ⟨h_dn, h_dn'⟩ := hsymm
+  set P := EuclideanSpace'.prod E₁ E₂ with hP
+  -- A = P \ F and B = F \ P are both null.
+  have hnullA : IsNull (P \ F) := by
+    rw [IsNull, Lebesgue_outer_measure_eq_volume, h_dn]; simp
+  have hnullB : IsNull (F \ P) := by
+    rw [IsNull, Lebesgue_outer_measure_eq_volume, h_dn']; simp
+  -- P = (F \ (F \ P)) ∪ (P \ F), and F \ (F \ P) = F ∩ (F \ P)ᶜ is measurable.
+  have hFLm : LebesgueMeasurable (F ∩ (F \ P)ᶜ) :=
+    hFL.inter hnullB.measurable.complement
+  have heq : P = (F ∩ (F \ P)ᶜ) ∪ (P \ F) := by
+    ext x; by_cases hf : x ∈ F <;> by_cases hp : x ∈ P <;> simp [hf, hp]
+  rw [heq]
+  exact hFLm.union hnullA.measurable
 
 /-- Exercise 1.2.22 -/
 theorem Lebesgue_measure.prod {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)}
   (hE₁: LebesgueMeasurable E₁) (hE₂: LebesgueMeasurable E₂)
-  : Lebesgue_measure (EuclideanSpace'.prod E₁ E₂) = Lebesgue_measure E₁ * Lebesgue_measure E₂ := by sorry
+  : Lebesgue_measure (EuclideanSpace'.prod E₁ E₂) = Lebesgue_measure E₁ * Lebesgue_measure E₂ := by
+  unfold Lebesgue_measure
+  rw [Lebesgue_outer_measure_eq_volume, Lebesgue_outer_measure_eq_volume,
+      Lebesgue_outer_measure_eq_volume, EuclideanSpace'.volume_prod_image,
+      EReal.coe_ennreal_mul]
 
 /-- Exercise 1.2.23 (Uniqueness of Lebesgue measure) -/
 theorem Lebesgue_measure.unique {d:ℕ} (m: Set (EuclideanSpace' d) → EReal)
