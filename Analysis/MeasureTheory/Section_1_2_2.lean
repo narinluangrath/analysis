@@ -898,6 +898,95 @@ lemma LebesgueMeasurable.closedBall {d : ℕ} (c : EuclideanSpace' d) (r : ℝ) 
     LebesgueMeasurable (Metric.closedBall c r) :=
   Metric.isClosed_closedBall.measurable
 
+section TFAEsection
+open MeasureTheory
+
+/-- Helper (up-to-null reverse bridge): every LebesgueMeasurable set is NullMeasurableSet
+    for Mathlib's volume.  Enclose E in a Gdelta set of open supersets, obtaining a measurable
+    set agreeing with E up to a null set. -/
+private lemma LebesgueMeasurable.nullMeasurableSet {d:ℕ} {E: Set (EuclideanSpace' d)}
+    (hE: LebesgueMeasurable E) : NullMeasurableSet E (volume : Measure (EuclideanSpace' d)) := by
+  have h_eps_pos : ∀ n : ℕ, (0 : EReal) < 1 / (n + 1 : ℕ) := fun n => by
+    have h1 : (0 : EReal) < 1 := EReal.coe_pos.mpr (by norm_num : (0 : ℝ) < 1)
+    have h2 : (0 : EReal) < (n + 1 : ℕ) := by
+      simp only [Nat.cast_add, Nat.cast_one]
+      exact EReal.coe_pos.mpr (by linarith : (0 : ℝ) < n + 1)
+    exact EReal.div_pos h1 h2 (EReal.coe_ne_top _)
+  choose U hU_open hE_sub_U hU_diff using fun n => hE (1 / (n + 1 : ℕ)) (h_eps_pos n)
+  set F := ⋂ n, U n with hFdef
+  have hF_meas : MeasurableSet F := MeasurableSet.iInter (fun n => (hU_open n).measurableSet)
+  have hE_sub_F : E ⊆ F := Set.subset_iInter hE_sub_U
+  -- volume (F \ E) = 0
+  have h_diff_null : volume (F \ E) = 0 := by
+    -- m*(F\E) ≤ 1/(n+1) for all n, hence 0
+    have hbound : ∀ n : ℕ, Lebesgue_outer_measure (F \ E) ≤ 1 / (n + 1 : ℕ) := fun n =>
+      calc Lebesgue_outer_measure (F \ E)
+          ≤ Lebesgue_outer_measure (U n \ E) :=
+            Lebesgue_outer_measure.mono (Set.diff_subset_diff_left (Set.iInter_subset U n))
+        _ ≤ 1 / (n + 1 : ℕ) := hU_diff n
+    have h_null : Lebesgue_outer_measure (F \ E) = 0 := by
+      apply le_antisymm _ (Lebesgue_outer_measure.nonneg _)
+      by_contra h_ne
+      push_neg at h_ne
+      obtain ⟨ε, hε_pos, hε_le⟩ : ∃ ε : ℝ, 0 < ε ∧ (ε : EReal) ≤ Lebesgue_outer_measure (F \ E) := by
+        cases hm : Lebesgue_outer_measure (F \ E) with
+        | bot => rw [hm] at h_ne; exact absurd h_ne (not_lt.mpr bot_le)
+        | top => exact ⟨1, one_pos, le_top⟩
+        | coe r =>
+          rw [hm] at h_ne
+          exact ⟨r, EReal.coe_pos.mp h_ne, le_refl _⟩
+      obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
+      have hNp1_pos : (0 : ℝ) < (N : ℝ) + 1 := by positivity
+      have hN1 : 1 / ((N : ℝ) + 1) < ε := by
+        have h1 : 1 / ε < (N : ℝ) + 1 := lt_of_lt_of_le hN (by norm_cast; exact Nat.le_succ N)
+        rw [one_div_lt hNp1_pos hε_pos]; exact h1
+      have h_eq : (1 : EReal) / (N + 1 : ℕ) = ↑(1 / ((N : ℝ) + 1)) := by
+        rw [EReal.coe_div, EReal.coe_one]; norm_cast
+      have h_bound : Lebesgue_outer_measure (F \ E) ≤ ↑(1 / ((N : ℝ) + 1)) := h_eq ▸ hbound N
+      exact absurd (lt_of_le_of_lt (hε_le.trans h_bound) (EReal.coe_lt_coe_iff.mpr hN1))
+        (lt_irrefl _)
+    -- transfer to volume
+    have := Lebesgue_outer_measure_eq_volume (F \ E)
+    rw [h_null] at this
+    have hzero : ((volume (F \ E)).toEReal) = (0 : EReal) := this.symm
+    have : volume (F \ E) = 0 := by
+      have := EReal.coe_ennreal_eq_zero.mp (by simpa using hzero)
+      exact this
+    exact this
+  -- E =ᵐ F, F measurable ⇒ E nullmeasurable
+  have hae : F =ᵐ[volume] E := by
+    rw [ae_eq_set]
+    refine ⟨h_diff_null, ?_⟩
+    -- E \ F = ∅ since E ⊆ F
+    rw [Set.diff_eq_empty.mpr hE_sub_F]; simp
+  exact (MeasurableSet.nullMeasurableSet (μ := (volume : Measure (EuclideanSpace' d))) hF_meas).congr hae
+
+/-- A set of `volume` zero is `IsNull`. -/
+private lemma IsNull.of_volume_zero {d:ℕ} {N : Set (EuclideanSpace' d)}
+    (hN : volume N = 0) : IsNull N := by
+  unfold IsNull
+  rw [Lebesgue_outer_measure_eq_volume, hN]
+  simp
+
+-- A null-measurable set (w.r.t. `volume`) is `LebesgueMeasurable`.
+private lemma LebesgueMeasurable.of_nullMeasurableSet {d:ℕ} {E : Set (EuclideanSpace' d)}
+    (hE : NullMeasurableSet E (volume : Measure (EuclideanSpace' d))) : LebesgueMeasurable E := by
+  obtain ⟨t, ht_sup, ht_meas, ht_ae⟩ := hE.exists_measurable_superset_ae_eq
+  -- N := t \ E is null (volume-zero), and E, t agree outside N.
+  set N := t \ E with hNdef
+  have hN_null : IsNull N := by
+    apply IsNull.of_volume_zero
+    have := (ae_eq_set.mp ht_ae).1   -- volume (t \ E) = 0
+    exact this
+  -- E ∩ Nᶜ = t ∩ Nᶜ
+  have h_eq : E ∩ Nᶜ = t ∩ Nᶜ := by
+    ext x
+    simp only [Set.mem_inter_iff, Set.mem_compl_iff, hNdef, Set.mem_diff, not_and, not_not]
+    constructor
+    · rintro ⟨hxE, _⟩; exact ⟨ht_sup hxE, fun _ => hxE⟩
+    · rintro ⟨hxt, himp⟩; exact ⟨himp hxt, fun _ => himp hxt⟩
+  exact LebesgueMeasurable.of_ae_eq (ht_meas.lebesgueMeasurable) hN_null h_eq
+
 /-- Exercise 1.2.7 (Criteria for measurability)-/
 theorem LebesgueMeasurable.TFAE {d:ℕ} (E: Set (EuclideanSpace' d)) :
     [
@@ -908,7 +997,134 @@ theorem LebesgueMeasurable.TFAE {d:ℕ} (E: Set (EuclideanSpace' d)) :
       (∀ ε > 0, ∃ F: Set (EuclideanSpace' d), IsClosed F ∧ Lebesgue_outer_measure (symmDiff F E) ≤ ε),
       (∀ ε > 0, ∃ E': Set (EuclideanSpace' d), LebesgueMeasurable E' ∧ Lebesgue_outer_measure (symmDiff E' E) ≤ ε)
     ].TFAE
-  := by sorry
+  := by
+  tfae_have h12 : 1 → 2 := fun h => h
+  -- 2 → 3 : open `U ⊇ E`, so `symmDiff U E = U \ E`.
+  tfae_have h23 : 2 → 3 := by
+    intro h ε hε
+    obtain ⟨U, hU_open, hEU, hUdiff⟩ := h ε hε
+    refine ⟨U, hU_open, ?_⟩
+    have hsymm : symmDiff U E = U \ E := by
+      ext x; simp only [Set.mem_symmDiff, Set.mem_diff]
+      constructor
+      · rintro (⟨hu, hne⟩ | ⟨he, hnu⟩)
+        · exact ⟨hu, hne⟩
+        · exact absurd (hEU he) hnu
+      · rintro ⟨hu, hne⟩; exact Or.inl ⟨hu, hne⟩
+    rw [hsymm]; exact hUdiff
+  -- 3 → 6 : an open set is Lebesgue measurable, so it serves as the measurable witness.
+  tfae_have h36 : 3 → 6 := by
+    intro h ε hε
+    obtain ⟨U, hU_open, hUsymm⟩ := h ε hε
+    exact ⟨U, hU_open.measurable, hUsymm⟩
+  -- 1 → 4 : apply (1→2) to `Eᶜ`; its open superset's complement is a closed subset of `E`.
+  tfae_have h14 : 1 → 4 := by
+    intro h ε hε
+    have hEc : LebesgueMeasurable Eᶜ := h.complement
+    obtain ⟨U, hU_open, hEcU, hUdiff⟩ := hEc ε hε
+    refine ⟨Uᶜ, hU_open.isClosed_compl, ?_, ?_⟩
+    · -- Uᶜ ⊆ E  (from Eᶜ ⊆ U)
+      intro x hx
+      by_contra hxE
+      exact hx (hEcU hxE)
+    · -- E \ Uᶜ = U \ Eᶜ
+      have hset : E \ Uᶜ = U \ Eᶜ := by
+        ext x; simp only [Set.mem_diff, Set.mem_compl_iff, not_not]; tauto
+      rw [hset]; exact hUdiff
+  -- 4 → 5 : closed `F ⊆ E`, so `symmDiff F E = E \ F`.
+  tfae_have h45 : 4 → 5 := by
+    intro h ε hε
+    obtain ⟨F, hF_closed, hFE, hFdiff⟩ := h ε hε
+    refine ⟨F, hF_closed, ?_⟩
+    have hsymm : symmDiff F E = E \ F := by
+      ext x; simp only [Set.mem_symmDiff, Set.mem_diff]
+      constructor
+      · rintro (⟨hf, hne⟩ | ⟨he, hnf⟩)
+        · exact absurd (hFE hf) hne
+        · exact ⟨he, hnf⟩
+      · rintro ⟨he, hnf⟩; exact Or.inr ⟨he, hnf⟩
+    rw [hsymm]; exact hFdiff
+  -- 5 → 6 : a closed set is Lebesgue measurable.
+  tfae_have h56 : 5 → 6 := by
+    intro h ε hε
+    obtain ⟨F, hF_closed, hFsymm⟩ := h ε hε
+    exact ⟨F, hF_closed.measurable, hFsymm⟩
+  -- 6 → 1 : approximation in symmetric difference by measurable sets ⇒ measurable.
+  tfae_have h61 : 6 → 1 := by
+    intro h
+    -- Choose measurable `Eₙ` with `m*(symmDiff Eₙ E) ≤ 1/2^(n+1)` (summable bound).
+    have heps : ∀ n : ℕ, (0:EReal) < ((1/2^(n+1) : ℝ) : EReal) := fun n => by
+      rw [EReal.coe_pos]; positivity
+    choose En hEn_meas hEn_diff using fun n => h ((1/2^(n+1) : ℝ) : EReal) (heps n)
+    -- volume bound on `symmDiff Eₙ E`.
+    have hvol_le : ∀ n, volume (symmDiff (En n) E) ≤ ENNReal.ofReal (1/2^(n+1)) := by
+      intro n
+      have hd := hEn_diff n
+      rw [Lebesgue_outer_measure_eq_volume] at hd
+      -- hd : (volume (symmDiff (En n) E)).toEReal ≤ ((1/2^(n+1):ℝ):EReal)
+      have hcoe : ((1/2^(n+1) : ℝ) : EReal) = ((ENNReal.ofReal (1/2^(n+1))).toEReal) := by
+        rw [EReal.coe_ennreal_ofReal, max_eq_left (by positivity)]
+      rw [hcoe, EReal.coe_ennreal_le_coe_ennreal_iff] at hd
+      exact hd
+    -- summable, so Borel–Cantelli applies.
+    have hsum : ∑' n, volume (symmDiff (En n) E) ≠ ⊤ := by
+      have hgeo : ∑' n : ℕ, ENNReal.ofReal (1/2^(n+1)) ≠ ⊤ := by
+        have heq : (fun n : ℕ => ENNReal.ofReal (1/2^(n+1)))
+            = (fun n => (2⁻¹ : ENNReal) ^ (n+1)) := by
+          funext n
+          rw [show (1/2^(n+1) : ℝ) = (2⁻¹ : ℝ)^(n+1) by rw [one_div, inv_pow],
+            ENNReal.ofReal_pow (by norm_num),
+            show ENNReal.ofReal (2⁻¹ : ℝ) = (2⁻¹ : ENNReal) by
+              rw [ENNReal.ofReal_inv_of_pos (by norm_num), ENNReal.ofReal_ofNat]]
+        rw [heq]
+        have : ∑' n : ℕ, (2⁻¹ : ENNReal) ^ (n+1) ≤ ∑' n : ℕ, (2⁻¹ : ENNReal) ^ n :=
+          ENNReal.tsum_le_tsum (fun n => pow_le_pow_right_of_le_one'
+            (by norm_num) (Nat.le_succ n))
+        refine ne_top_of_le_ne_top ?_ this
+        rw [ENNReal.tsum_geometric]
+        simp
+      exact ne_top_of_le_ne_top hgeo (ENNReal.tsum_le_tsum hvol_le)
+    -- limsup of the `Eₙ` is null-measurable and agrees with `E` off a null set.
+    set G := Filter.limsup En Filter.atTop with hG
+    have hGmeas : NullMeasurableSet G (volume : Measure (EuclideanSpace' d)) := by
+      rw [hG, Filter.limsup_eq_iInf_iSup_of_nat']
+      exact NullMeasurableSet.iInter (fun n => NullMeasurableSet.iUnion
+        (fun i => ((hEn_meas (i+n)).nullMeasurableSet)))
+    -- a.e. x: eventually x ∉ symmDiff Eₙ E.
+    have hae := MeasureTheory.ae_eventually_notMem (μ := (volume : Measure (EuclideanSpace' d)))
+      (s := fun n => symmDiff (En n) E) hsum
+    -- Off the null set, x ∈ G ↔ x ∈ E, hence G =ᵐ E.
+    have hGE : G =ᵐ[volume] E := by
+      filter_upwards [hae] with x hx
+      simp only [eq_iff_iff]
+      -- eventually for n: x ∈ Eₙ ↔ x ∈ E
+      have hev : ∀ᶠ n in Filter.atTop, (x ∈ En n ↔ x ∈ E) := by
+        filter_upwards [hx] with n hn
+        have hns : x ∉ symmDiff (En n) E := hn
+        rw [Set.mem_symmDiff] at hns
+        push_neg at hns
+        constructor
+        · intro hxEn; exact hns.1 hxEn
+        · intro hxE; exact hns.2 hxE
+      obtain ⟨N, hN⟩ := Filter.eventually_atTop.mp hev
+      show x ∈ G ↔ x ∈ E
+      have hmem : x ∈ G ↔ ∀ n, ∃ i, x ∈ En (i + n) := by
+        rw [hG, Filter.limsup_eq_iInf_iSup_of_nat', Set.iInf_eq_iInter]
+        rw [Set.mem_iInter]
+        refine forall_congr' (fun n => ?_)
+        rw [Set.iSup_eq_iUnion, Set.mem_iUnion]
+      rw [hmem]
+      constructor
+      · intro hG'
+        obtain ⟨i, hi⟩ := hG' N
+        exact (hN (i+N) (Nat.le_add_left N i)).mp hi
+      · intro hxE n
+        exact ⟨N, (hN (N+n) (Nat.le_add_right N n)).mpr hxE⟩
+    -- conclude E is null-measurable, hence Lebesgue measurable.
+    exact LebesgueMeasurable.of_nullMeasurableSet (hGmeas.congr hGE)
+  tfae_finish
+
+end TFAEsection
 
   /-- Exercise 1.2.8 -/
 theorem Jordan_measurable.lebesgue {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: JordanMeasurable E) : LebesgueMeasurable E := by
@@ -1653,66 +1869,6 @@ theorem Lebesgue_measure.upward_monotone_convergence {d:ℕ} {E: ℕ → Set (Eu
     unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume _
   rw [heq2]
   exact hereal
-
-/-- Helper (up-to-null reverse bridge): every LebesgueMeasurable set is NullMeasurableSet
-    for Mathlib's volume.  Enclose E in a Gdelta set of open supersets, obtaining a measurable
-    set agreeing with E up to a null set. -/
-private lemma LebesgueMeasurable.nullMeasurableSet {d:ℕ} {E: Set (EuclideanSpace' d)}
-    (hE: LebesgueMeasurable E) : NullMeasurableSet E (volume : Measure (EuclideanSpace' d)) := by
-  have h_eps_pos : ∀ n : ℕ, (0 : EReal) < 1 / (n + 1 : ℕ) := fun n => by
-    have h1 : (0 : EReal) < 1 := EReal.coe_pos.mpr (by norm_num : (0 : ℝ) < 1)
-    have h2 : (0 : EReal) < (n + 1 : ℕ) := by
-      simp only [Nat.cast_add, Nat.cast_one]
-      exact EReal.coe_pos.mpr (by linarith : (0 : ℝ) < n + 1)
-    exact EReal.div_pos h1 h2 (EReal.coe_ne_top _)
-  choose U hU_open hE_sub_U hU_diff using fun n => hE (1 / (n + 1 : ℕ)) (h_eps_pos n)
-  set F := ⋂ n, U n with hFdef
-  have hF_meas : MeasurableSet F := MeasurableSet.iInter (fun n => (hU_open n).measurableSet)
-  have hE_sub_F : E ⊆ F := Set.subset_iInter hE_sub_U
-  -- volume (F \ E) = 0
-  have h_diff_null : volume (F \ E) = 0 := by
-    -- m*(F\E) ≤ 1/(n+1) for all n, hence 0
-    have hbound : ∀ n : ℕ, Lebesgue_outer_measure (F \ E) ≤ 1 / (n + 1 : ℕ) := fun n =>
-      calc Lebesgue_outer_measure (F \ E)
-          ≤ Lebesgue_outer_measure (U n \ E) :=
-            Lebesgue_outer_measure.mono (Set.diff_subset_diff_left (Set.iInter_subset U n))
-        _ ≤ 1 / (n + 1 : ℕ) := hU_diff n
-    have h_null : Lebesgue_outer_measure (F \ E) = 0 := by
-      apply le_antisymm _ (Lebesgue_outer_measure.nonneg _)
-      by_contra h_ne
-      push_neg at h_ne
-      obtain ⟨ε, hε_pos, hε_le⟩ : ∃ ε : ℝ, 0 < ε ∧ (ε : EReal) ≤ Lebesgue_outer_measure (F \ E) := by
-        cases hm : Lebesgue_outer_measure (F \ E) with
-        | bot => rw [hm] at h_ne; exact absurd h_ne (not_lt.mpr bot_le)
-        | top => exact ⟨1, one_pos, le_top⟩
-        | coe r =>
-          rw [hm] at h_ne
-          exact ⟨r, EReal.coe_pos.mp h_ne, le_refl _⟩
-      obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
-      have hNp1_pos : (0 : ℝ) < (N : ℝ) + 1 := by positivity
-      have hN1 : 1 / ((N : ℝ) + 1) < ε := by
-        have h1 : 1 / ε < (N : ℝ) + 1 := lt_of_lt_of_le hN (by norm_cast; exact Nat.le_succ N)
-        rw [one_div_lt hNp1_pos hε_pos]; exact h1
-      have h_eq : (1 : EReal) / (N + 1 : ℕ) = ↑(1 / ((N : ℝ) + 1)) := by
-        rw [EReal.coe_div, EReal.coe_one]; norm_cast
-      have h_bound : Lebesgue_outer_measure (F \ E) ≤ ↑(1 / ((N : ℝ) + 1)) := h_eq ▸ hbound N
-      exact absurd (lt_of_le_of_lt (hε_le.trans h_bound) (EReal.coe_lt_coe_iff.mpr hN1))
-        (lt_irrefl _)
-    -- transfer to volume
-    have := Lebesgue_outer_measure_eq_volume (F \ E)
-    rw [h_null] at this
-    have hzero : ((volume (F \ E)).toEReal) = (0 : EReal) := this.symm
-    have : volume (F \ E) = 0 := by
-      have := EReal.coe_ennreal_eq_zero.mp (by simpa using hzero)
-      exact this
-    exact this
-  -- E =ᵐ F, F measurable ⇒ E nullmeasurable
-  have hae : F =ᵐ[volume] E := by
-    rw [ae_eq_set]
-    refine ⟨h_diff_null, ?_⟩
-    -- E \ F = ∅ since E ⊆ F
-    rw [Set.diff_eq_empty.mpr hE_sub_F]; simp
-  exact (MeasurableSet.nullMeasurableSet (μ := (volume : Measure (EuclideanSpace' d))) hF_meas).congr hae
 
 /-- Exercise 1.2.11(b) (Downward monotone convergence)-/
 theorem Lebesgue_measure.downward_monotone_convergence {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)) (hmono: ∀ n, E (n+1) ⊆ E n) (hfin: ∃ n, Lebesgue_measure (E n) < ⊤) : Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure (⋂ n, E n))) := by
