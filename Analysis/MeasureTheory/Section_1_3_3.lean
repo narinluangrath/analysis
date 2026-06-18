@@ -832,9 +832,108 @@ theorem LowerUnsignedLebesgueIntegral.add {d:ℕ} {f g: EuclideanSpace' d → ER
   · -- ≥: from superadditivity
     exact LowerUnsignedLebesgueIntegral.superadditive hf hg
 
+open MeasureTheory in
+/-- Measurability bridge: every Mathlib-`MeasurableSet` (Borel) set is `LebesgueMeasurable`
+    in the bespoke (outer-regularity) sense.  Proved via `volume`'s outer regularity, decomposing
+    into the finite-measure pieces `E ∩ closedBall 0 n`. -/
+private lemma MeasurableSet.lebesgueMeasurable {d:ℕ} {E: Set (EuclideanSpace' d)}
+    (hE: MeasurableSet E) : LebesgueMeasurable E := by
+  intro ε hε
+  -- Pick a real bound ε' > 0 with (ε':EReal) ≤ ε.
+  obtain ⟨ε', hε'0, hε'le⟩ : ∃ ε':ℝ, 0 < ε' ∧ (ε':EReal) ≤ ε := by
+    rcases lt_or_ge ε ⊤ with hεt | hεt
+    · have hεbot : ε ≠ ⊥ := ne_of_gt (lt_trans EReal.bot_lt_zero hε)
+      have hr : ((ε.toReal:ℝ):EReal) = ε := EReal.coe_toReal (ne_of_lt hεt) hεbot
+      have hpos : 0 < ε.toReal := by
+        rw [← EReal.coe_lt_coe_iff, hr, EReal.coe_zero]; exact hε
+      exact ⟨ε.toReal, hpos, le_of_eq hr⟩
+    · exact ⟨1, by norm_num, le_top.trans hεt⟩
+  -- Work with volume.  For each n, E ∩ closedBall 0 n has finite volume; get open Uₙ.
+  set εn : ℕ → ENNReal := fun n => ENNReal.ofReal ε' / 2 ^ (n+1) with hεn
+  have hεn_pos : ∀ n, εn n ≠ 0 := by
+    intro n
+    simp only [hεn]
+    rw [ne_eq, ENNReal.div_eq_zero_iff]
+    push_neg
+    refine ⟨?_, ?_⟩
+    · simp [ENNReal.ofReal_eq_zero, not_le, hε'0]
+    · exact (ENNReal.pow_ne_top (by norm_num))
+  have hball_fin : ∀ n:ℕ, volume (E ∩ Metric.closedBall (0:EuclideanSpace' d) n) ≠ ⊤ := by
+    intro n
+    have hb : volume (Metric.closedBall (0:EuclideanSpace' d) (n:ℝ)) ≠ ⊤ :=
+      (isCompact_closedBall 0 (n:ℝ)).measure_lt_top.ne
+    exact ne_top_of_le_ne_top hb (measure_mono Set.inter_subset_right)
+  have hUchoice : ∀ n:ℕ, ∃ U, U ⊇ (E ∩ Metric.closedBall (0:EuclideanSpace' d) n) ∧ IsOpen U ∧
+      volume U < ⊤ ∧ volume (U \ (E ∩ Metric.closedBall (0:EuclideanSpace' d) n)) < εn n := by
+    intro n
+    exact (hE.inter measurableSet_closedBall).exists_isOpen_diff_lt (hball_fin n) (hεn_pos n)
+  choose U hUsup hUopen hUfin hUdiff using hUchoice
+  -- The union ⋃ Uₙ is open, contains E, and (⋃Uₙ) \ E ⊆ ⋃ (Uₙ \ (E ∩ ballₙ)).
+  refine ⟨⋃ n, U n, isOpen_iUnion hUopen, ?_, ?_⟩
+  · intro x hx
+    -- x ∈ some closedBall m
+    obtain ⟨m, hm⟩ := exists_nat_ge ‖x‖
+    refine Set.mem_iUnion.mpr ⟨m, hUsup m ⟨hx, ?_⟩⟩
+    simp only [Metric.mem_closedBall, dist_zero_right]; exact hm
+  · -- bound the outer measure of (⋃Uₙ)\E
+    have hsub : (⋃ n, U n) \ E ⊆ ⋃ n, (U n \ (E ∩ Metric.closedBall (0:EuclideanSpace' d) n)) := by
+      intro x hx
+      obtain ⟨hxU, hxE⟩ := hx
+      obtain ⟨n, hn⟩ := Set.mem_iUnion.mp hxU
+      exact Set.mem_iUnion.mpr ⟨n, hn, fun h => hxE h.1⟩
+    have hvol_bound : volume ((⋃ n, U n) \ E) ≤ ENNReal.ofReal ε' := by
+      calc volume ((⋃ n, U n) \ E)
+          ≤ volume (⋃ n, (U n \ (E ∩ Metric.closedBall (0:EuclideanSpace' d) n))) :=
+            measure_mono hsub
+        _ ≤ ∑' n, volume (U n \ (E ∩ Metric.closedBall (0:EuclideanSpace' d) n)) :=
+            measure_iUnion_le _
+        _ ≤ ∑' n, εn n := ENNReal.tsum_le_tsum (fun n => (hUdiff n).le)
+        _ = ENNReal.ofReal ε' := by
+            have hrw : (fun n:ℕ => εn n) = (fun n => (ENNReal.ofReal ε' * 2⁻¹) * (2⁻¹:ENNReal)^n) := by
+              funext n
+              simp only [hεn]
+              rw [div_eq_mul_inv, ENNReal.inv_pow, pow_succ, mul_comm ((2:ENNReal)⁻¹^n) (2⁻¹),
+                  ← mul_assoc]
+            rw [hrw, ENNReal.tsum_mul_left, ENNReal.tsum_geometric_two, mul_assoc,
+                ENNReal.inv_mul_cancel (by norm_num) (by norm_num), mul_one]
+    -- transfer back to Lebesgue_outer_measure (EReal)
+    calc Lebesgue_outer_measure ((⋃ n, U n) \ E)
+        = ((volume ((⋃ n, U n) \ E)).toEReal) := Lebesgue_outer_measure_eq_volume _
+      _ ≤ ((ENNReal.ofReal ε').toEReal) := by
+          rw [EReal.coe_ennreal_le_coe_ennreal_iff]; exact hvol_bound
+      _ = (ε':EReal) := by
+          rw [show ((ENNReal.ofReal ε').toEReal) = ((ENNReal.ofReal ε').toReal : EReal) from
+              (EReal.coe_toReal (by simp [ENNReal.ofReal_ne_top]) (by simp)).symm.trans (by
+                rw [EReal.toReal_coe_ennreal])]
+          rw [ENNReal.toReal_ofReal hε'0.le]
+      _ ≤ ε := hε'le
+
 /-- Exercise 1.3.12 (Upper Lebesgue integral and outer measure)-/
 theorem UpperUnsignedLebesgueIntegral.eq_outer_measure_integral {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: MeasurableSet E) :
-    UpperUnsignedLebesgueIntegral (Real.toEReal ∘ E.indicator') = Lebesgue_outer_measure E := by sorry
+    UpperUnsignedLebesgueIntegral (Real.toEReal ∘ E.indicator') = Lebesgue_outer_measure E := by
+  haveI : Nonempty (EuclideanSpace' d) := inferInstance
+  have hEL : LebesgueMeasurable E := hE.lebesgueMeasurable
+  set ind : EuclideanSpace' d → EReal := Real.toEReal ∘ E.indicator' with hind
+  have hind_simple : UnsignedSimpleFunction ind := UnsignedSimpleFunction.indicator hEL
+  have hind_integ : hind_simple.integ = Lebesgue_measure E :=
+    UnsignedSimpleFunction.integral_indicator hEL
+  -- Lebesgue_outer_measure E = Lebesgue_measure E (definitional).
+  have hmeas_eq : Lebesgue_outer_measure E = Lebesgue_measure E := rfl
+  rw [hmeas_eq]
+  unfold UpperUnsignedLebesgueIntegral
+  apply le_antisymm
+  · -- Upper ≤ integ ind = measure E, since ind is itself a majorant.
+    apply csInf_le
+    · exact ⟨0, by rintro R ⟨h, hh, hc⟩
+                   rw [(hc (Classical.arbitrary _)).2]; exact UnsignedSimpleFunction.integ_nonneg hh⟩
+    · exact ⟨ind, hind_simple, fun x => ⟨le_refl _, hind_integ.symm⟩⟩
+  · -- measure E = integ ind ≤ any simple majorant g, hence ≤ inf.
+    apply le_csInf
+    · exact ⟨_, _, UnsignedSimpleFunction.top, fun x => ⟨le_top, rfl⟩⟩
+    · rintro R ⟨g, hg, hcond⟩
+      rw [(hcond (Classical.arbitrary _)).2, ← hind_integ]
+      exact UnsignedSimpleFunction.integral_le_integral_of_aeLe hind_simple hg
+        (AlmostAlways.ofAlways (fun x => (hcond x).1))
 
 theorem LowerUnsignedLebesgueIntegral.not_additive : ∃ (d:ℕ) (f g: EuclideanSpace' d → EReal) (hf: Unsigned f) (hg: Unsigned g), (LowerUnsignedLebesgueIntegral (f + g) ≠ LowerUnsignedLebesgueIntegral f + LowerUnsignedLebesgueIntegral g) := by
     sorry
@@ -854,9 +953,81 @@ theorem UnsignedLebesgueIntegral.unique {d:ℕ} (integ: (EuclideanSpace' d → E
   (hhoriz: ∀ f (hf: UnsignedMeasurable f), Filter.atTop.Tendsto (fun n:ℕ ↦ integ (f * Real.toEReal ∘ (Metric.ball 0 n).indicator')) (nhds (integ f)))
   : ∀ f, UnsignedMeasurable f → integ f = UnsignedLebesgueIntegral f := by sorry
 
+open scoped Pointwise in
+/-- Membership in a translated set: `x ∈ E + {-a} ↔ x + a ∈ E`. -/
+private lemma mem_translate_neg {d:ℕ} (E: Set (EuclideanSpace' d)) (a x: EuclideanSpace' d) :
+    x ∈ E + {-a} ↔ x + a ∈ E := by
+  simp only [Set.mem_add, Set.mem_singleton_iff]
+  constructor
+  · rintro ⟨b, hb, c, rfl, rfl⟩; rwa [show b + -a + a = b by abel]
+  · intro h; exact ⟨x + a, h, -a, rfl, by abel⟩
+
+open scoped Pointwise in
+/-- The translate of a simple function (precomposition with `· + a`) is simple. -/
+private lemma UnsignedSimpleFunction.translate {d:ℕ} {g: EuclideanSpace' d → EReal}
+    (hg: UnsignedSimpleFunction g) (a: EuclideanSpace' d) :
+    UnsignedSimpleFunction (fun x => g (x + a)) := by
+  obtain ⟨k, c, E, hcE, hgeq⟩ := hg
+  refine ⟨k, c, fun i => E i + {-a}, fun i => ⟨(LebesgueMeasurable.translate (E i) (-a)).mp (hcE i).1, (hcE i).2⟩, ?_⟩
+  funext x
+  have hl : g (x + a) = (∑ i, (c i) • (EReal.indicator (E i))) (x + a) := by rw [hgeq]
+  rw [hl, Finset.sum_apply, Finset.sum_apply]
+  apply Finset.sum_congr rfl
+  intro i _
+  simp only [Pi.smul_apply, smul_eq_mul]
+  congr 1
+  by_cases hx : x + a ∈ E i
+  · rw [EReal.indicator_of_mem hx, EReal.indicator_of_mem ((mem_translate_neg (E i) a x).mpr hx)]
+  · rw [EReal.indicator_of_notMem hx, EReal.indicator_of_notMem (fun h => hx ((mem_translate_neg (E i) a x).mp h))]
+
+open scoped Pointwise in
+/-- The simple integral is translation invariant. -/
+private lemma UnsignedSimpleFunction.integ_translate {d:ℕ} {g: EuclideanSpace' d → EReal}
+    (hg: UnsignedSimpleFunction g) (a: EuclideanSpace' d) :
+    (hg.translate a).integ = hg.integ := by
+  obtain ⟨k, c, E, hcE, hgeq⟩ := id hg
+  have hg_integ : hg.integ = ∑ i, (c i) * Lebesgue_measure (E i) :=
+    hg.integral_eq (fun i => (hcE i).1) (fun i => (hcE i).2) hgeq
+  have htr_eq : (fun x => g (x + a)) = ∑ i, (c i) • (EReal.indicator (E i + {-a})) := by
+    funext x
+    have hl : g (x + a) = (∑ i, (c i) • (EReal.indicator (E i))) (x + a) := by rw [hgeq]
+    rw [hl, Finset.sum_apply, Finset.sum_apply]
+    apply Finset.sum_congr rfl
+    intro i _
+    simp only [Pi.smul_apply, smul_eq_mul]
+    congr 1
+    by_cases hx : x + a ∈ E i
+    · rw [EReal.indicator_of_mem hx, EReal.indicator_of_mem ((mem_translate_neg (E i) a x).mpr hx)]
+    · rw [EReal.indicator_of_notMem hx, EReal.indicator_of_notMem (fun h => hx ((mem_translate_neg (E i) a x).mp h))]
+  have htr_integ : (hg.translate a).integ = ∑ i, (c i) * Lebesgue_measure (E i + {-a}) :=
+    (hg.translate a).integral_eq
+      (fun i => (LebesgueMeasurable.translate (E i) (-a)).mp (hcE i).1)
+      (fun i => (hcE i).2) htr_eq
+  rw [htr_integ, hg_integ]
+  apply Finset.sum_congr rfl
+  intro i _
+  rw [Lebesgue_measure.translate (-a) (hcE i).1]
+
 /-- Exercise 1.3.15 (Translation invariance)-/
 theorem UnsignedLebesgueIntegral.trans {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (a: EuclideanSpace' d) :
-    UnsignedLebesgueIntegral (fun x ↦ f (x + a)) = hf.integ := by sorry
+    UnsignedLebesgueIntegral (fun x ↦ f (x + a)) = hf.integ := by
+  haveI : Nonempty (EuclideanSpace' d) := inferInstance
+  show LowerUnsignedLebesgueIntegral (fun x ↦ f (x + a)) = LowerUnsignedLebesgueIntegral f
+  unfold LowerUnsignedLebesgueIntegral
+  -- The two defining sets coincide via the simple-function translation bijection.
+  congr 1
+  ext R
+  simp only [Set.mem_setOf_eq]
+  constructor
+  · rintro ⟨g, hg, hcond⟩
+    -- g ≤ f(·+a), so g(·-a) ≤ f, and integrals match.
+    refine ⟨fun x => g (x + (-a)), hg.translate (-a), fun x => ⟨?_, ?_⟩⟩
+    · have := (hcond (x + (-a))).1; simpa using this
+    · rw [(hcond (Classical.arbitrary _)).2, (hg.integ_translate (-a))]
+  · rintro ⟨g, hg, hcond⟩
+    refine ⟨fun x => g (x + a), hg.translate a, fun x => ⟨?_, ?_⟩⟩
+    · exact (hcond (x + a)).1
+    · rw [(hcond (Classical.arbitrary _)).2, (hg.integ_translate a)]
 
 /-- Exercise 1.3.16 (Linear change of variables)-/
 theorem UnsignedLebesgueIntegral.comp_linear {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (A: EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d) (hA: A.det ≠ 0) :
