@@ -1707,7 +1707,100 @@ lemma RealSimpleFunction.abs {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealSim
       simp
 
 lemma ComplexSimpleFunction.abs {d:ℕ} {f: EuclideanSpace' d → ℂ} (hf: ComplexSimpleFunction f) : UnsignedSimpleFunction (EReal.abs_fun f) := by
-  sorry
+  classical
+  -- Convert to a disjoint representation `f = ∑ i, (w i) • (A i).indicator'`.
+  obtain ⟨n, w, A, hA_meas, hA_disj, heq⟩ :
+      ∃ (n:ℕ) (w: Fin n → ℂ) (A: Fin n → Set (EuclideanSpace' d)),
+        (∀ i, LebesgueMeasurable (A i)) ∧ Set.univ.PairwiseDisjoint A ∧
+        f = ∑ i, (w i) • (Complex.indicator (A i)) := by
+    open UnsignedSimpleFunction.IntegralWellDef in
+    obtain ⟨k, c, E, hmes, heq⟩ := hf
+    -- complex atom value
+    refine ⟨2^k, fun m => ∑ i : Fin k, if m.val.testBit i.val then c i else 0,
+      UnsignedSimpleFunction.IntegralWellDef.singleAtom E, ?_,
+      UnsignedSimpleFunction.IntegralWellDef.singleAtom_pairwiseDisjoint E, ?_⟩
+    · intro m
+      simp only [UnsignedSimpleFunction.IntegralWellDef.singleAtom]
+      exact UnsignedSimpleFunction.IntegralWellDef.atom_measurable hmes (fun i => Fin.elim0 i)
+        ⟨m.val, by simp only [add_zero]; exact m.isLt⟩
+    · rw [heq]
+      ext x
+      simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+      have ⟨m, hm_mem, hm_unique⟩ :=
+        UnsignedSimpleFunction.IntegralWellDef.exists_unique_singleAtom E x
+      have hrhs : (∑ p : Fin (2^k), (∑ i : Fin k, if p.val.testBit i.val then c i else 0) *
+          (Complex.indicator (UnsignedSimpleFunction.IntegralWellDef.singleAtom E p) x)) =
+          ∑ i : Fin k, if m.val.testBit i.val then c i else 0 := by
+        rw [Finset.sum_eq_single m]
+        · simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_mem hm_mem,
+            Complex.ofReal_one, mul_one]
+        · intro p _ hp_ne
+          have hx_notin : x ∉ UnsignedSimpleFunction.IntegralWellDef.singleAtom E p :=
+            fun h => hp_ne (hm_unique p h)
+          simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_notMem hx_notin,
+            Complex.ofReal_zero, mul_zero]
+        · intro h; exact absurd (Finset.mem_univ m) h
+      rw [hrhs]
+      have hm_mem' := (UnsignedSimpleFunction.IntegralWellDef.mem_singleAtom_iff E m x).mp hm_mem
+      apply Finset.sum_congr rfl
+      intro i _
+      by_cases hbit : (m.val.testBit i.val) = true
+      · simp only [hbit, ↓reduceIte]
+        have hx_in : x ∈ E i := (hm_mem' i).mp hbit
+        simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_mem hx_in,
+          Complex.ofReal_one, mul_one]
+      · have hbit_false : (m.val.testBit i.val) = false := Bool.eq_false_iff.mpr hbit
+        have hx_out : x ∉ E i := fun h => hbit ((hm_mem' i).mpr h)
+        simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_notMem hx_out,
+          Complex.ofReal_zero, mul_zero, hbit_false, Bool.false_eq_true, ↓reduceIte]
+  use n, fun i => (‖w i‖).toEReal, A
+  constructor
+  · intro i
+    exact ⟨hA_meas i, EReal.coe_nonneg.mpr (norm_nonneg (w i))⟩
+  · ext x
+    simp only [EReal.abs_fun, Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+    by_cases hx_in : ∃ j, x ∈ A j
+    · obtain ⟨j, hj⟩ := hx_in
+      have hlhs : f x = w j := by
+        rw [heq]
+        simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+        rw [Finset.sum_eq_single j]
+        · simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_mem hj,
+            Complex.ofReal_one, mul_one]
+        · intro i _ hi_ne
+          have hx_notin : x ∉ A i := fun hx_in_i => by
+            have := hA_disj (Set.mem_univ i) (Set.mem_univ j) hi_ne
+            simp only [Function.onFun, Set.disjoint_left] at this
+            exact this hx_in_i hj
+          simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_notMem hx_notin,
+            Complex.ofReal_zero, mul_zero]
+        · intro h; exact absurd (Finset.mem_univ j) h
+      have hrhs : (∑ i : Fin n, (‖w i‖).toEReal * EReal.indicator (A i) x) =
+                  (‖w j‖).toEReal := by
+        rw [Finset.sum_eq_single j]
+        · simp only [EReal.indicator, Real.EReal_fun, Set.indicator'_of_mem hj, EReal.coe_one, mul_one]
+        · intro i _ hi_ne
+          have hx_notin : x ∉ A i := fun hx_in_i => by
+            have := hA_disj (Set.mem_univ i) (Set.mem_univ j) hi_ne
+            simp only [Function.onFun, Set.disjoint_left] at this
+            exact this hx_in_i hj
+          simp only [EReal.indicator, Real.EReal_fun, Set.indicator'_of_notMem hx_notin, EReal.coe_zero, mul_zero]
+        · intro h; exact absurd (Finset.mem_univ j) h
+      rw [hrhs, hlhs]
+    · push_neg at hx_in
+      have hlhs : f x = 0 := by
+        rw [heq]
+        simp only [Finset.sum_apply, Pi.smul_apply, smul_eq_mul]
+        apply Finset.sum_eq_zero
+        intro i _
+        simp only [Complex.indicator, Real.complex_fun, Set.indicator'_of_notMem (hx_in i),
+          Complex.ofReal_zero, mul_zero]
+      have hrhs : (∑ i : Fin n, (‖w i‖).toEReal * EReal.indicator (A i) x) = 0 := by
+        apply Finset.sum_eq_zero
+        intro i _
+        simp only [EReal.indicator, Real.EReal_fun, Set.indicator'_of_notMem (hx_in i), EReal.coe_zero, mul_zero]
+      rw [hrhs, hlhs]
+      simp
 
 /-- Definition 1.3.6 (Absolutely convergent simple integral) -/
 def RealSimpleFunction.AbsolutelyIntegrable {d:ℕ} {f: EuclideanSpace' d → ℝ} (hf: RealSimpleFunction f) : Prop :=
@@ -2285,7 +2378,25 @@ lemma ComplexSimpleFunction.integ_smul {d:ℕ} {f: EuclideanSpace' d → ℂ} {h
 
 /-- Exercise 1.3.2 (i) ({lit}`*`-linearity) -/
 lemma ComplexSimpleFunction.integral_conj {d:ℕ} {f: EuclideanSpace' d → ℂ} {hf: ComplexSimpleFunction f} (hf_integ: hf.AbsolutelyIntegrable) : (hf.conj).integ = (starRingEnd ℂ) hf.integ := by
-  sorry
+  have hIf_ai := hf.im_ai hf_integ
+  -- re(conj f) = re f
+  have hre : Complex.re_fun (Complex.conj_fun f) = Complex.re_fun f := by
+    ext x; simp only [Complex.re_fun, Complex.conj_fun, Complex.conj_re]
+  -- im(conj f) = (-1) • im f
+  have him : Complex.im_fun (Complex.conj_fun f) = (-1 : ℝ) • Complex.im_fun f := by
+    ext x
+    simp only [Complex.im_fun, Complex.conj_fun, Complex.conj_im, Pi.smul_apply, smul_eq_mul,
+      neg_one_mul]
+  have eRe : (hf.conj).re.integ = hf.re.integ :=
+    RealSimpleFunction.integ_congr (hf.conj).re hf.re hre
+  have eIm : (hf.conj).im.integ = -hf.im.integ := by
+    rw [RealSimpleFunction.integ_congr (hf.conj).im (hf.im.smul (-1)) him,
+        RealSimpleFunction.integ_smul hIf_ai]
+    ring
+  simp only [ComplexSimpleFunction.integ, eRe, eIm]
+  rw [map_add, map_mul]
+  push_cast
+  simp [Complex.conj_I]
 
 /-- Exercise 1.3.2 (ii) (equivalence) -/
 lemma RealSimpleFunction.integral_eq_integral_of_aeEqual {d:ℕ} {f g: EuclideanSpace' d → ℝ} {hf: RealSimpleFunction f} {hg: RealSimpleFunction g} (hf_integ: hf.AbsolutelyIntegrable) (hg_integ: hg.AbsolutelyIntegrable) (h_ae: AlmostEverywhereEqual f g) : hf.integ = hg.integ := by
@@ -2332,7 +2443,64 @@ lemma ComplexSimpleFunction.indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: 
 
 /-- Exercise 1.3.2(iii) (Compatibility with Lebesgue measure) -/
 lemma RealSimpleFunction.integral_indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) (hfin: Lebesgue_measure E < ⊤): (RealSimpleFunction.indicator hE).integ = (Lebesgue_measure E).toReal := by
-  sorry
+  simp only [RealSimpleFunction.integ]
+  -- positive part equals the unsigned indicator
+  have hpos_fun : EReal.pos_fun (E.indicator') = (Real.toEReal ∘ E.indicator') := by
+    ext x
+    simp only [EReal.pos_fun, Function.comp_apply]
+    by_cases hx : x ∈ E
+    · rw [Set.indicator'_of_mem hx]; norm_num
+    · rw [Set.indicator'_of_notMem hx]; norm_num
+  have hpos : (RealSimpleFunction.indicator hE).pos.integ = Lebesgue_measure E := by
+    rw [UnsignedSimpleFunction.integ_congr (RealSimpleFunction.indicator hE).pos
+        (UnsignedSimpleFunction.indicator hE) hpos_fun]
+    exact UnsignedSimpleFunction.integral_indicator hE
+  -- negative part is the zero function
+  have hneg_fun : EReal.neg_fun (E.indicator') = (0:EReal) • EReal.indicator E := by
+    ext x
+    simp only [EReal.neg_fun, Pi.smul_apply, smul_eq_mul, zero_mul]
+    by_cases hx : x ∈ E
+    · rw [Set.indicator'_of_mem hx]; norm_num
+    · rw [Set.indicator'_of_notMem hx]; norm_num
+  have hneg : (RealSimpleFunction.indicator hE).neg.integ = 0 := by
+    rw [UnsignedSimpleFunction.integ_congr (RealSimpleFunction.indicator hE).neg
+        ((UnsignedSimpleFunction.indicator hE).smul (le_refl (0:EReal))) hneg_fun,
+        UnsignedSimpleFunction.integral_smul (UnsignedSimpleFunction.indicator hE) (le_refl (0:EReal))]
+    simp
+  rw [hpos, hneg]
+  simp
+
+private lemma RealSimpleFunction.integ_of_eq_zero {d:ℕ} {f: EuclideanSpace' d → ℝ}
+    (hf: RealSimpleFunction f) (h: f = 0) : hf.integ = 0 := by
+  simp only [RealSimpleFunction.integ]
+  have hposeq : EReal.pos_fun f = (0:EReal) • (Real.toEReal ∘ (∅ : Set (EuclideanSpace' d)).indicator') := by
+    ext x; simp [EReal.pos_fun, h]
+  have hnegeq : EReal.neg_fun f = (0:EReal) • (Real.toEReal ∘ (∅ : Set (EuclideanSpace' d)).indicator') := by
+    ext x; simp [EReal.neg_fun, h]
+  have hposi : hf.pos.integ = 0 := by
+    rw [UnsignedSimpleFunction.integ_congr hf.pos
+        ((UnsignedSimpleFunction.indicator (d := d) (E := ∅) LebesgueMeasurable.empty).smul (le_refl (0:EReal))) hposeq,
+        UnsignedSimpleFunction.integral_smul (UnsignedSimpleFunction.indicator (d := d) (E := ∅) LebesgueMeasurable.empty) (le_refl (0:EReal))]
+    simp
+  have hnegi : hf.neg.integ = 0 := by
+    rw [UnsignedSimpleFunction.integ_congr hf.neg
+        ((UnsignedSimpleFunction.indicator (d := d) (E := ∅) LebesgueMeasurable.empty).smul (le_refl (0:EReal))) hnegeq,
+        UnsignedSimpleFunction.integral_smul (UnsignedSimpleFunction.indicator (d := d) (E := ∅) LebesgueMeasurable.empty) (le_refl (0:EReal))]
+    simp
+  rw [hposi, hnegi]; simp
 
 lemma ComplexSimpleFunction.integral_indicator {d:ℕ} {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E) (hfin: Lebesgue_measure E < ⊤): (ComplexSimpleFunction.indicator hE).integ = (Lebesgue_measure E).toReal := by
-  sorry
+  simp only [ComplexSimpleFunction.integ]
+  -- real part is the real indicator, imaginary part is zero
+  have hre_fun : Complex.re_fun (Complex.indicator E) = E.indicator' := by
+    ext x; simp only [Complex.re_fun, Complex.indicator, Real.complex_fun, Complex.ofReal_re]
+  have him_fun : Complex.im_fun (Complex.indicator E) = 0 := by
+    ext x; simp only [Complex.im_fun, Complex.indicator, Real.complex_fun, Complex.ofReal_im,
+      Pi.zero_apply]
+  have hre : (ComplexSimpleFunction.indicator hE).re.integ = (Lebesgue_measure E).toReal := by
+    rw [RealSimpleFunction.integ_congr (ComplexSimpleFunction.indicator hE).re
+        (RealSimpleFunction.indicator hE) hre_fun]
+    exact RealSimpleFunction.integral_indicator hE hfin
+  have him : (ComplexSimpleFunction.indicator hE).im.integ = 0 :=
+    RealSimpleFunction.integ_of_eq_zero (ComplexSimpleFunction.indicator hE).im him_fun
+  rw [hre, him]; simp
