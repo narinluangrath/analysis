@@ -1006,7 +1006,35 @@ theorem PiecewiseConstantOn.smul {I: BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The integral is linear: integral(c * f) = c * integral(f).
-theorem PiecewiseConstantFunction.integral_smul {I:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) : (h.smul c).integral = c • h.integral := by sorry
+theorem PiecewiseConstantFunction.integral_smul {I:BoundedInterval} (c:ℝ) {f: ℝ → ℝ} (h: PiecewiseConstantOn f I) : (h.smul c).integral = c • h.integral := by
+  classical
+  obtain ⟨F, hF⟩ := id h
+  -- Explicit representation of c • f via scaling F.
+  let F' : PiecewiseConstantFunction I := {
+    f := fun x => c * F.f x
+    T := F.T
+    c := fun J => c * F.c J
+    disjoint := F.disjoint
+    cover := F.cover
+    const := by
+      intro J x hx
+      simp only [F.const J x hx]
+  }
+  have hF' : F'.agreesWith (c • f) := by
+    intro x hx
+    simp only [F', Pi.smul_apply, smul_eq_mul]
+    rw [hF hx]
+  -- Both integrals computed via canonical representations.
+  rw [PiecewiseConstantOn.integral_eq (c • f) (h.smul c) F' hF']
+  rw [PiecewiseConstantOn.integral_eq f h F hF]
+  -- Now: F'.integral = c • F.integral
+  unfold PiecewiseConstantFunction.integral
+  show ∑ J : F'.T, F'.c J * |J.val|ₗ = c • ∑ J : F.T, F.c J * |J.val|ₗ
+  rw [smul_eq_mul, Finset.mul_sum]
+  apply Finset.sum_congr rfl
+  intro J _
+  show (c * F.c J) * |J.val|ₗ = c * (F.c J * |J.val|ₗ)
+  ring
 
 /-- Exercise 1.1.21 (a) (Linearity of the piecewise constant integral) -/
 -- The sum of two piecewise constant functions is piecewise constant.
@@ -1797,11 +1825,64 @@ theorem RiemannIntegrableOn.add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: Rie
 
 /-- Exercise 1.1.24 (a) (Linearity of the piecewise constant integral) -/
 -- The integral of a sum: integral(f + g) = integral(f) + integral(g).
-theorem riemann_integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : riemannIntegral (f+g) I = riemannIntegral f I + riemannIntegral g I := by sorry
+theorem riemann_integral_add {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) : riemannIntegral (f+g) I = riemannIntegral f I + riemannIntegral g I := by
+  have hfg : RiemannIntegrableOn (f + g) I := RiemannIntegrableOn.add hf hg
+  have hRf : riemann_integral_eq f I (riemannIntegral f I) := riemann_integral_of_integrable hf
+  have hRg : riemann_integral_eq g I (riemannIntegral g I) := riemann_integral_of_integrable hg
+  have hsum : riemann_integral_eq (f + g) I (riemannIntegral f I + riemannIntegral g I) :=
+    riemann_integral_eq_add hRf hRg
+  exact ((riemann_integral_eq_iff_of_integrable hfg (riemannIntegral f I + riemannIntegral g I)).mp hsum).symm
+
+/-- Each tag of a tagged partition of a closed interval lies in the interval. -/
+private lemma TaggedPartition.tag_mem {I: BoundedInterval} {n:ℕ} (hI: I = Icc I.a I.b)
+    (P: TaggedPartition I n) (i: Fin n) : P.x_tag i ∈ I.toSet := by
+  have hmono := P.x_mono.monotone
+  have hlo : I.a ≤ P.x i.castSucc := by
+    have : P.x 0 ≤ P.x i.castSucc := hmono (Fin.zero_le _)
+    rwa [P.x_start] at this
+  have hhi : P.x i.succ ≤ I.b := by
+    have : P.x i.succ ≤ P.x (Fin.last n) := hmono (Fin.le_last _)
+    rwa [P.x_end] at this
+  have hb := P.x_tag_between i
+  have hmem : P.x_tag i ∈ (Icc I.a I.b).toSet := by
+    simp only [BoundedInterval.toSet, Set.mem_Icc]
+    exact ⟨le_trans hlo hb.1, le_trans hb.2 hhi⟩
+  rwa [← hI] at hmem
+
+/-- Riemann sum monotonicity: if `f ≤ g` on `I` then any Riemann sum of `f` is `≤` that of `g`. -/
+private lemma TaggedPartition.RiemannSum_mono {I: BoundedInterval} {n:ℕ} (hI: I = Icc I.a I.b)
+    {f g: ℝ → ℝ} (P: TaggedPartition I n) (hmono: ∀ x ∈ I.toSet, f x ≤ g x) :
+    P.RiemannSum f ≤ P.RiemannSum g := by
+  unfold TaggedPartition.RiemannSum
+  apply Finset.sum_le_sum
+  intro i _
+  have hdelta : 0 ≤ P.delta i := by
+    unfold TaggedPartition.delta
+    have : P.x i.castSucc < P.x i.succ := P.x_mono Fin.castSucc_lt_succ
+    linarith
+  have hfg : f (P.x_tag i) ≤ g (P.x_tag i) := hmono _ (TaggedPartition.tag_mem hI P i)
+  exact mul_le_mul_of_nonneg_right hfg hdelta
 
 /-- Exercise 1.1.24 (b) (Monotonicity of the piecewise constant integral) -/
 -- The integral is monotone: if f ≤ g pointwise, then integral(f) ≤ integral(g).
-theorem riemann_integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): riemannIntegral f I ≤ riemannIntegral g I := by sorry
+theorem riemann_integral_mono {I: BoundedInterval} {f g: ℝ → ℝ} (hf: RiemannIntegrableOn f I) (hg: RiemannIntegrableOn g I) (hmono: ∀ x ∈ I.toSet, f x ≤ g x): riemannIntegral f I ≤ riemannIntegral g I := by
+  have hRf : riemann_integral_eq f I (riemannIntegral f I) := riemann_integral_of_integrable hf
+  have hRg : riemann_integral_eq g I (riemannIntegral g I) := riemann_integral_of_integrable hg
+  obtain ⟨hIcc, hne, -⟩ := hf
+  by_cases hab : I.a < I.b
+  · haveI : Filter.NeBot (TaggedPartition.nhds_zero I) := TaggedPartition.nhds_zero_neBot I hIcc hab
+    apply le_of_tendsto_of_tendsto hRf hRg
+    rw [Filter.EventuallyLE, Filter.eventually_iff]
+    apply Filter.univ_mem'
+    intro P
+    exact TaggedPartition.RiemannSum_mono hIcc P.snd hmono
+  · -- zero length: both integrals are 0
+    have h_len : |I|ₗ = 0 := by
+      unfold BoundedInterval.length; simp
+      linarith [le_of_not_gt hab]
+    have h_eq : I.a = I.b := eq_of_length_zero_of_Icc hIcc h_len hne
+    rw [riemann_integral_eq_zero_of_zero_length h_eq h_len hRf,
+        riemann_integral_eq_zero_of_zero_length h_eq h_len hRg]
 
 /-- Exercise 1.1.24 (c) (Indicator functions) -/
 -- The indicator function of a Jordan measurable set is Riemann integrable.
