@@ -1800,13 +1800,46 @@ theorem UnsignedMeasurable.liminf {d:ℕ} {f: ℕ → EuclideanSpace' d → ERea
   exact UnsignedMeasurable.inf (fun i => hf (i + n))
 
 /-- Exercise 1.3.3(iv) -/
-theorem UnsignedMeasurable.aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg : Unsigned g) (heq: AlmostEverywhereEqual f g) : UnsignedMeasurable g := by sorry
+theorem UnsignedMeasurable.aeEqual {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg : Unsigned g) (heq: AlmostEverywhereEqual f g) : UnsignedMeasurable g := by
+  rw [UnsignedMeasurable.iff_levelset_gt hg]
+  intro t
+  set N := {x | ¬ f x = g x} with hN_def
+  have hN_null : IsNull N := heq
+  refine LebesgueMeasurable.of_ae_eq (hf.levelset_gt t) hN_null ?_
+  ext x
+  simp only [Set.mem_inter_iff, Set.mem_compl_iff, Set.mem_setOf_eq, hN_def, not_not]
+  constructor
+  · intro ⟨hgx, hfg⟩; exact ⟨hfg ▸ hgx, hfg⟩
+  · intro ⟨hfx, hfg⟩; exact ⟨hfg ▸ hfx, hfg⟩
 
 /-- Exercise 1.3.3(v) -/
-theorem UnsignedMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → EReal} (g: ℕ → EuclideanSpace' d → EReal) (hf: ∀ n, UnsignedMeasurable (g n)) (hfn : Unsigned f) (heq: PointwiseAeConvergesTo g f) : UnsignedMeasurable f := by sorry
+theorem UnsignedMeasurable.aeLimit {d:ℕ} {f: EuclideanSpace' d → EReal} (g: ℕ → EuclideanSpace' d → EReal) (hf: ∀ n, UnsignedMeasurable (g n)) (hfn : Unsigned f) (heq: PointwiseAeConvergesTo g f) : UnsignedMeasurable f := by
+  -- h = pointwise limsup of the g n; it is unsigned-measurable everywhere.
+  set h : EuclideanSpace' d → EReal := fun x ↦ Filter.atTop.limsup (fun n ↦ g n x) with hh_def
+  have hh_meas : UnsignedMeasurable h := UnsignedMeasurable.limsup hf
+  -- On the (co-null) set where g n x → f x, we have h x = f x.
+  refine UnsignedMeasurable.aeEqual hh_meas hfn ?_
+  -- AlmostEverywhereEqual h f : the set where h x ≠ f x is null.
+  unfold AlmostEverywhereEqual AlmostAlways
+  refine IsNull.subset heq ?_
+  intro x hx
+  simp only [Set.mem_setOf_eq] at hx ⊢
+  intro hconv
+  exact hx (hconv.limsup_eq)
 
 /-- Exercise 1.3.3(vi) -/
-theorem UnsignedMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {φ: EReal → EReal} (hφ: Continuous φ) (hφnn : ∀ x ≥ 0, φ x ≥ 0) : UnsignedMeasurable (φ ∘ f) := by sorry
+theorem UnsignedMeasurable.comp_cts {d:ℕ} {f: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) {φ: EReal → EReal} (hφ: Continuous φ) (hφnn : ∀ x ≥ 0, φ x ≥ 0) : UnsignedMeasurable (φ ∘ f) := by
+  -- φ ∘ f is unsigned since f x ≥ 0 and φ maps nonnegatives to nonnegatives.
+  have huns : Unsigned (φ ∘ f) := fun x => hφnn (f x) (hf.1 x)
+  -- f satisfies the open-preimage characterization (x) of TFAE.
+  have hf_open : ∀ U : Set EReal, IsOpen U → LebesgueMeasurable (f⁻¹' U) :=
+    ((UnsignedMeasurable.TFAE hf.1).out 0 9).mp hf
+  -- Now establish (x) for φ ∘ f and convert back to UnsignedMeasurable.
+  refine ((UnsignedMeasurable.TFAE huns).out 9 0).mp ?_
+  intro U hU
+  have h_eq : (φ ∘ f)⁻¹' U = f⁻¹' (φ⁻¹' U) := rfl
+  rw [h_eq]
+  exact hf_open (φ⁻¹' U) (hU.preimage hφ)
 
 /-- Exercise 1.3.3(vii) -/
 theorem UnsignedMeasurable.add {d:ℕ} {f g: EuclideanSpace' d → EReal} (hf: UnsignedMeasurable f) (hg: UnsignedMeasurable g) : UnsignedMeasurable (f + g) := by
