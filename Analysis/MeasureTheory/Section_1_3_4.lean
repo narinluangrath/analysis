@@ -1150,12 +1150,6 @@ private lemma ComplexAbsolutelyIntegrable.integ_congr {d:ℕ} {g1 g2: EuclideanS
   subst heq
   rw [Subsingleton.elim h1 h2]
 
-/-- Exercise 1.3.22 -/
-theorem ComplexAbsolutelyIntegrableOn.glue {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)}
-    (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) (hdisj: Disjoint E F)
-    (hf: ComplexAbsolutelyIntegrableOn f (E ∪ F)) :
-    ∃ hE : ComplexAbsolutelyIntegrableOn f E, ∃ hF: ComplexAbsolutelyIntegrableOn f F, hf.integ = hE.integ + hF.integ := by sorry
-
 def ComplexAbsolutelyIntegrableOn.restrict {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)} (hf: ComplexAbsolutelyIntegrableOn f E) (hF: LebesgueMeasurable F): ComplexAbsolutelyIntegrableOn (f * Complex.indicator F) E := by
   unfold ComplexAbsolutelyIntegrableOn at hf ⊢
   -- target function equals (f * indicator E) * indicator F
@@ -1675,3 +1669,75 @@ theorem L1.integ_conj {d:ℕ} (F: L1 d) : L1.integ (L1.conj F) = starRingEnd ℂ
         = (F.integrable.re.integ : ℂ) - Complex.I * F.integrable.im.integ from by
       simp [map_add, map_mul, Complex.conj_I, Complex.conj_ofReal]; ring]
     push_cast; ring
+
+/-- Exercise 1.3.22 -/
+theorem ComplexAbsolutelyIntegrableOn.glue {d:ℕ} {f: EuclideanSpace' d → ℂ} {E F: Set (EuclideanSpace' d)}
+    (hE: LebesgueMeasurable E) (hF: LebesgueMeasurable F) (hdisj: Disjoint E F)
+    (hf: ComplexAbsolutelyIntegrableOn f (E ∪ F)) :
+    ∃ hE : ComplexAbsolutelyIntegrableOn f E, ∃ hF: ComplexAbsolutelyIntegrableOn f F, hf.integ = hE.integ + hF.integ := by
+  -- measurability of the indicators
+  have hmE : ComplexMeasurable (Complex.indicator E) :=
+    (ComplexSimpleFunction.indicator hE).complexMeasurable
+  have hmF : ComplexMeasurable (Complex.indicator F) :=
+    (ComplexSimpleFunction.indicator hF).complexMeasurable
+  -- Each piece equals (f * 1_{E∪F}) * 1_E (resp. * 1_F), since E,F ⊆ E∪F.
+  have heqE : f * Complex.indicator E = (f * Complex.indicator (E ∪ F)) * Complex.indicator E := by
+    funext x
+    simp only [Pi.mul_apply, Complex.indicator, Real.complex_fun]
+    by_cases hx : x ∈ E
+    · have hxu : x ∈ E ∪ F := Or.inl hx
+      simp only [Set.indicator'_of_mem hx, Set.indicator'_of_mem hxu]; push_cast; ring
+    · rw [Set.indicator'_of_notMem hx]; simp
+  have heqF : f * Complex.indicator F = (f * Complex.indicator (E ∪ F)) * Complex.indicator F := by
+    funext x
+    simp only [Pi.mul_apply, Complex.indicator, Real.complex_fun]
+    by_cases hx : x ∈ F
+    · have hxu : x ∈ E ∪ F := Or.inr hx
+      simp only [Set.indicator'_of_mem hx, Set.indicator'_of_mem hxu]; push_cast; ring
+    · rw [Set.indicator'_of_notMem hx]; simp
+  -- absolute integrability of each piece, dominated by f * 1_{E∪F}
+  have hAE : ComplexAbsolutelyIntegrableOn f E := by
+    show ComplexAbsolutelyIntegrable (f * Complex.indicator E)
+    rw [heqE]
+    apply ComplexAbsolutelyIntegrable.of_dom hf (ComplexMeasurable.mul hf.1 hmE)
+    intro x
+    rw [show ((f * Complex.indicator (E ∪ F)) * Complex.indicator E) x
+          = (f * Complex.indicator (E ∪ F)) x * Complex.indicator E x from rfl, norm_mul]
+    calc ‖(f * Complex.indicator (E ∪ F)) x‖ * ‖Complex.indicator E x‖
+        ≤ ‖(f * Complex.indicator (E ∪ F)) x‖ * 1 :=
+          mul_le_mul_of_nonneg_left (Complex.norm_indicator_le E x) (norm_nonneg _)
+      _ = ‖(f * Complex.indicator (E ∪ F)) x‖ := by ring
+  have hAF : ComplexAbsolutelyIntegrableOn f F := by
+    show ComplexAbsolutelyIntegrable (f * Complex.indicator F)
+    rw [heqF]
+    apply ComplexAbsolutelyIntegrable.of_dom hf (ComplexMeasurable.mul hf.1 hmF)
+    intro x
+    rw [show ((f * Complex.indicator (E ∪ F)) * Complex.indicator F) x
+          = (f * Complex.indicator (E ∪ F)) x * Complex.indicator F x from rfl, norm_mul]
+    calc ‖(f * Complex.indicator (E ∪ F)) x‖ * ‖Complex.indicator F x‖
+        ≤ ‖(f * Complex.indicator (E ∪ F)) x‖ * 1 :=
+          mul_le_mul_of_nonneg_left (Complex.norm_indicator_le F x) (norm_nonneg _)
+      _ = ‖(f * Complex.indicator (E ∪ F)) x‖ := by ring
+  refine ⟨hAE, hAF, ?_⟩
+  -- the union function equals the sum of the two pieces (disjointness)
+  have hsum : f * Complex.indicator (E ∪ F) = (f * Complex.indicator E) + (f * Complex.indicator F) := by
+    funext x
+    simp only [Pi.add_apply, Pi.mul_apply, Complex.indicator, Real.complex_fun]
+    by_cases hxE : x ∈ E
+    · have hxF : x ∉ F := fun h => (Set.disjoint_left.mp hdisj) hxE h
+      have hxu : x ∈ E ∪ F := Or.inl hxE
+      rw [Set.indicator'_of_mem hxE, Set.indicator'_of_notMem hxF, Set.indicator'_of_mem hxu]
+      push_cast; ring
+    · by_cases hxF : x ∈ F
+      · have hxu : x ∈ E ∪ F := Or.inr hxF
+        rw [Set.indicator'_of_notMem hxE, Set.indicator'_of_mem hxF, Set.indicator'_of_mem hxu]
+        push_cast; ring
+      · have hxu : x ∉ E ∪ F := fun h => h.elim hxE hxF
+        rw [Set.indicator'_of_notMem hxE, Set.indicator'_of_notMem hxF, Set.indicator'_of_notMem hxu]
+        push_cast; ring
+  -- conclude via additivity of the integral
+  show ComplexAbsolutelyIntegrable.integ hf
+     = ComplexAbsolutelyIntegrable.integ hAE + ComplexAbsolutelyIntegrable.integ hAF
+  rw [ComplexAbsolutelyIntegrable.integ_congr (h1 := hf)
+        (h2 := hAE.add hAF) hsum,
+      ComplexAbsolutelyIntegrable.integ_add'' hAE hAF]
