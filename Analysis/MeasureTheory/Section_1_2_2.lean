@@ -2012,15 +2012,88 @@ theorem Lebesgue_measure.translate {d:ℕ} {E: Set (EuclideanSpace' d)} (x: Eucl
   unfold Lebesgue_measure
   exact Lebesgue_outer_measure.translate E x
 
+/-- Helper: the bespoke `LebesgueMeasurable` predicate agrees with Mathlib's `MeasurableSet`
+    via the volume bridge.  This is the measurability bridge (Carathéodory measurability of the
+    outer measure equals Mathlib's σ-algebra).  We only get the easy direction we need below
+    from `volume`'s null-measurable structure; instead we prove both lemmas about linear images
+    directly by going through `volume`. -/
+private lemma Matrix.linear_equiv_det {d:ℕ} (A: Matrix (Fin d) (Fin d) ℝ) [Invertible A] :
+    LinearMap.det (A.linear_equiv : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d) = A.det := by
+  -- A.linear_equiv is conjugation of toLin' A by the WithLp linear equiv, det is preserved.
+  set e := WithLp.linearEquiv 2 ℝ (Fin d → ℝ) with he
+  have hconj : (A.linear_equiv : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d)
+      = (e.symm : (Fin d → ℝ) →ₗ[ℝ] EuclideanSpace' d) ∘ₗ (Matrix.toLin' A) ∘ₗ
+          (e.symm.symm : EuclideanSpace' d →ₗ[ℝ] (Fin d → ℝ)) := by
+    ext x i
+    simp [Matrix.linear_equiv, e]
+  rw [hconj, LinearMap.det_conj, LinearMap.det_toLin']
+
+/-- Helper: outer measure scales by `|det T|` under a linear automorphism `T`. -/
+private lemma Lebesgue_outer_measure.linear_equiv {d:ℕ}
+    (T: EuclideanSpace' d ≃ₗ[ℝ] EuclideanSpace' d) (S: Set (EuclideanSpace' d)) :
+    Lebesgue_outer_measure (T '' S)
+      = ENNReal.ofReal |LinearMap.det (T : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d)|
+        * Lebesgue_outer_measure S := by
+  rw [Lebesgue_outer_measure_eq_volume, Lebesgue_outer_measure_eq_volume]
+  have hv := MeasureTheory.Measure.addHaar_image_linearMap
+    (μ := (MeasureTheory.volume : MeasureTheory.Measure (EuclideanSpace' d)))
+    (T : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d) S
+  rw [show ((T : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d) '' S) = T '' S from rfl] at hv
+  rw [hv, EReal.coe_ennreal_mul]
+
 /-- Exercise 1.2.21 (Change of variables) -/
 lemma LebesgueMeasurable.linear {d:ℕ} (T: EuclideanSpace' d ≃ₗ[ℝ] EuclideanSpace' d)
 {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E): LebesgueMeasurable (T '' E) := by
-  sorry
+  -- T is a homeomorphism (linear automorphism of a finite-dimensional space).
+  let Th : EuclideanSpace' d ≃L[ℝ] EuclideanSpace' d := T.toContinuousLinearEquiv
+  have hTheq : ∀ (s : Set (EuclideanSpace' d)), Th '' s = T '' s := fun s => rfl
+  -- |det T| > 0 since T is invertible.
+  have hdet_ne : LinearMap.det (T : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d) ≠ 0 :=
+    T.isUnit_det'.ne_zero
+  have hdet_pos : (0:ℝ) < |LinearMap.det (T : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d)| :=
+    abs_pos.mpr hdet_ne
+  set c := |LinearMap.det (T : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d)| with hc
+  intro ε hε
+  -- Use ε' = ε / c so that the scaled error is ≤ ε.
+  have hc_ne_bot : (c : EReal) ≠ ⊥ := EReal.coe_ne_bot c
+  have hc_ne_top : (c : EReal) ≠ ⊤ := EReal.coe_ne_top c
+  have hcE_pos : (0:EReal) < (c:EReal) := EReal.coe_pos.mpr hdet_pos
+  -- ε / c > 0
+  have hεc_pos : (0:EReal) < ε / c := by
+    apply EReal.div_pos hε hcE_pos hc_ne_top
+  obtain ⟨U, hU_open, hU_sub, hU_meas⟩ := hE (ε / c) hεc_pos
+  refine ⟨T '' U, ?_, Set.image_mono hU_sub, ?_⟩
+  · rw [← hTheq U]; exact Th.toHomeomorph.isOpen_image.mpr hU_open
+  · -- (T''U) \ (T''E) = T''(U\E)
+    have hdiff : (T '' U) \ (T '' E) = T '' (U \ E) := by
+      rw [Set.image_diff T.injective]
+    rw [hdiff, Lebesgue_outer_measure.linear_equiv]
+    rw [← hc]
+    -- ENNReal.ofReal c * m*(U\E) ≤ ε, given m*(U\E) ≤ ε/c
+    calc (ENNReal.ofReal c : EReal) * Lebesgue_outer_measure (U \ E)
+        ≤ (ENNReal.ofReal c : EReal) * (ε / c) := by
+          apply mul_le_mul_of_nonneg_left hU_meas
+          exact le_of_lt (by rw [EReal.coe_ennreal_ofReal, max_eq_left (le_of_lt hdet_pos)]; exact hcE_pos)
+      _ = ε := by
+          rw [EReal.coe_ennreal_ofReal, max_eq_left (le_of_lt hdet_pos)]
+          rw [EReal.mul_div_cancel hc_ne_bot hc_ne_top (ne_of_gt hcE_pos)]
 
 /-- Exercise 1.2.21 (Change of variables) -/
 lemma Lebesgue_measure.linear {d:ℕ} (A: Matrix (Fin d) (Fin d) ℝ) [Invertible A]
  {E: Set (EuclideanSpace' d)} (hE: LebesgueMeasurable E): Lebesgue_measure (A.linear_equiv '' E) = |A.det| * Lebesgue_measure E := by
-  sorry
+  unfold Lebesgue_measure
+  rw [Lebesgue_outer_measure_eq_volume, Lebesgue_outer_measure_eq_volume]
+  -- volume (A.linear_equiv '' E) = ENNReal.ofReal |A.det| * volume E
+  have hvol : MeasureTheory.volume (A.linear_equiv '' E)
+      = ENNReal.ofReal |A.det| * MeasureTheory.volume E := by
+    have := MeasureTheory.Measure.addHaar_image_linearMap
+      (μ := (MeasureTheory.volume : MeasureTheory.Measure (EuclideanSpace' d)))
+      (A.linear_equiv : EuclideanSpace' d →ₗ[ℝ] EuclideanSpace' d) E
+    rw [Matrix.linear_equiv_det] at this
+    exact this
+  rw [hvol]
+  -- (ENNReal.ofReal |A.det| * volume E).toEReal = |A.det| * (volume E).toEReal
+  rw [EReal.coe_ennreal_mul, EReal.coe_ennreal_ofReal, max_eq_left (abs_nonneg _)]
 
 /-- Exercise 1.2.22 -/
 theorem Lebesgue_outer_measure.prod {d₁ d₂:ℕ} {E₁: Set (EuclideanSpace' d₁)} {E₂: Set (EuclideanSpace' d₂)}
