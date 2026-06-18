@@ -736,10 +736,167 @@ theorem IsElementary.inter {d:ℕ} {E F: Set (EuclideanSpace' d)}
 theorem IsElementary.empty (d:ℕ) : IsElementary (∅: Set (EuclideanSpace' d)) := by
   exact ⟨∅, by simp⟩
 
+/-- The set difference of two bounded intervals is a finite union of bounded intervals. -/
+theorem BoundedInterval.sdiff (I J : BoundedInterval) :
+    ∃ K : Finset BoundedInterval, (I:Set ℝ) \ (J:Set ℝ) = ⋃ L ∈ K, L.toSet := by
+  classical
+  -- `z ∈ J → J.a ≤ z ∧ z ≤ J.b`
+  have hJ_mem : ∀ z, z ∈ (J:Set ℝ) → J.a ≤ z ∧ z ≤ J.b := by
+    intro z hz
+    have := (BoundedInterval.subset_Icc J) z (by simpa using hz)
+    simpa [BoundedInterval.set_Icc, Set.mem_Icc] using this
+  -- `J.a < z ∧ z < J.b → z ∈ J`
+  have hJ_Ioo : ∀ z, J.a < z → z < J.b → z ∈ (J:Set ℝ) := by
+    intro z h1 h2
+    have := (BoundedInterval.Ioo_subset J) z (by simp [BoundedInterval.set_Ioo, Set.mem_Ioo, h1, h2])
+    simpa using this
+  -- The two order-connected pieces of `I \ J`.
+  set Sleft : Set ℝ := (I:Set ℝ) ∩ {y | y ∉ (J:Set ℝ) ∧ y ≤ J.a} with hSleft
+  set Sright : Set ℝ := (I:Set ℝ) ∩ {y | y ∉ (J:Set ℝ) ∧ J.b ≤ y} with hSright
+  have hI_oc : (I:Set ℝ).OrdConnected := ((BoundedInterval.ordConnected_iff (I:Set ℝ)).mpr ⟨I, rfl⟩).2
+  have hI_bdd : Bornology.IsBounded (I:Set ℝ) := Bornology.IsBounded.of_boundedInterval I
+  -- Sleft is order-connected.
+  have hSleft_oc : Sleft.OrdConnected := by
+    rw [hSleft]; apply hI_oc.inter
+    rw [Set.ordConnected_def]; intro y₁ hy₁ y₂ hy₂ z hz
+    refine ⟨?_, le_trans hz.2 hy₂.2⟩
+    intro hzJ
+    have hza := (hJ_mem z hzJ).1
+    have hz_eq : z = J.a := le_antisymm (le_trans hz.2 hy₂.2) hza
+    have hy₂_eq : y₂ = J.a := le_antisymm hy₂.2 (by rw [← hz_eq]; exact hz.2)
+    exact hy₂.1 (by rw [hy₂_eq, ← hz_eq]; exact hzJ)
+  have hSright_oc : Sright.OrdConnected := by
+    rw [hSright]; apply hI_oc.inter
+    rw [Set.ordConnected_def]; intro y₁ hy₁ y₂ hy₂ z hz
+    refine ⟨?_, le_trans hy₁.2 hz.1⟩
+    intro hzJ
+    have hzb := (hJ_mem z hzJ).2
+    have hz_eq : z = J.b := le_antisymm hzb (le_trans hy₁.2 hz.1)
+    have hy₁_eq : y₁ = J.b := le_antisymm (by rw [← hz_eq]; exact hz.1) hy₁.2
+    exact hy₁.1 (by rw [hy₁_eq, ← hz_eq]; exact hzJ)
+  -- Both pieces are bounded (subsets of I).
+  have hSleft_bdd : Bornology.IsBounded Sleft := hI_bdd.subset (by rw [hSleft]; exact Set.inter_subset_left)
+  have hSright_bdd : Bornology.IsBounded Sright := hI_bdd.subset (by rw [hSright]; exact Set.inter_subset_left)
+  obtain ⟨Lleft, hLleft⟩ := (BoundedInterval.ordConnected_iff Sleft).mp ⟨hSleft_bdd, hSleft_oc⟩
+  obtain ⟨Lright, hLright⟩ := (BoundedInterval.ordConnected_iff Sright).mp ⟨hSright_bdd, hSright_oc⟩
+  refine ⟨{Lleft, Lright}, ?_⟩
+  -- `I \ J = Sleft ∪ Sright`.
+  have hdecomp : (I:Set ℝ) \ (J:Set ℝ) = Sleft ∪ Sright := by
+    ext y; simp only [Set.mem_diff, hSleft, hSright, Set.mem_union, Set.mem_inter_iff,
+      Set.mem_setOf_eq]
+    constructor
+    · rintro ⟨hyI, hyJ⟩
+      rcases le_or_gt y J.a with h | h
+      · exact Or.inl ⟨hyI, hyJ, h⟩
+      · rcases le_or_gt J.b y with h2 | h2
+        · exact Or.inr ⟨hyI, hyJ, h2⟩
+        · exact absurd (hJ_Ioo y h h2) hyJ
+    · rintro (⟨hyI, hyJ, _⟩ | ⟨hyI, hyJ, _⟩) <;> exact ⟨hyI, hyJ⟩
+  rw [hdecomp, hLleft, hLright]
+  by_cases hLeq : Lleft = Lright
+  · simp [hLeq]
+  · rw [Finset.set_biUnion_insert, Finset.set_biUnion_singleton]
+
+/-- The indexed union of a finset of elementary sets is elementary. -/
+lemma IsElementary.union'' {d:ℕ} {ι : Type*} [DecidableEq ι] {S: Finset ι}
+    {f : ι → Set (EuclideanSpace' d)} (hf: ∀ i ∈ S, IsElementary (f i)) :
+    IsElementary (⋃ i ∈ S, f i) := by
+  classical
+  induction S using Finset.induction_on with
+  | empty => exact ⟨∅, by simp⟩
+  | @insert a S' ha ih =>
+    have ha_elem : IsElementary (f a) := hf a (Finset.mem_insert_self _ _)
+    have hrest : IsElementary (⋃ i ∈ S', f i) := ih (fun i hi => hf i (Finset.mem_insert_of_mem hi))
+    have : (⋃ i ∈ insert a S', f i) = f a ∪ (⋃ i ∈ S', f i) := by
+      ext x; simp [Set.mem_iUnion, Finset.mem_insert]
+    rw [this]; exact ha_elem.union hrest
+
+/-- The box obtained from `B` by replacing side `i` with the interval `L`. -/
+private def Box.repl {d:ℕ} (B : Box d) (i : Fin d) (L : BoundedInterval) : Box d :=
+  ⟨fun j => if j = i then L else B.side j⟩
+
+private theorem Box.repl_side {d:ℕ} (B : Box d) (i : Fin d) (L : BoundedInterval) (j : Fin d) :
+    (B.repl i L).side j = if j = i then L else B.side j := rfl
+
+private theorem Box.mem_repl {d:ℕ} (B : Box d) (i : Fin d) (L : BoundedInterval)
+    (x : EuclideanSpace' d) :
+    x ∈ (B.repl i L).toSet ↔ x i ∈ (L:Set ℝ) ∧ ∀ j, j ≠ i → x j ∈ (B.side j : Set ℝ) := by
+  simp only [Box.mem_toSet, Box.repl_side]
+  constructor
+  · intro h
+    refine ⟨by have := h i; simpa using this, fun j hj => by have := h j; simpa [hj] using this⟩
+  · rintro ⟨hi, hj⟩ k
+    by_cases hk : k = i
+    · simpa [hk] using hi
+    · simpa [hk] using hj k hk
+
+/-- A single box minus a single box is an elementary set. -/
+private theorem Box.sdiff_box {d:ℕ} (B C : Box d) : IsElementary (B.toSet \ C.toSet) := by
+  classical
+  -- For each coordinate `i`, the side difference is a finite union of intervals.
+  choose K hK using fun i => BoundedInterval.sdiff (B.side i) (C.side i)
+  -- `B \ C = ⋃ i, ⋃ L ∈ K i, (B.repl i L).toSet`
+  have hdecomp : B.toSet \ C.toSet
+      = ⋃ i : Fin d, ⋃ L ∈ K i, (B.repl i L).toSet := by
+    ext x
+    simp only [Set.mem_diff, Set.mem_iUnion, exists_prop]
+    constructor
+    · rintro ⟨hxB, hxC⟩
+      rw [Box.mem_toSet] at hxB
+      rw [Box.mem_toSet] at hxC; push_neg at hxC
+      obtain ⟨i, hi⟩ := hxC
+      have hmem : x i ∈ (B.side i : Set ℝ) \ (C.side i : Set ℝ) := ⟨hxB i, hi⟩
+      rw [hK i] at hmem
+      simp only [Set.mem_iUnion, exists_prop] at hmem
+      obtain ⟨L, hL, hxL⟩ := hmem
+      exact ⟨i, L, hL, (Box.mem_repl B i L x).mpr ⟨hxL, fun j _ => hxB j⟩⟩
+    · rintro ⟨i, L, hL, hxrepl⟩
+      rw [Box.mem_repl] at hxrepl
+      obtain ⟨hxL, hxj⟩ := hxrepl
+      have hmem : x i ∈ (B.side i : Set ℝ) \ (C.side i : Set ℝ) := by
+        rw [hK i]; simp only [Set.mem_iUnion, exists_prop]; exact ⟨L, hL, hxL⟩
+      refine ⟨Box.mem_toSet.mpr (fun j => ?_), fun hxC => hmem.2 ((Box.mem_toSet.mp hxC) i)⟩
+      by_cases hj : j = i
+      · rw [hj]; exact hmem.1
+      · exact hxj j hj
+  rw [hdecomp]
+  have huniv : (⋃ i : Fin d, ⋃ L ∈ K i, (B.repl i L).toSet)
+      = ⋃ i ∈ (Finset.univ : Finset (Fin d)), ⋃ L ∈ K i, (B.repl i L).toSet := by
+    simp
+  rw [huniv]
+  -- Finite union of elementary sets is elementary.
+  apply IsElementary.union'' (S := Finset.univ)
+  intro i _
+  apply IsElementary.union'' (S := K i)
+  intro L _
+  exact IsElementary.box _
+
 /-- Exercise 1.1.1 (Boolean closure): The set difference of two elementary sets is elementary. -/
 theorem IsElementary.sdiff {d:ℕ} {E F: Set (EuclideanSpace' d)}
   (hE: IsElementary E) (hF: IsElementary F) : IsElementary (E \ F) := by
-  sorry
+  classical
+  obtain ⟨S, rfl⟩ := hE
+  obtain ⟨T, rfl⟩ := hF
+  -- Reduce to `B \ F` for each box `B ∈ S`.
+  have hbox : ∀ B : Box d, IsElementary (B.toSet \ ⋃ C ∈ T, C.toSet) := by
+    intro B
+    -- Induct on T: `B \ ⋃_{C} C = ⋂_{C} (B \ C)`.
+    induction T using Finset.induction_on with
+    | empty => simpa using IsElementary.box B
+    | @insert C T' hC ih =>
+      have hset : B.toSet \ (⋃ D ∈ insert C T', D.toSet)
+          = (B.toSet \ C.toSet) ∩ (B.toSet \ ⋃ D ∈ T', D.toSet) := by
+        rw [Finset.set_biUnion_insert]; ext x; simp only [Set.mem_diff, Set.mem_union,
+          Set.mem_inter_iff]; tauto
+      rw [hset]
+      exact (Box.sdiff_box B C).inter ih
+  have hdecomp : (⋃ B ∈ S, B.toSet) \ (⋃ C ∈ T, C.toSet)
+      = ⋃ B ∈ S, (B.toSet \ ⋃ C ∈ T, C.toSet) := by
+    ext x; simp only [Set.mem_diff, Set.mem_iUnion, exists_prop]; tauto
+  rw [hdecomp]
+  apply IsElementary.union'' (S := S)
+  intro B _
+  exact hbox B
 
 /-- Exercise 1.1.1 (Boolean closure): The symmetric difference of two elementary sets is elementary. -/
 theorem IsElementary.symmDiff {d:ℕ} {E F: Set (EuclideanSpace' d)}
