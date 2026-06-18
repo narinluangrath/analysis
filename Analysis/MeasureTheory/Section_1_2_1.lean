@@ -5787,3 +5787,269 @@ lemma Lebesgue_outer_measure.finite_of_compact {d : ℕ} {E : Set (EuclideanSpac
 
 /-- Exercise 1.2.6 -/
 example : ∃ (d:ℕ) (E: Set (EuclideanSpace' d)), Lebesgue_outer_measure E ≠ sSup { M | ∃ U, U ⊆ E ∧ IsOpen U ∧ M = Lebesgue_outer_measure U} := by sorry
+
+/-! ## Bridge to Mathlib's `volume` measure -/
+
+section VolumeBridge
+
+open MeasureTheory
+
+/-- Each bounded interval is measurable. -/
+private lemma BoundedInterval.measurableSet_toSet (I : BoundedInterval) :
+    MeasurableSet (I.toSet) := by
+  cases I with
+  | Ioo a b => rw [BoundedInterval.toSet]; exact measurableSet_Ioo
+  | Icc a b => rw [BoundedInterval.toSet]; exact measurableSet_Icc
+  | Ioc a b => rw [BoundedInterval.toSet]; exact measurableSet_Ioc
+  | Ico a b => rw [BoundedInterval.toSet]; exact measurableSet_Ico
+
+/-- The Lebesgue measure (`volume`) of a single bounded interval equals `ENNReal.ofReal` of
+its length. -/
+private lemma BoundedInterval.volume_toSet (I : BoundedInterval) :
+    volume (I.toSet) = ENNReal.ofReal |I|ₗ := by
+  have key : ∀ a b : ℝ, ENNReal.ofReal (b - a) = ENNReal.ofReal (max (b - a) 0) := by
+    intro a b
+    rcases le_or_gt (b - a) 0 with h | h
+    · rw [max_eq_right h, ENNReal.ofReal_eq_zero.mpr h, ENNReal.ofReal_zero]
+    · rw [max_eq_left h.le]
+  cases I with
+  | Ioo a b => rw [BoundedInterval.toSet, Real.volume_Ioo, BoundedInterval.length]; exact key a b
+  | Icc a b => rw [BoundedInterval.toSet, Real.volume_Icc, BoundedInterval.length]; exact key a b
+  | Ioc a b => rw [BoundedInterval.toSet, Real.volume_Ioc, BoundedInterval.length]; exact key a b
+  | Ico a b => rw [BoundedInterval.toSet, Real.volume_Ico, BoundedInterval.length]; exact key a b
+
+/-- **Milestone 1.** The `volume` of a box equals `ENNReal.ofReal` of its (elementary) volume. -/
+lemma box_volume_eq {d : ℕ} (B : Box d) :
+    volume (B.toSet) = ENNReal.ofReal B.volume := by
+  rw [Box.toSet_eq_ofLp_preimage]
+  -- `PiLp.homeomorph 2 _` as a function is `ofLp`, which is volume preserving.
+  have hmp := PiLp.volume_preserving_ofLp (ι := Fin d)
+  rw [show ((PiLp.homeomorph 2 (fun _ : Fin d => ℝ)) ⁻¹'
+        Set.univ.pi (fun i => (B.side i).toSet))
+        = (WithLp.ofLp) ⁻¹' Set.univ.pi (fun i => (B.side i).toSet) from rfl]
+  rw [hmp.measure_preimage]
+  · rw [volume_pi_pi]
+    rw [Box.volume, ENNReal.ofReal_prod_of_nonneg (fun i _ => BoundedInterval.length_nonneg _)]
+    exact Finset.prod_congr rfl (fun i _ => BoundedInterval.volume_toSet (B.side i))
+  · exact (MeasurableSet.univ_pi (fun i => (B.side i).measurableSet_toSet)).nullMeasurableSet
+
+/-- Pushing the `ENNReal → EReal` coercion through a `tsum`. -/
+private lemma EReal.coe_ennreal_tsum' {ι : Type*} (f : ι → ENNReal) :
+    ((∑' n, f n : ENNReal) : EReal) = ∑' n, ((f n : ENNReal) : EReal) := by
+  let φ : ENNReal →+ EReal :=
+    { toFun := (↑·), map_zero' := by simp, map_add' := EReal.coe_ennreal_add }
+  exact Summable.map_tsum (f := f) ENNReal.summable φ continuous_coe_ennreal_ereal
+
+/-- **Milestone 2** (easy direction). -/
+lemma volume_le_Lebesgue_outer_measure {d : ℕ} (E : Set (EuclideanSpace' d)) :
+    ((volume E).toEReal) ≤ Lebesgue_outer_measure E := by
+  unfold Lebesgue_outer_measure
+  apply le_sInf
+  rintro V ⟨X, S, hcover, rfl⟩
+  -- volume E ≤ ∑' n, volume (S n).toSet in ENNReal.
+  have h1 : volume E ≤ ∑' n, volume ((S n).toSet) :=
+    le_trans (measure_mono hcover) (measure_iUnion_le _)
+  -- ∑' n, volume (S n).toSet = ∑' n, ENNReal.ofReal (S n).volume
+  have h2 : (∑' n, volume ((S n).toSet)) = ∑' n, ENNReal.ofReal ((S n).volume) :=
+    tsum_congr (fun n => box_volume_eq (S n))
+  -- coerce to EReal
+  have h3 : ((volume E).toEReal) ≤ ((∑' n, ENNReal.ofReal ((S n).volume) : ENNReal) : EReal) := by
+    rw [← h2]; exact_mod_cast h1
+  refine le_trans h3 ?_
+  rw [EReal.coe_ennreal_tsum']
+  apply le_of_eq
+  apply tsum_congr
+  intro n
+  rw [EReal.coe_ennreal_ofReal, max_eq_left (Box.volume_nonneg (S n))]
+
+/-- The `volume` of the interior of a bounded interval equals `ENNReal.ofReal` of its length. -/
+private lemma BoundedInterval.volume_interior_toSet (I : BoundedInterval) :
+    volume (interior (I.toSet)) = ENNReal.ofReal |I|ₗ := by
+  have key : ∀ a b : ℝ, ENNReal.ofReal (b - a) = ENNReal.ofReal (max (b - a) 0) := by
+    intro a b
+    rcases le_or_gt (b - a) 0 with h | h
+    · rw [max_eq_right h, ENNReal.ofReal_eq_zero.mpr h, ENNReal.ofReal_zero]
+    · rw [max_eq_left h.le]
+  cases I with
+  | Ioo a b => rw [BoundedInterval.toSet, interior_Ioo, Real.volume_Ioo, BoundedInterval.length]; exact key a b
+  | Icc a b => rw [BoundedInterval.toSet, interior_Icc, Real.volume_Ioo, BoundedInterval.length]; exact key a b
+  | Ioc a b => rw [BoundedInterval.toSet, interior_Ioc, Real.volume_Ioo, BoundedInterval.length]; exact key a b
+  | Ico a b => rw [BoundedInterval.toSet, interior_Ico, Real.volume_Ioo, BoundedInterval.length]; exact key a b
+
+/-- The `volume` of the closure of a bounded interval equals `ENNReal.ofReal` of its length. -/
+private lemma BoundedInterval.volume_closure_toSet (I : BoundedInterval) :
+    volume (closure (I.toSet)) = ENNReal.ofReal |I|ₗ := by
+  -- Squeeze: I.toSet ⊆ closure I.toSet ⊆ Icc a b, with both ends having volume = ofReal length.
+  have hself : volume (I.toSet) = ENNReal.ofReal |I|ₗ := I.volume_toSet
+  have hsub_closure : I.toSet ⊆ closure (I.toSet) := subset_closure
+  have hclosure_sub : closure (I.toSet) ⊆ Set.Icc I.a I.b := by
+    apply closure_minimal _ isClosed_Icc
+    have := I.subset_Icc
+    rwa [BoundedInterval.subset_iff, BoundedInterval.set_Icc] at this
+  have hIcc : volume (Set.Icc I.a I.b) = ENNReal.ofReal |I|ₗ := by
+    rw [Real.volume_Icc, BoundedInterval.length]
+    rcases le_or_gt (I.b - I.a) 0 with h | h
+    · rw [max_eq_right h, ENNReal.ofReal_eq_zero.mpr h, ENNReal.ofReal_zero]
+    · rw [max_eq_left h.le]
+  apply le_antisymm
+  · calc volume (closure (I.toSet)) ≤ volume (Set.Icc I.a I.b) := measure_mono hclosure_sub
+      _ = ENNReal.ofReal |I|ₗ := hIcc
+  · calc ENNReal.ofReal |I|ₗ = volume (I.toSet) := hself.symm
+      _ ≤ volume (closure (I.toSet)) := measure_mono hsub_closure
+
+/-- The `volume` of the interior of a box equals `ENNReal.ofReal` of its volume. -/
+private lemma box_interior_volume_eq {d : ℕ} (B : Box d) :
+    volume (interior (B.toSet)) = ENNReal.ofReal B.volume := by
+  rw [Box.interior_toSet]
+  have hmp := PiLp.volume_preserving_ofLp (ι := Fin d)
+  rw [show ((PiLp.homeomorph 2 (fun _ : Fin d => ℝ)) ⁻¹'
+        Set.univ.pi (fun i => interior (B.side i).toSet))
+        = (WithLp.ofLp) ⁻¹' Set.univ.pi (fun i => interior (B.side i).toSet) from rfl]
+  rw [hmp.measure_preimage]
+  · rw [volume_pi_pi, Box.volume,
+      ENNReal.ofReal_prod_of_nonneg (fun i _ => BoundedInterval.length_nonneg _)]
+    exact Finset.prod_congr rfl (fun i _ => BoundedInterval.volume_interior_toSet (B.side i))
+  · exact (MeasurableSet.univ_pi (fun i =>
+      (isOpen_interior (s := ((B.side i).toSet))).measurableSet)).nullMeasurableSet
+
+/-- The `volume` of the closure of a box equals `ENNReal.ofReal` of its volume. -/
+private lemma box_closure_volume_eq {d : ℕ} (B : Box d) :
+    volume (closure (B.toSet)) = ENNReal.ofReal B.volume := by
+  rw [Box.closure_toSet]
+  have hmp := PiLp.volume_preserving_ofLp (ι := Fin d)
+  rw [show ((PiLp.homeomorph 2 (fun _ : Fin d => ℝ)) ⁻¹'
+        Set.univ.pi (fun i => closure (B.side i).toSet))
+        = (WithLp.ofLp) ⁻¹' Set.univ.pi (fun i => closure (B.side i).toSet) from rfl]
+  rw [hmp.measure_preimage]
+  · rw [volume_pi_pi, Box.volume,
+      ENNReal.ofReal_prod_of_nonneg (fun i _ => BoundedInterval.length_nonneg _)]
+    exact Finset.prod_congr rfl (fun i _ => BoundedInterval.volume_closure_toSet (B.side i))
+  · exact (MeasurableSet.univ_pi (fun i =>
+      (isClosed_closure (s := (B.side i).toSet)).measurableSet)).nullMeasurableSet
+
+/-- The frontier of a box is `volume`-null. -/
+private lemma box_frontier_null {d : ℕ} (B : Box d) :
+    volume (frontier (B.toSet)) = 0 := by
+  have hsub : frontier (B.toSet) ⊆ closure (B.toSet) := frontier_subset_closure
+  have hfin : volume (closure (B.toSet)) ≠ ⊤ := by
+    rw [box_closure_volume_eq]; exact ENNReal.ofReal_ne_top
+  have hdiff : frontier (B.toSet) = closure (B.toSet) \ interior (B.toSet) := rfl
+  rw [hdiff, measure_diff interior_subset_closure
+    (measurableSet_interior).nullMeasurableSet
+    (by rw [box_interior_volume_eq]; exact ENNReal.ofReal_ne_top),
+    box_closure_volume_eq, box_interior_volume_eq, tsub_self]
+
+/-- Two almost-disjoint boxes are `volume`-a.e. disjoint. -/
+private lemma box_aedisjoint {d : ℕ} {B B' : Box d} (h : AlmostDisjoint B B') :
+    AEDisjoint volume (B.toSet) (B'.toSet) := by
+  unfold AEDisjoint
+  -- B.toSet ∩ B'.toSet ⊆ frontier B ∪ frontier B'
+  have hsub : (B.toSet ∩ B'.toSet) ⊆ frontier (B.toSet) ∪ frontier (B'.toSet) := by
+    intro x ⟨hxB, hxB'⟩
+    by_cases hiB : x ∈ interior (B.toSet)
+    · by_cases hiB' : x ∈ interior (B'.toSet)
+      · exact absurd (Set.mem_inter hiB hiB') (by rw [h]; exact Set.notMem_empty x)
+      · right; exact ⟨subset_closure hxB', hiB'⟩
+    · left; exact ⟨subset_closure hxB, hiB⟩
+  apply le_antisymm _ (zero_le _)
+  calc volume (B.toSet ∩ B'.toSet)
+      ≤ volume (frontier (B.toSet) ∪ frontier (B'.toSet)) := measure_mono hsub
+    _ ≤ volume (frontier (B.toSet)) + volume (frontier (B'.toSet)) := measure_union_le _ _
+    _ = 0 := by rw [box_frontier_null, box_frontier_null, add_zero]
+
+/-- **Milestone 3 helper.** For an open set, the Lebesgue outer measure equals its `volume`. -/
+private lemma Lebesgue_outer_measure_open_eq_volume {d : ℕ} (hd : 0 < d)
+    {U : Set (EuclideanSpace' d)} (hU : IsOpen U) :
+    Lebesgue_outer_measure U = ((volume U).toEReal) := by
+  rcases Set.eq_empty_or_nonempty U with hempty | hne
+  · subst hempty; rw [Lebesgue_outer_measure.of_empty, measure_empty]; rfl
+  obtain ⟨B, hcover, _hdyadic, hdisj⟩ := hU.eq_union_boxes hd U hne
+  -- volume U = ∑' volume (B n).toSet = ∑' ofReal (B n).volume
+  have hmeas : ∀ n, NullMeasurableSet ((B n).toSet) volume := fun n => by
+    rw [Box.toSet_eq_ofLp_preimage]
+    exact ((MeasurableSet.univ_pi (fun i => ((B n).side i).measurableSet_toSet)).preimage
+      (PiLp.continuous_ofLp 2 _).measurable).nullMeasurableSet
+  have haed : Pairwise (Function.onFun (AEDisjoint volume) (fun n => (B n).toSet)) :=
+    fun m n hmn => box_aedisjoint (hdisj hmn)
+  have hvolU : volume U = ∑' n, ENNReal.ofReal ((B n).volume) := by
+    rw [hcover, measure_iUnion₀ haed hmeas]
+    exact tsum_congr (fun n => box_volume_eq (B n))
+  apply le_antisymm
+  · -- Lebesgue_outer_measure U ≤ ∑' (B n).volume = volume U
+    apply le_trans (Lebesgue_outer_measure.le_of_nat_cover hd U B (by rw [← hcover]))
+    rw [hvolU, EReal.coe_ennreal_tsum']
+    apply le_of_eq; apply tsum_congr; intro n
+    rw [EReal.coe_ennreal_ofReal, max_eq_left (Box.volume_nonneg (B n))]
+  · exact volume_le_Lebesgue_outer_measure U
+
+/-- **Milestone 3** (hard direction), for `d > 0`. -/
+private lemma Lebesgue_outer_measure_le_volume_pos {d : ℕ} (hd : 0 < d)
+    (E : Set (EuclideanSpace' d)) :
+    Lebesgue_outer_measure E ≤ ((volume E).toEReal) := by
+  -- It suffices to show m*(E) ≤ volume E + ε for every real ε > 0.
+  apply EReal.le_of_forall_pos_le_add'
+  intro ε hε
+  -- Mathlib outer regularity: open U ⊇ E with volume U < volume E + ε  (when volume E < ∞)
+  by_cases hEtop : volume E = ⊤
+  · -- RHS is ⊤, trivial
+    rw [hEtop]
+    rw [show ((⊤ : ENNReal).toEReal) = (⊤ : EReal) from rfl, EReal.top_add_of_ne_bot
+      (by exact_mod_cast (EReal.coe_ne_bot ε))]
+    exact le_top
+  · obtain ⟨U, hEU, hUopen, hUlt⟩ :=
+      Set.exists_isOpen_lt_add E (μ := volume) hEtop (by positivity : (ENNReal.ofReal ε ≠ 0))
+    calc Lebesgue_outer_measure E
+        ≤ Lebesgue_outer_measure U := Lebesgue_outer_measure.mono hEU
+      _ = ((volume U).toEReal) := Lebesgue_outer_measure_open_eq_volume hd hUopen
+      _ ≤ (((volume E + ENNReal.ofReal ε)).toEReal) := by
+            apply EReal.coe_ennreal_le_coe_ennreal_iff.mpr
+            exact le_of_lt hUlt
+      _ = (volume E).toEReal + (ε : EReal) := by
+            rw [show ((volume E + ENNReal.ofReal ε : ENNReal) : EReal)
+                  = ((volume E : EReal) + (ENNReal.ofReal ε : EReal)) from EReal.coe_ennreal_add _ _]
+            congr 1
+            rw [EReal.coe_ennreal_ofReal, max_eq_left hε.le]
+
+/-- **Milestone 3** (hard direction). -/
+lemma Lebesgue_outer_measure_le_volume {d : ℕ} (E : Set (EuclideanSpace' d)) :
+    Lebesgue_outer_measure E ≤ ((volume E).toEReal) := by
+  rcases Nat.eq_zero_or_pos d with hd0 | hd
+  · -- d = 0: `EuclideanSpace' 0` is a singleton, `volume = 1` on any nonempty set.
+    subst hd0
+    rcases Set.eq_empty_or_nonempty E with hE | hE
+    · subst hE; rw [Lebesgue_outer_measure.of_empty, measure_empty]; rfl
+    · -- E is the whole (singleton) space; cover by a single box of volume 1.
+      have hEuniv : E = Set.univ := by
+        apply Set.eq_univ_of_forall; intro x
+        obtain ⟨y, hy⟩ := hE
+        have : x = y := Subsingleton.elim x y
+        rw [this]; exact hy
+      have hbox : Lebesgue_outer_measure E ≤ ((1:ℝ) : EReal) := by
+        unfold Lebesgue_outer_measure
+        apply sInf_le
+        refine ⟨({0} : Set ℕ), fun _ => (⟨fun i => i.elim0⟩ : Box 0), ?_, ?_⟩
+        · intro x _
+          refine Set.mem_iUnion.mpr ⟨⟨0, rfl⟩, ?_⟩
+          intro i; exact i.elim0
+        · -- single box of volume 1; tsum over the singleton index
+          rw [tsum_eq_single (⟨0, rfl⟩ : ({0} : Set ℕ))
+            (by rintro ⟨b, hb⟩ hne; exact absurd (Subtype.ext (Set.mem_singleton_iff.mp hb)) hne)]
+          simp only [Box.volume, Finset.univ_eq_empty, Finset.prod_empty]
+      have hv1 : ((volume E).toEReal) = ((1:ℝ):EReal) := by
+        rw [hEuniv]
+        have : (volume (Set.univ : Set (EuclideanSpace' 0))) = 1 := by
+          have hd : (volume : Measure (EuclideanSpace' 0)) = Measure.dirac 0 :=
+            volume_euclideanSpace_eq_dirac (ι := Fin 0)
+          calc (volume (Set.univ : Set (EuclideanSpace' 0)))
+              = (Measure.dirac (0 : EuclideanSpace' 0)) Set.univ := by rw [hd]
+            _ = 1 := by simp
+        rw [this]; rfl
+      rw [hv1]; exact hbox
+  · exact Lebesgue_outer_measure_le_volume_pos hd E
+
+/-- **Keystone bridge.** The bespoke Lebesgue outer measure agrees with Mathlib's `volume`. -/
+theorem Lebesgue_outer_measure_eq_volume {d : ℕ} (E : Set (EuclideanSpace' d)) :
+    Lebesgue_outer_measure E = ((volume E).toEReal) :=
+  le_antisymm (Lebesgue_outer_measure_le_volume E) (volume_le_Lebesgue_outer_measure E)
+
+end VolumeBridge
