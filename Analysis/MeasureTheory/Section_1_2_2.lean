@@ -1,4 +1,5 @@
 import Analysis.MeasureTheory.Section_1_2_1
+import Mathlib.MeasureTheory.Integral.Indicator
 
 /-!
 # Introduction to Measure Theory, Section 1.2.2: Lebesgue measurability
@@ -1632,13 +1633,114 @@ theorem Lebesgue_measure.union {d:ℕ} {E F: Set (EuclideanSpace' d)} (hE: Lebes
   rw [tsum_fintype]
   simp only [S, Fin.sum_univ_two, Fin.isValue, Matrix.cons_val_zero, Matrix.cons_val_one]
 
+section MonotoneConvergence
+open MeasureTheory
+
 /-- Exercise 1.2.11(a) (Upward monotone convergence)-/
 theorem Lebesgue_measure.upward_monotone_convergence {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)) (hmono: ∀ n, E n ⊆ E (n + 1)) : Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure (⋃ n, E n))) := by
-  sorry
+  -- Route through Mathlib `volume`; `tendsto_measure_iUnion_atTop` needs only monotonicity.
+  have hmono' : Monotone E := monotone_nat_of_le_succ hmono
+  have hvol := tendsto_measure_iUnion_atTop (μ := (volume : Measure (EuclideanSpace' d))) hmono'
+  -- Transfer ENNReal tendsto to EReal via the continuous coercion `.toEReal`.
+  have hereal : Filter.atTop.Tendsto (fun n => ((volume (E n)).toEReal))
+      (nhds ((volume (⋃ n, E n)).toEReal)) :=
+    (continuous_coe_ennreal_ereal.tendsto _).comp hvol
+  -- Rewrite `Lebesgue_measure` as `(volume ·).toEReal`.
+  have heq : (fun n ↦ Lebesgue_measure (E n)) = (fun n => ((volume (E n)).toEReal)) := by
+    funext n; unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume (E n)
+  rw [heq]
+  have heq2 : Lebesgue_measure (⋃ n, E n) = ((volume (⋃ n, E n)).toEReal) := by
+    unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume _
+  rw [heq2]
+  exact hereal
+
+/-- Helper (up-to-null reverse bridge): every LebesgueMeasurable set is NullMeasurableSet
+    for Mathlib's volume.  Enclose E in a Gdelta set of open supersets, obtaining a measurable
+    set agreeing with E up to a null set. -/
+private lemma LebesgueMeasurable.nullMeasurableSet {d:ℕ} {E: Set (EuclideanSpace' d)}
+    (hE: LebesgueMeasurable E) : NullMeasurableSet E (volume : Measure (EuclideanSpace' d)) := by
+  have h_eps_pos : ∀ n : ℕ, (0 : EReal) < 1 / (n + 1 : ℕ) := fun n => by
+    have h1 : (0 : EReal) < 1 := EReal.coe_pos.mpr (by norm_num : (0 : ℝ) < 1)
+    have h2 : (0 : EReal) < (n + 1 : ℕ) := by
+      simp only [Nat.cast_add, Nat.cast_one]
+      exact EReal.coe_pos.mpr (by linarith : (0 : ℝ) < n + 1)
+    exact EReal.div_pos h1 h2 (EReal.coe_ne_top _)
+  choose U hU_open hE_sub_U hU_diff using fun n => hE (1 / (n + 1 : ℕ)) (h_eps_pos n)
+  set F := ⋂ n, U n with hFdef
+  have hF_meas : MeasurableSet F := MeasurableSet.iInter (fun n => (hU_open n).measurableSet)
+  have hE_sub_F : E ⊆ F := Set.subset_iInter hE_sub_U
+  -- volume (F \ E) = 0
+  have h_diff_null : volume (F \ E) = 0 := by
+    -- m*(F\E) ≤ 1/(n+1) for all n, hence 0
+    have hbound : ∀ n : ℕ, Lebesgue_outer_measure (F \ E) ≤ 1 / (n + 1 : ℕ) := fun n =>
+      calc Lebesgue_outer_measure (F \ E)
+          ≤ Lebesgue_outer_measure (U n \ E) :=
+            Lebesgue_outer_measure.mono (Set.diff_subset_diff_left (Set.iInter_subset U n))
+        _ ≤ 1 / (n + 1 : ℕ) := hU_diff n
+    have h_null : Lebesgue_outer_measure (F \ E) = 0 := by
+      apply le_antisymm _ (Lebesgue_outer_measure.nonneg _)
+      by_contra h_ne
+      push_neg at h_ne
+      obtain ⟨ε, hε_pos, hε_le⟩ : ∃ ε : ℝ, 0 < ε ∧ (ε : EReal) ≤ Lebesgue_outer_measure (F \ E) := by
+        cases hm : Lebesgue_outer_measure (F \ E) with
+        | bot => rw [hm] at h_ne; exact absurd h_ne (not_lt.mpr bot_le)
+        | top => exact ⟨1, one_pos, le_top⟩
+        | coe r =>
+          rw [hm] at h_ne
+          exact ⟨r, EReal.coe_pos.mp h_ne, le_refl _⟩
+      obtain ⟨N, hN⟩ := exists_nat_gt (1 / ε)
+      have hNp1_pos : (0 : ℝ) < (N : ℝ) + 1 := by positivity
+      have hN1 : 1 / ((N : ℝ) + 1) < ε := by
+        have h1 : 1 / ε < (N : ℝ) + 1 := lt_of_lt_of_le hN (by norm_cast; exact Nat.le_succ N)
+        rw [one_div_lt hNp1_pos hε_pos]; exact h1
+      have h_eq : (1 : EReal) / (N + 1 : ℕ) = ↑(1 / ((N : ℝ) + 1)) := by
+        rw [EReal.coe_div, EReal.coe_one]; norm_cast
+      have h_bound : Lebesgue_outer_measure (F \ E) ≤ ↑(1 / ((N : ℝ) + 1)) := h_eq ▸ hbound N
+      exact absurd (lt_of_le_of_lt (hε_le.trans h_bound) (EReal.coe_lt_coe_iff.mpr hN1))
+        (lt_irrefl _)
+    -- transfer to volume
+    have := Lebesgue_outer_measure_eq_volume (F \ E)
+    rw [h_null] at this
+    have hzero : ((volume (F \ E)).toEReal) = (0 : EReal) := this.symm
+    have : volume (F \ E) = 0 := by
+      have := EReal.coe_ennreal_eq_zero.mp (by simpa using hzero)
+      exact this
+    exact this
+  -- E =ᵐ F, F measurable ⇒ E nullmeasurable
+  have hae : F =ᵐ[volume] E := by
+    rw [ae_eq_set]
+    refine ⟨h_diff_null, ?_⟩
+    -- E \ F = ∅ since E ⊆ F
+    rw [Set.diff_eq_empty.mpr hE_sub_F]; simp
+  exact (MeasurableSet.nullMeasurableSet (μ := (volume : Measure (EuclideanSpace' d))) hF_meas).congr hae
 
 /-- Exercise 1.2.11(b) (Downward monotone convergence)-/
 theorem Lebesgue_measure.downward_monotone_convergence {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)) (hmono: ∀ n, E (n+1) ⊆ E n) (hfin: ∃ n, Lebesgue_measure (E n) < ⊤) : Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure (⋂ n, E n))) := by
-  sorry
+  have hanti : Antitone E := antitone_nat_of_succ_le hmono
+  have hnull : ∀ n, NullMeasurableSet (E n) (volume : Measure (EuclideanSpace' d)) :=
+    fun n => (hE n).nullMeasurableSet
+  have hfin' : ∃ n, volume (E n) ≠ ⊤ := by
+    obtain ⟨n, hn⟩ := hfin
+    refine ⟨n, ?_⟩
+    have heq : Lebesgue_measure (E n) = ((volume (E n)).toEReal) := by
+      unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume _
+    rw [heq] at hn
+    intro htop
+    rw [htop] at hn
+    simp at hn
+  have hvol := tendsto_measure_iInter_atTop (μ := (volume : Measure (EuclideanSpace' d))) hnull hanti hfin'
+  have hereal : Filter.atTop.Tendsto (fun n => ((volume (E n)).toEReal))
+      (nhds ((volume (⋂ n, E n)).toEReal)) :=
+    (continuous_coe_ennreal_ereal.tendsto _).comp hvol
+  have heq : (fun n ↦ Lebesgue_measure (E n)) = (fun n => ((volume (E n)).toEReal)) := by
+    funext n; unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume (E n)
+  rw [heq]
+  have heq2 : Lebesgue_measure (⋂ n, E n) = ((volume (⋂ n, E n)).toEReal) := by
+    unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume _
+  rw [heq2]
+  simpa [Function.comp] using hereal
+
+end MonotoneConvergence
 
 /-- Exercise 1.2.11 (c) (counterexample)-/
 example : ∃ (d:ℕ) (E: ℕ → Set (EuclideanSpace' d)) (hE: ∀ n, LebesgueMeasurable (E n)) (hmono: ∀ n, E (n+1) ⊆ E n), ¬ Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure (⋂ n, E n))) := by sorry
@@ -1790,14 +1892,198 @@ example {d:ℕ} (m: Set (EuclideanSpace' d) → EReal) (h_empty: m ∅ = 0) (h_p
   -- ∑ m (G n) ≤ ∑ m (E n) since G n ⊆ E n.
   exact EReal.tsum_le_tsum_of_nonneg_le (fun n => h_pos _) (fun n => mono (hG_sub n) (hG_meas n) (hE n))
 
+/-- Helper: a `{0,1}`-valued real sequence converging to a `{0,1}` value is eventually equal
+    to that value. -/
+private lemma eventually_eq_of_tendsto_zero_one (a : ℕ → ℝ) (l : ℝ)
+    (ha : ∀ n, a n = 0 ∨ a n = 1) (hl : l = 0 ∨ l = 1)
+    (h : Filter.atTop.Tendsto a (nhds l)) : ∀ᶠ n in Filter.atTop, a n = l := by
+  have hlim : Filter.atTop.Tendsto (fun n => |a n - l|) (nhds 0) := by
+    have := (h.sub_const l).abs; simpa using this
+  have hev : ∀ᶠ n in Filter.atTop, |a n - l| < 1/2 := by
+    have := hlim.eventually (gt_mem_nhds (show (0:ℝ) < 1/2 by norm_num)); simpa using this
+  filter_upwards [hev] with n hn
+  rcases ha n with h0 | h1 <;> rcases hl with hl0 | hl1 <;> simp_all <;> norm_num at hn
+
 /-- Exercise 1.2.13(i) -/
-example {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} {E₀: Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)) (hpoint: ∀ x, Filter.atTop.Tendsto (fun n ↦ (E n).indicator' x) (nhds (E₀.indicator' x))) : LebesgueMeasurable E₀ := by sorry
+example {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} {E₀: Set (EuclideanSpace' d)} (hE: ∀ n, LebesgueMeasurable (E n)) (hpoint: ∀ x, Filter.atTop.Tendsto (fun n ↦ (E n).indicator' x) (nhds (E₀.indicator' x))) : LebesgueMeasurable E₀ := by
+  -- Membership criterion: x ∈ E₀ iff eventually x ∈ Eₙ.
+  have hcrit : ∀ x, x ∈ E₀ ↔ ∀ᶠ n in Filter.atTop, x ∈ E n := by
+    intro x
+    have ha01 : ∀ n, (E n).indicator' x = 0 ∨ (E n).indicator' x = 1 := by
+      intro n
+      by_cases hx : x ∈ E n
+      · right; exact Set.indicator'_of_mem hx
+      · left; exact Set.indicator'_of_notMem hx
+    have hl01 : (E₀).indicator' x = 0 ∨ (E₀).indicator' x = 1 := by
+      by_cases hx : x ∈ E₀
+      · right; exact Set.indicator'_of_mem hx
+      · left; exact Set.indicator'_of_notMem hx
+    have hev := eventually_eq_of_tendsto_zero_one (fun n => (E n).indicator' x) (E₀.indicator' x)
+      ha01 hl01 (hpoint x)
+    constructor
+    · intro hx
+      have h1 : (E₀).indicator' x = 1 := Set.indicator'_of_mem hx
+      filter_upwards [hev] with n hn
+      by_contra hxn
+      rw [Set.indicator'_of_notMem hxn, h1] at hn
+      norm_num at hn
+    · intro hx
+      by_contra hx0
+      have h0 : (E₀).indicator' x = 0 := Set.indicator'_of_notMem hx0
+      have : ∀ᶠ n in Filter.atTop, (E n).indicator' x = 0 := by
+        filter_upwards [hev] with n hn; rw [hn, h0]
+      have hcontra : ∀ᶠ n in Filter.atTop, (x ∈ E n) ∧ (E n).indicator' x = 0 :=
+        hx.and this
+      obtain ⟨n, hmem, hz⟩ := hcontra.exists
+      rw [Set.indicator'_of_mem hmem] at hz; norm_num at hz
+  -- E₀ = ⋃ N, ⋂ n, E (N + n)  (liminf form).
+  have hE₀_eq : E₀ = ⋃ N : ℕ, ⋂ n : ℕ, E (N + n) := by
+    ext x
+    rw [hcrit x]
+    simp only [Set.mem_iUnion, Set.mem_iInter, Filter.eventually_atTop]
+    constructor
+    · rintro ⟨N, hN⟩; exact ⟨N, fun n => hN (N + n) (Nat.le_add_right N n)⟩
+    · rintro ⟨N, hN⟩
+      refine ⟨N, fun m hm => ?_⟩
+      have := hN (m - N); rwa [Nat.add_sub_cancel' hm] at this
+  rw [hE₀_eq]
+  exact LebesgueMeasurable.countable_union (fun N =>
+    LebesgueMeasurable.countable_inter (fun n => hE (N + n)))
+
+section Convergence13ii
+open MeasureTheory Filter
+
+/-- Helper: intersection respects a.e. equality of sets. -/
+private lemma ae_inter_congr {α} [MeasurableSpace α] {μ : Measure α} {A B C D : Set α}
+    (h1 : A =ᵐ[μ] B) (h2 : C =ᵐ[μ] D) : (A ∩ C : Set α) =ᵐ[μ] (B ∩ D : Set α) := by
+  filter_upwards [h1, h2] with x hx hy
+  show (x ∈ A ∩ C) = (x ∈ B ∩ D)
+  simp only [Set.mem_inter_iff, eq_iff_iff]
+  rw [show (x ∈ A) = (x ∈ B) from hx, show (x ∈ C) = (x ∈ D) from hy]
 
 /-- Exercise 1.2.13(ii) -/
 example {d:ℕ} {E: ℕ → Set (EuclideanSpace' d)} {E₀ F: Set (EuclideanSpace' d)}
   (hE: ∀ n, LebesgueMeasurable (E n))
   (hpoint: ∀ x, Filter.atTop.Tendsto (fun n ↦ (E n).indicator' x) (nhds (E₀.indicator' x)))
-  (hsub: ∀ n, E n ⊆ F) (hFmes: LebesgueMeasurable F) (hfin: Lebesgue_measure F < ⊤) : Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure E₀)) := by sorry
+  (hsub: ∀ n, E n ⊆ F) (hFmes: LebesgueMeasurable F) (hfin: Lebesgue_measure F < ⊤) : Filter.atTop.Tendsto (fun n ↦ Lebesgue_measure (E n)) (nhds (Lebesgue_measure E₀)) := by
+  classical
+  -- Pointwise membership criterion: for every x, eventually (x ∈ Eₙ ↔ x ∈ E₀).
+  have hmemb : ∀ x, ∀ᶠ n in Filter.atTop, (x ∈ E n ↔ x ∈ E₀) := by
+    intro x
+    have ha01 : ∀ n, (E n).indicator' x = 0 ∨ (E n).indicator' x = 1 := by
+      intro n; by_cases hx : x ∈ E n
+      · right; exact Set.indicator'_of_mem hx
+      · left; exact Set.indicator'_of_notMem hx
+    have hl01 : (E₀).indicator' x = 0 ∨ (E₀).indicator' x = 1 := by
+      by_cases hx : x ∈ E₀
+      · right; exact Set.indicator'_of_mem hx
+      · left; exact Set.indicator'_of_notMem hx
+    have hev := eventually_eq_of_tendsto_zero_one (fun n => (E n).indicator' x) (E₀.indicator' x)
+      ha01 hl01 (hpoint x)
+    filter_upwards [hev] with n hn
+    constructor
+    · intro hxn
+      by_contra hx0
+      rw [Set.indicator'_of_mem hxn, Set.indicator'_of_notMem hx0] at hn; norm_num at hn
+    · intro hx0
+      by_contra hxn
+      rw [Set.indicator'_of_notMem hxn, Set.indicator'_of_mem hx0] at hn; norm_num at hn
+  -- E₀ ⊆ F: if x ∉ F then x ∉ Eₙ for all n, so eventually x ∉ E₀.
+  have hE₀_sub : E₀ ⊆ F := by
+    intro x hx0
+    by_contra hxF
+    obtain ⟨n, hn⟩ := (hmemb x).exists
+    exact hxF (hsub n ((hn.mpr hx0)))
+  -- Move to Mathlib `volume` with measurable representatives.
+  have hnullE : ∀ n, NullMeasurableSet (E n) (volume : Measure (EuclideanSpace' d)) :=
+    fun n => (hE n).nullMeasurableSet
+  have hnullF : NullMeasurableSet F (volume : Measure (EuclideanSpace' d)) := hFmes.nullMeasurableSet
+  choose Em hEmmes hEmae using hnullE
+  obtain ⟨Fm, hFmmes, hFmae⟩ := hnullF
+  -- Measurable representatives intersected with Fm (so subset holds literally).
+  set As : ℕ → Set (EuclideanSpace' d) := fun n => Em n ∩ Fm with hAs
+  have hAsmes : ∀ n, MeasurableSet (As n) := fun n => (hEmmes n).inter hFmmes
+  have hAsae : ∀ n, As n =ᵐ[volume] E n := by
+    intro n
+    have h1 : E n =ᵐ[volume] Em n := hEmae n
+    have hstep : (Em n ∩ Fm : Set (EuclideanSpace' d)) =ᵐ[volume] (E n ∩ F : Set (EuclideanSpace' d)) :=
+      ae_inter_congr h1.symm hFmae.symm
+    have hEF : (E n ∩ F : Set (EuclideanSpace' d)) = E n := Set.inter_eq_self_of_subset_left (hsub n)
+    rw [hEF] at hstep
+    show (Em n ∩ Fm : Set (EuclideanSpace' d)) =ᵐ[volume] E n
+    exact hstep
+  -- E₀ ∩ Fm as the measurable target.
+  have hnullE₀ : NullMeasurableSet E₀ (volume : Measure (EuclideanSpace' d)) := by
+    -- E₀ is the liminf of the Eₙ (same as in (i)); hence LebesgueMeasurable.
+    have hE₀_eq : E₀ = ⋃ N : ℕ, ⋂ n : ℕ, E (N + n) := by
+      ext x
+      have hc : x ∈ E₀ ↔ ∀ᶠ n in Filter.atTop, x ∈ E n := by
+        constructor
+        · intro hx0; filter_upwards [hmemb x] with n hn; exact hn.mpr hx0
+        · intro hx
+          obtain ⟨n, hmem, hiff⟩ := (hx.and (hmemb x)).exists
+          exact hiff.mp hmem
+      rw [hc]
+      simp only [Set.mem_iUnion, Set.mem_iInter, Filter.eventually_atTop]
+      constructor
+      · rintro ⟨N, hN⟩; exact ⟨N, fun n => hN (N + n) (Nat.le_add_right N n)⟩
+      · rintro ⟨N, hN⟩; exact ⟨N, fun m hm => by have := hN (m - N); rwa [Nat.add_sub_cancel' hm] at this⟩
+    have : LebesgueMeasurable E₀ := by
+      rw [hE₀_eq]
+      exact LebesgueMeasurable.countable_union (fun N =>
+        LebesgueMeasurable.countable_inter (fun n => hE (N + n)))
+    exact this.nullMeasurableSet
+  obtain ⟨Em0, hEm0mes, hEm0ae⟩ := hnullE₀
+  set A : Set (EuclideanSpace' d) := Em0 ∩ Fm with hA
+  have hAmes : MeasurableSet A := hEm0mes.inter hFmmes
+  have hAae : A =ᵐ[volume] E₀ := by
+    have hstep : (Em0 ∩ Fm : Set (EuclideanSpace' d)) =ᵐ[volume] (E₀ ∩ F : Set (EuclideanSpace' d)) :=
+      ae_inter_congr hEm0ae.symm hFmae.symm
+    have hEF : (E₀ ∩ F : Set (EuclideanSpace' d)) = E₀ := Set.inter_eq_self_of_subset_left hE₀_sub
+    rw [hEF] at hstep
+    show (Em0 ∩ Fm : Set (EuclideanSpace' d)) =ᵐ[volume] E₀
+    exact hstep
+  -- Finite measure of Fm.
+  have hFmfin : volume Fm ≠ ⊤ := by
+    have hFv : volume F = volume Fm := measure_congr hFmae
+    have : Lebesgue_measure F = ((volume F).toEReal) := by
+      unfold Lebesgue_measure; exact Lebesgue_outer_measure_eq_volume _
+    rw [this] at hfin
+    rw [← hFv]
+    intro htop; rw [htop] at hfin; simp at hfin
+  -- Subset As n ⊆ Fm.
+  have hAs_sub : ∀ n, As n ⊆ Fm := fun n => Set.inter_subset_right
+  -- a.e. membership convergence for the representatives.
+  have hae_conv : ∀ᵐ x ∂(volume : Measure (EuclideanSpace' d)),
+      ∀ᶠ n in Filter.atTop, (x ∈ As n ↔ x ∈ A) := by
+    -- On the co-null set where As n =ᵐ E n (all n), A =ᵐ E₀, membership reduces to hmemb.
+    have hAsmem : ∀ n, ∀ᵐ x ∂volume, (x ∈ As n ↔ x ∈ E n) := fun n => (hAsae n).mem_iff
+    have hAsmem' : ∀ᵐ x ∂volume, ∀ n, (x ∈ As n ↔ x ∈ E n) := (ae_all_iff).mpr hAsmem
+    have hAmem : ∀ᵐ x ∂volume, (x ∈ A ↔ x ∈ E₀) := hAae.mem_iff
+    filter_upwards [hAsmem', hAmem] with x hx hx0
+    filter_upwards [hmemb x] with n hn
+    rw [hx n, hx0]; exact hn
+  -- Apply Mathlib's set dominated convergence.
+  have hmain := tendsto_measure_of_ae_tendsto_indicator (A := A) (As := As)
+    Filter.atTop hAmes hAsmes hFmmes hFmfin (Filter.Eventually.of_forall hAs_sub) hae_conv
+  -- Transfer measures back: volume (As n) = Lebesgue_measure (E n), volume A = Lebesgue_measure E₀.
+  have hAsval : ∀ n, ((volume (As n)).toEReal) = Lebesgue_measure (E n) := by
+    intro n
+    rw [measure_congr (hAsae n)]
+    unfold Lebesgue_measure; exact (Lebesgue_outer_measure_eq_volume _).symm
+  have hAval : ((volume A).toEReal) = Lebesgue_measure E₀ := by
+    rw [measure_congr hAae]
+    unfold Lebesgue_measure; exact (Lebesgue_outer_measure_eq_volume _).symm
+  -- Convert ENNReal tendsto to EReal tendsto, then rewrite to Lebesgue_measure.
+  have hereal : Filter.atTop.Tendsto (fun n => ((volume (As n)).toEReal))
+      (nhds ((volume A).toEReal)) :=
+    (continuous_coe_ennreal_ereal.tendsto _).comp hmain
+  have hfun : (fun n => ((volume (As n)).toEReal)) = (fun n ↦ Lebesgue_measure (E n)) := by
+    funext n; exact hAsval n
+  rw [hfun, hAval] at hereal
+  exact hereal
+
+end Convergence13ii
 
 /-- Exercise 1.2.13(iii) -/
 example : ∃ (d:ℕ) (E: ℕ → Set (EuclideanSpace' d)) (E₀ F: Set (EuclideanSpace' d))
