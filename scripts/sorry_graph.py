@@ -14,7 +14,15 @@ import datetime
 import subprocess
 import sys
 
-LEAN_PATHSPECS = ["analysis/Analysis/*.lean", "analysis/Analysis/**/*.lean"]
+# Cover both repo layouts: the historical `analysis/Analysis/...` nesting and
+# the current `Analysis/...` at the repo root (the tree was flattened part-way
+# through the project's history).
+LEAN_PATHSPECS = [
+    "analysis/Analysis/*.lean",
+    "analysis/Analysis/**/*.lean",
+    "Analysis/*.lean",
+    "Analysis/**/*.lean",
+]
 
 
 def git(*args):
