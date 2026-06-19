@@ -1,5 +1,8 @@
 import Analysis.MeasureTheory.Section_1_2_1
 import Mathlib.MeasureTheory.Integral.Indicator
+import Mathlib.MeasureTheory.Measure.Hausdorff
+import Mathlib.Analysis.Calculus.ContDiff.RCLike
+import Mathlib.Geometry.Euclidean.Volume.Measure
 
 /-!
 # Introduction to Measure Theory, Section 1.2.2: Lebesgue measurability
@@ -2837,7 +2840,35 @@ ContinuousOn m hA.ae_measurable ∧ (∀ (E:hA.ae_elem), m E.val = hA.ae_elem_me
 noncomputable abbrev IsCurve {d:ℕ} (C: Set (EuclideanSpace' d)) : Prop := ∃ (a b:ℝ) (γ: ℝ → EuclideanSpace' d), C = γ '' (Set.Icc a b) ∧ ContDiffOn ℝ 1 γ (Set.Icc a b)
 
 /-- Exercise 1.2.25(i) -/
-theorem IsCurve.null {d:ℕ} (hd: d ≥ 2) {C: Set (EuclideanSpace' d)} (hC: IsCurve C) : IsNull C := by sorry
+theorem IsCurve.null {d:ℕ} (hd: d ≥ 2) {C: Set (EuclideanSpace' d)} (hC: IsCurve C) : IsNull C := by
+  classical
+  obtain ⟨a, b, γ, hCeq, hγ⟩ := hC
+  -- `γ` is C¹ on the compact convex set `Icc a b`, hence Lipschitz there.
+  obtain ⟨K, hK⟩ := hγ.exists_lipschitzOnWith (n := (1:ℕ∞)) one_ne_zero
+    (convex_Icc a b) isCompact_Icc
+  -- The `d`-dimensional Hausdorff measure of the 1-dimensional source `Icc a b` (in ℝ) vanishes,
+  -- because `1 < d`.
+  have hd1 : (1:ℝ) < (d:ℝ) := by exact_mod_cast (by omega : 1 < d)
+  have hsrc : (μH[(d:ℝ)] (Set.Icc a b) : ENNReal) = 0 := by
+    rcases MeasureTheory.Measure.hausdorffMeasure_zero_or_top hd1 (Set.Icc a b) with h | h
+    · exact h
+    · -- `μH[1] (Icc a b) = volume (Icc a b) < ⊤`, contradiction with `= ∞`.
+      exfalso
+      rw [MeasureTheory.hausdorffMeasure_real] at h
+      exact (measure_Icc_lt_top).ne h
+  -- The image has `d`-dimensional Hausdorff measure 0.
+  have himg : (μH[(d:ℝ)] C : ENNReal) = 0 := by
+    rw [hCeq]
+    have hle := hK.hausdorffMeasure_image_le (d := (d:ℝ)) (by positivity)
+    rw [hsrc, mul_zero] at hle
+    exact le_antisymm hle (zero_le _)
+  -- `volume` is absolutely continuous w.r.t. the Haar measure `μH[d]` on `EuclideanSpace' d`.
+  have hac : (volume : MeasureTheory.Measure (EuclideanSpace' d)) ≪ μH[(d:ℝ)] :=
+    MeasureTheory.Measure.absolutelyContinuous_isAddHaarMeasure _ _
+  have hvol : (volume : MeasureTheory.Measure (EuclideanSpace' d)) C = 0 := hac himg
+  -- Conclude `IsNull C`.
+  rw [IsNull, Lebesgue_outer_measure_eq_volume, hvol]
+  rfl
 
 example : ∃ (d:ℕ) (C: Set (EuclideanSpace' d)) (hC: IsCurve C), ¬ IsNull Cx := by
   sorry
